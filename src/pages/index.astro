@@ -1,0 +1,361 @@
+---
+import {
+  categorias,
+  crearSlug,
+  obtenerEscudo
+} from "../data/catalogo";
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta
+      name="description"
+      content="Catálogo online de camisetas de fútbol Elite Jerseys"
+    />
+    <title>Elite Jerseys</title>
+  </head>
+
+  <body>
+    <header class="cabecera">
+      <div class="contenedor">
+        <h1>Elite Jerseys</h1>
+        <p>Catálogo de camisetas de fútbol</p>
+      </div>
+    </header>
+
+    <main class="contenedor">
+      <section class="introduccion">
+        <span>CATÁLOGO</span>
+        <h2>Ligas y selecciones</h2>
+        <p>Selecciona una categoría para ver todos sus equipos.</p>
+      </section>
+
+      <section class="categorias">
+        {
+          categorias.map((categoria) => (
+            <article class="categoria">
+              <button
+                class="categoria-cabecera"
+                type="button"
+                aria-expanded="false"
+              >
+                <div class="categoria-info">
+                  <div class="logo-liga">
+                    <img
+                      src={categoria.logo}
+                      alt={`Logotipo de ${categoria.nombre}`}
+                      onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
+                    />
+
+                    <span class="logo-provisional">⚽</span>
+                  </div>
+
+                  <span>
+                    <strong>{categoria.nombre}</strong>
+
+                    <small>
+                      Temporada {categoria.temporada} · {categoria.equipos.length} equipos
+                    </small>
+                  </span>
+                </div>
+
+                <span class="flecha">⌄</span>
+              </button>
+
+              <div class="equipos" hidden>
+                {
+                  categoria.equipos.map((equipo) => (
+                    <a
+                      class="equipo"
+                      href={`/equipos/${crearSlug(equipo)}`}
+                    >
+                      <div class="escudo">
+                        <img
+                          src={obtenerEscudo(equipo)}
+                          alt={`Escudo de ${equipo}`}
+                          onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
+                        />
+
+                        <span class="escudo-provisional">
+                          {equipo.charAt(0)}
+                        </span>
+                      </div>
+
+                      <span class="nombre-equipo">{equipo}</span>
+                    </a>
+                  ))
+                }
+              </div>
+            </article>
+          ))
+        }
+      </section>
+    </main>
+
+    <script>
+      const botones = document.querySelectorAll(".categoria-cabecera");
+
+      botones.forEach((boton) => {
+        boton.addEventListener("click", () => {
+          const contenido = boton.nextElementSibling;
+          const abierto =
+            boton.getAttribute("aria-expanded") === "true";
+
+          boton.setAttribute("aria-expanded", String(!abierto));
+
+          if (contenido instanceof HTMLElement) {
+            contenido.hidden = abierto;
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
+
+<style>
+  :global(*) {
+    box-sizing: border-box;
+  }
+
+  :global(body) {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #202124;
+    background: #f5f6f7;
+  }
+
+  .contenedor {
+    width: min(1180px, calc(100% - 30px));
+    margin: 0 auto;
+  }
+
+  .cabecera {
+    padding: 18px 0;
+    border-bottom: 1px solid #dedede;
+    background: white;
+  }
+
+  .cabecera h1 {
+    margin: 0;
+    font-size: 25px;
+  }
+
+  .cabecera p {
+    margin: 5px 0 0;
+    color: #777;
+    font-size: 14px;
+  }
+
+  .introduccion {
+    padding: 45px 0 30px;
+  }
+
+  .introduccion > span {
+    color: #16805a;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+
+  .introduccion h2 {
+    margin: 8px 0;
+    font-size: 38px;
+  }
+
+  .introduccion p {
+    margin: 0;
+    color: #777;
+  }
+
+  .categorias {
+    display: grid;
+    gap: 18px;
+    padding-bottom: 70px;
+  }
+
+  .categoria {
+    overflow: hidden;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    background: white;
+  }
+
+  .categoria-cabecera {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 21px;
+    border: 0;
+    cursor: pointer;
+    text-align: left;
+    background: white;
+  }
+
+  .categoria-cabecera:hover {
+    background: #fafafa;
+  }
+
+  .categoria-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .logo-liga {
+    width: 52px;
+    height: 52px;
+    flex: 0 0 52px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid #e7ebe9;
+    border-radius: 10px;
+    background: #f3f7f5;
+  }
+
+  .logo-liga img {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+  }
+
+  .logo-provisional {
+    width: 100%;
+    height: 100%;
+    display: none;
+    place-items: center;
+    font-size: 25px;
+  }
+
+  .categoria-cabecera strong {
+    display: block;
+    font-size: 20px;
+  }
+
+  .categoria-cabecera small {
+    display: block;
+    margin-top: 5px;
+    color: #777;
+  }
+
+  .flecha {
+    font-size: 27px;
+    transition: transform 0.2s ease;
+  }
+
+  .categoria-cabecera[aria-expanded="true"] .flecha {
+    transform: rotate(180deg);
+  }
+
+  .equipos {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+    padding: 20px;
+    border-top: 1px solid #e5e5e5;
+    background: #fafafa;
+  }
+
+  .equipos[hidden] {
+    display: none;
+  }
+
+  .equipo {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 12px;
+    border: 1px solid #e2e2e2;
+    border-radius: 8px;
+    color: #222;
+    text-decoration: none;
+    background: white;
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  .equipo:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08);
+  }
+
+  .escudo {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+
+  .escudo img {
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+  }
+
+  .escudo-provisional {
+    width: 36px;
+    height: 36px;
+    display: none;
+    place-items: center;
+    border-radius: 50%;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    background: #16805a;
+  }
+
+  .nombre-equipo {
+    overflow: hidden;
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 1000px) {
+    .equipos {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 650px) {
+    .introduccion {
+      padding-top: 30px;
+    }
+
+    .introduccion h2 {
+      font-size: 31px;
+    }
+
+    .categoria-cabecera {
+      padding: 16px;
+    }
+
+    .categoria-cabecera strong {
+      font-size: 17px;
+    }
+
+    .equipos {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .nombre-equipo {
+      white-space: normal;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .equipos {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

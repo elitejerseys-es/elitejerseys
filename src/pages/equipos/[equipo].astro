@@ -1,0 +1,385 @@
+---
+import fs from "node:fs";
+import path from "node:path";
+
+import {
+  categorias,
+  crearSlug,
+  obtenerEscudo
+} from "../../data/catalogo";
+
+export function getStaticPaths() {
+  return categorias.flatMap((categoria) =>
+    categoria.equipos.map((equipo) => ({
+      params: {
+        equipo: crearSlug(equipo)
+      },
+      props: {
+        equipo,
+        categoria: categoria.nombre
+      }
+    }))
+  );
+}
+
+interface Props {
+  equipo: string;
+  categoria: string;
+}
+
+interface Camiseta {
+  src: string;
+  temporada: string;
+  tipo: string;
+  ordenTemporada: number;
+  ordenTipo: number;
+}
+
+const { equipo, categoria } = Astro.props;
+const equipoSlug = crearSlug(equipo);
+
+const carpetaEquipo = path.join(
+  process.cwd(),
+  "public",
+  "camisetas",
+  equipoSlug
+);
+
+const ordenTipos: Record<string, number> = {
+  local: 1,
+  visitante: 2,
+  tercera: 3,
+  cuarta: 4,
+  portero: 5,
+  entrenamiento: 6
+};
+
+const convertirTipo = (tipo: string) =>
+  tipo.charAt(0).toUpperCase() + tipo.slice(1);
+
+const camisetas: Camiseta[] = [];
+
+if (fs.existsSync(carpetaEquipo)) {
+  const archivos = fs
+    .readdirSync(carpetaEquipo)
+    .filter((archivo) =>
+      /^\d{4}-\d{4}-.+\.(jpg|jpeg|png|webp)$/i.test(archivo)
+    );
+
+  for (const archivo of archivos) {
+    const sinExtension = archivo.replace(/\.(jpg|jpeg|png|webp)$/i, "");
+    const partes = sinExtension.split("-");
+
+    const inicio = partes[0];
+    const fin = partes[1];
+    const tipoSlug = partes.slice(2).join("-");
+
+    if (!inicio || !fin || !tipoSlug) continue;
+
+    camisetas.push({
+      src: `/camisetas/${equipoSlug}/${archivo}`,
+      temporada: `${inicio}/${fin}`,
+      tipo: convertirTipo(tipoSlug),
+      ordenTemporada: Number(inicio),
+      ordenTipo: ordenTipos[tipoSlug] ?? 99
+    });
+  }
+}
+
+camisetas.sort((a, b) => {
+  if (a.ordenTemporada !== b.ordenTemporada) {
+    return b.ordenTemporada - a.ordenTemporada;
+  }
+
+  return a.ordenTipo - b.ordenTipo;
+});
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+
+    <meta
+      name="description"
+      content={`Todas las camisetas de ${equipo}`}
+    />
+
+    <title>{equipo} | Elite Jerseys</title>
+  </head>
+
+  <body>
+    <header class="cabecera">
+      <div class="contenedor">
+        <a href="/" class="marca">
+          <strong>Elite Jerseys</strong>
+          <span>Catálogo de camisetas de fútbol</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="contenedor">
+      <nav class="migas">
+        <a href="/">Inicio</a>
+        <span>›</span>
+        <span>{categoria}</span>
+        <span>›</span>
+        <strong>{equipo}</strong>
+      </nav>
+
+      <section class="equipo-cabecera">
+        <div class="escudo-grande">
+          <img
+            src={obtenerEscudo(equipo)}
+            alt={`Escudo de ${equipo}`}
+          />
+        </div>
+
+        <div>
+  <span class="categoria">{categoria}</span>
+  <h1>{equipo}</h1>
+</div>
+      </section>
+
+      {
+        camisetas.length > 0 ? (
+          <section class="galeria">
+            {
+              camisetas.map((camiseta) => (
+                <a
+                  class="foto"
+                  href={camiseta.src}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <div class="foto-imagen">
+                    <img
+                      src={camiseta.src}
+                      alt={`${equipo} ${camiseta.temporada} ${camiseta.tipo}`}
+                      loading="lazy"
+                    />
+                  </div>
+
+                  <div class="foto-texto">
+  <strong>
+    {camiseta.temporada} · {camiseta.tipo}
+  </strong>
+</div>
+                </a>
+              ))
+            }
+          </section>
+        ) : (
+          <section class="sin-fotos">
+            <span>📷</span>
+            <h2>Todavía no hay camisetas</h2>
+            <p>Añade fotografías directamente dentro de la carpeta del equipo.</p>
+          </section>
+        )
+      }
+    </main>
+  </body>
+</html>
+
+<style>
+  :global(*) {
+    box-sizing: border-box;
+  }
+
+  :global(body) {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #202124;
+    background: #f5f6f7;
+  }
+
+  .contenedor {
+    width: min(1180px, calc(100% - 30px));
+    margin: 0 auto;
+  }
+
+  .cabecera {
+    padding: 18px 0;
+    border-bottom: 1px solid #dedede;
+    background: white;
+  }
+
+  .marca {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .marca strong {
+    display: block;
+    font-size: 25px;
+  }
+
+  .marca span {
+    display: block;
+    margin-top: 5px;
+    color: #777;
+    font-size: 14px;
+  }
+
+  .migas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 25px 0 15px;
+    color: #777;
+    font-size: 14px;
+  }
+
+  .migas a {
+    color: #16805a;
+    text-decoration: none;
+  }
+
+  .equipo-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 22px;
+  padding: 18px 22px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: white;
+}
+
+  .escudo-grande {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  display: grid;
+  place-items: center;
+}
+
+  .escudo-grande img {
+  max-width: 66px;
+  max-height: 66px;
+  object-fit: contain;
+}
+
+  .categoria {
+    color: #16805a;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+  }
+
+  .equipo-cabecera h1 {
+  margin: 5px 0;
+  font-size: 32px;
+}
+
+  
+
+  .galeria {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  padding-bottom: 60px;
+}
+
+  .foto {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid #ddd;
+    border-radius: 9px;
+    color: #202124;
+    text-decoration: none;
+    background: white;
+    transition:
+      transform 0.16s ease,
+      box-shadow 0.16s ease;
+  }
+
+  .foto:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 7px 18px rgba(0, 0, 0, 0.1);
+  }
+
+  .foto-imagen {
+  height: 210px;
+  overflow: hidden;
+  background: #eee;
+}
+
+  .foto-imagen img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+  }
+
+  .foto-texto {
+  padding: 9px 10px;
+}
+
+  .foto-texto strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+
+  .sin-fotos {
+    padding: 80px 20px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    text-align: center;
+    background: white;
+  }
+
+  .sin-fotos > span {
+    font-size: 45px;
+  }
+
+  .sin-fotos h2 {
+    margin: 15px 0 8px;
+  }
+
+  .sin-fotos p {
+    margin: 0;
+    color: #777;
+  }
+
+  @media (max-width: 1000px) {
+  .galeria {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .galeria {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .equipo-cabecera h1 {
+    font-size: 27px;
+  }
+
+  .galeria {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .foto-imagen {
+    height: 195px;
+  }
+}
+
+@media (max-width: 400px) {
+  .galeria {
+    grid-template-columns: 1fr;
+  }
+
+  .foto-imagen {
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+}
+</style>

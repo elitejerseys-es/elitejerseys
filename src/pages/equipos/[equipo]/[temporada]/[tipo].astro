@@ -1,0 +1,281 @@
+---
+import {
+  categorias,
+  crearSlug,
+  obtenerEscudo
+} from "../../../../data/catalogo";
+
+export function getStaticPaths() {
+  const temporadas = ["2026-2027", "2025-2026"];
+  const tipos = ["local", "visitante"];
+
+  return categorias.flatMap((categoria) =>
+    categoria.equipos.flatMap((equipo) =>
+      temporadas.flatMap((temporada) =>
+        tipos.map((tipo) => ({
+          params: {
+            equipo: crearSlug(equipo),
+            temporada,
+            tipo
+          },
+          props: {
+            equipo,
+            categoria: categoria.nombre,
+            temporada,
+            tipo
+          }
+        }))
+      )
+    )
+  );
+}
+
+interface Props {
+  equipo: string;
+  categoria: string;
+  temporada: string;
+  tipo: string;
+}
+
+const {
+  equipo,
+  categoria,
+  temporada,
+  tipo
+} = Astro.props;
+
+const temporadaVisible = temporada.replace("-", "/");
+const tipoVisible =
+  tipo === "local" ? "Local" : "Visitante";
+
+const carpeta =
+  `/camisetas/${crearSlug(equipo)}/${temporada}/${tipo}`;
+
+const imagenes = [
+  `${carpeta}/portada.jpg`,
+  `${carpeta}/1.jpg`,
+  `${carpeta}/2.jpg`,
+  `${carpeta}/3.jpg`
+];
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+
+    <title>
+      {equipo} {tipoVisible} {temporadaVisible} | Elite Jerseys
+    </title>
+  </head>
+
+  <body>
+    <header class="cabecera">
+      <div class="contenedor">
+        <a href="/" class="marca">
+          <strong>Elite Jerseys</strong>
+          <span>Catálogo de camisetas de fútbol</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="contenedor">
+      <nav class="migas">
+        <a href="/">Inicio</a>
+        <span>›</span>
+
+        <a href={`/equipos/${crearSlug(equipo)}`}>
+          {equipo}
+        </a>
+
+        <span>›</span>
+        <span>{temporadaVisible}</span>
+        <span>›</span>
+        <strong>{tipoVisible}</strong>
+      </nav>
+
+      <section class="cabecera-album">
+        <img
+          src={obtenerEscudo(equipo)}
+          alt={`Escudo de ${equipo}`}
+        />
+
+        <div>
+          <span>{categoria}</span>
+
+          <h1>
+            {equipo} · {tipoVisible}
+          </h1>
+
+          <p>Temporada {temporadaVisible}</p>
+        </div>
+      </section>
+
+      <section class="galeria">
+        {
+          imagenes.map((imagen, indice) => (
+            <a
+              class="foto"
+              href={imagen}
+              target="_blank"
+            >
+              <img
+                src={imagen}
+                alt={`${equipo} ${tipoVisible} ${temporadaVisible} - Foto ${indice + 1}`}
+                loading="lazy"
+                onerror="this.closest('.foto').style.display='none';"
+              />
+            </a>
+          ))
+        }
+      </section>
+    </main>
+  </body>
+</html>
+
+<style>
+  :global(*) {
+    box-sizing: border-box;
+  }
+
+  :global(body) {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #202124;
+    background: #f5f6f7;
+  }
+
+  .contenedor {
+    width: min(1180px, calc(100% - 30px));
+    margin: 0 auto;
+  }
+
+  .cabecera {
+    padding: 18px 0;
+    border-bottom: 1px solid #ddd;
+    background: white;
+  }
+
+  .marca {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .marca strong {
+    display: block;
+    font-size: 25px;
+  }
+
+  .marca span {
+    display: block;
+    margin-top: 5px;
+    color: #777;
+    font-size: 14px;
+  }
+
+  .migas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 25px 0 15px;
+    color: #777;
+    font-size: 14px;
+  }
+
+  .migas a {
+    color: #16805a;
+    text-decoration: none;
+  }
+
+  .cabecera-album {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 25px;
+    padding: 24px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background: white;
+  }
+
+  .cabecera-album > img {
+    width: 85px;
+    height: 85px;
+    object-fit: contain;
+  }
+
+  .cabecera-album span {
+    color: #16805a;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+
+  .cabecera-album h1 {
+    margin: 7px 0;
+    font-size: 34px;
+  }
+
+  .cabecera-album p {
+    margin: 0;
+    color: #777;
+  }
+
+  .galeria {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    padding-bottom: 70px;
+  }
+
+  .foto {
+    display: block;
+    overflow: hidden;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.06);
+  }
+
+  .foto img {
+    width: 100%;
+    height: 360px;
+    display: block;
+    object-fit: cover;
+    transition: transform 0.2s ease;
+  }
+
+  .foto:hover img {
+    transform: scale(1.03);
+  }
+
+  @media (max-width: 850px) {
+    .galeria {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 550px) {
+    .cabecera-album {
+      align-items: flex-start;
+    }
+
+    .cabecera-album > img {
+      width: 60px;
+      height: 60px;
+    }
+
+    .cabecera-album h1 {
+      font-size: 25px;
+    }
+
+    .galeria {
+      grid-template-columns: 1fr;
+    }
+
+    .foto img {
+      height: auto;
+    }
+  }
+</style>

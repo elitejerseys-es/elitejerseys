@@ -1,0 +1,174 @@
+---
+import { catalogo } from "../data/catalogo";
+
+const equipoActivo = Astro.url.searchParams.get("equipo") ?? "";
+---
+
+<aside class="sidebar">
+  <div class="sidebar-titulo">
+    <strong>Categorías</strong>
+  </div>
+
+  {
+    catalogo.map((liga) => (
+      <section class="liga">
+        <button class="liga-boton" type="button" aria-expanded="true">
+          <span>{liga.nombre}</span>
+          <span class="flecha">⌄</span>
+        </button>
+
+        <div class="divisiones">
+          {
+            liga.divisiones.map((division) => (
+              <details open class="division">
+                <summary>
+                  <span>{division.nombre}</span>
+                  <small>{division.temporada}</small>
+                </summary>
+
+                <nav class="equipos">
+                  {
+                    division.equipos.map((equipo) => (
+                      <a
+                        href={`/?equipo=${encodeURIComponent(equipo)}`}
+                        class:list={[
+                          "equipo",
+                          { activo: equipoActivo === equipo }
+                        ]}
+                      >
+                        {equipo}
+                      </a>
+                    ))
+                  }
+                </nav>
+              </details>
+            ))
+          }
+        </div>
+      </section>
+    ))
+  }
+</aside>
+
+<script>
+  const botonesLiga = document.querySelectorAll(".liga-boton");
+
+  botonesLiga.forEach((boton) => {
+    boton.addEventListener("click", () => {
+      const contenido = boton.nextElementSibling;
+      const abierto = boton.getAttribute("aria-expanded") === "true";
+
+      boton.setAttribute("aria-expanded", String(!abierto));
+      contenido.hidden = abierto;
+    });
+  });
+</script>
+
+<style>
+  .sidebar {
+    width: 260px;
+    flex: 0 0 260px;
+    min-height: calc(100vh - 70px);
+    border-right: 1px solid #e3e3e3;
+    background: #fff;
+  }
+
+  .sidebar-titulo {
+    padding: 20px 18px 14px;
+    border-bottom: 1px solid #ececec;
+    font-size: 17px;
+  }
+
+  .liga {
+    border-bottom: 1px solid #ececec;
+  }
+
+  .liga-boton {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 18px;
+    border: 0;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    background: #fff;
+  }
+
+  .liga-boton:hover {
+    background: #f7f7f7;
+  }
+
+  .flecha {
+    font-size: 20px;
+    transition: transform 0.2s ease;
+  }
+
+  .liga-boton[aria-expanded="false"] .flecha {
+    transform: rotate(-90deg);
+  }
+
+  .divisiones[hidden] {
+    display: none;
+  }
+
+  .division {
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .division summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 18px;
+    color: #333;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    background: #fafafa;
+  }
+
+  .division summary small {
+    color: #8a8a8a;
+    font-size: 11px;
+    font-weight: 400;
+  }
+
+  .equipos {
+    display: flex;
+    flex-direction: column;
+    padding: 6px 0;
+  }
+
+  .equipo {
+    padding: 9px 18px 9px 30px;
+    color: #555;
+    font-size: 13px;
+    text-decoration: none;
+    border-left: 3px solid transparent;
+  }
+
+  .equipo:hover {
+    color: #111;
+    background: #f5f5f5;
+  }
+
+  .equipo.activo {
+    color: #111;
+    font-weight: 700;
+    border-left-color: #16805a;
+    background: #eef8f3;
+  }
+
+  @media (max-width: 800px) {
+    .sidebar {
+      width: 100%;
+      flex-basis: 100%;
+      min-height: auto;
+      border-right: 0;
+      border-bottom: 1px solid #e3e3e3;
+    }
+  }
+</style>
