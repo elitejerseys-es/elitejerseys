@@ -65,7 +65,10 @@ import {
 
               <div class="equipos" hidden>
                 {
-                  categoria.equipos.map((equipo) => (
+                  categoria.equipos
+  .slice()
+  .sort((a, b) => a.localeCompare(b, "es"))
+  .map((equipo) => ( 
                     <a
                       class="equipo"
                       href={`/equipos/${crearSlug(equipo)}`}
