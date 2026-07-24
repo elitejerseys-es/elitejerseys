@@ -38,6 +38,16 @@ interface Camiseta {
 const { equipo, categoria } = Astro.props;
 const equipoSlug = crearSlug(equipo);
 
+const categoriaActual = categorias.find(
+  (item) => item.nombre === categoria
+);
+
+const equiposCategoria = categoriaActual
+  ? categoriaActual.equipos
+      .slice()
+      .sort((a, b) => a.localeCompare(b, "es"))
+  : [];
+
 const carpetaEquipo = path.join(
   process.cwd(),
   "public",
@@ -67,7 +77,11 @@ if (fs.existsSync(carpetaEquipo)) {
     );
 
   for (const archivo of archivos) {
-    const sinExtension = archivo.replace(/\.(jpg|jpeg|png|webp)$/i, "");
+    const sinExtension = archivo.replace(
+      /\.(jpg|jpeg|png|webp)$/i,
+      ""
+    );
+
     const partes = sinExtension.split("-");
 
     const inicio = partes[0];
@@ -99,7 +113,11 @@ camisetas.sort((a, b) => {
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+
+    <meta
+      name="viewport"
+      content="width=device-width"
+    />
 
     <meta
       name="description"
@@ -122,9 +140,69 @@ camisetas.sort((a, b) => {
     <main class="contenedor">
       <nav class="migas">
         <a href="/">Inicio</a>
+
         <span>›</span>
-        <span>{categoria}</span>
+
+        <div class="menu-liga">
+          <button
+            class="enlace-liga"
+            type="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+          >
+            <span>{categoria}</span>
+            <span class="flecha-menu">▾</span>
+          </button>
+
+          <div
+            class="desplegable-liga"
+            aria-hidden="true"
+          >
+            <div class="titulo-desplegable">
+              Equipos de {categoria}
+            </div>
+
+            <div class="lista-equipos">
+              {
+                equiposCategoria.map((nombreEquipo) => (
+                  <a
+                    href={`/equipos/${crearSlug(nombreEquipo)}`}
+                    class:list={[
+                      "enlace-equipo-menu",
+                      {
+                        activo: nombreEquipo === equipo
+                      }
+                    ]}
+                  >
+                    <img
+                      src={obtenerEscudo(nombreEquipo)}
+                      alt=""
+                      loading="lazy"
+                    />
+
+                    <span class="nombre-equipo-menu">
+                      {nombreEquipo}
+                    </span>
+
+                    {
+                      nombreEquipo === equipo && (
+                        <span
+                          class="marca-activo"
+                          aria-label="Equipo actual"
+                        >
+                          ✓
+                        </span>
+                      )
+                    }
+                  </a>
+                ))
+              }
+            </div>
+          </div>
+        </div>
+
         <span>›</span>
+
         <strong>{equipo}</strong>
       </nav>
 
@@ -137,9 +215,9 @@ camisetas.sort((a, b) => {
         </div>
 
         <div>
-  <span class="categoria">{categoria}</span>
-  <h1>{equipo}</h1>
-</div>
+          <span class="categoria">{categoria}</span>
+          <h1>{equipo}</h1>
+        </div>
       </section>
 
       {
@@ -162,10 +240,10 @@ camisetas.sort((a, b) => {
                   </div>
 
                   <div class="foto-texto">
-  <strong>
-    {camiseta.temporada} · {camiseta.tipo}
-  </strong>
-</div>
+                    <strong>
+                      {camiseta.temporada} · {camiseta.tipo}
+                    </strong>
+                  </div>
                 </a>
               ))
             }
@@ -173,12 +251,67 @@ camisetas.sort((a, b) => {
         ) : (
           <section class="sin-fotos">
             <span>📷</span>
+
             <h2>Todavía no hay camisetas</h2>
-            <p>Añade fotografías directamente dentro de la carpeta del equipo.</p>
+
+            <p>
+              Añade fotografías directamente dentro de la carpeta del equipo.
+            </p>
           </section>
         )
       }
     </main>
+
+    <script>
+      const botonLiga =
+        document.querySelector<HTMLButtonElement>(".enlace-liga");
+
+      const menuLiga =
+        document.querySelector<HTMLElement>(".menu-liga");
+
+      const desplegable =
+        document.querySelector<HTMLElement>(".desplegable-liga");
+
+      const cerrarMenu = () => {
+        menuLiga?.classList.remove("abierto");
+        botonLiga?.setAttribute("aria-expanded", "false");
+        desplegable?.setAttribute("aria-hidden", "true");
+      };
+
+      const abrirMenu = () => {
+        menuLiga?.classList.add("abierto");
+        botonLiga?.setAttribute("aria-expanded", "true");
+        desplegable?.setAttribute("aria-hidden", "false");
+      };
+
+      botonLiga?.addEventListener("click", () => {
+        const estaAbierto =
+          menuLiga?.classList.contains("abierto") ?? false;
+
+        if (estaAbierto) {
+          cerrarMenu();
+        } else {
+          abrirMenu();
+        }
+      });
+
+      document.addEventListener("click", (evento) => {
+        if (
+          menuLiga &&
+          evento.target instanceof Node &&
+          !menuLiga.contains(evento.target)
+        ) {
+          cerrarMenu();
+        }
+      });
+
+      document.addEventListener("keydown", (evento) => {
+        if (evento.key === "Escape") {
+          cerrarMenu();
+          botonLiga?.focus();
+        }
+      });
+    </script>
   </body>
 </html>
 
@@ -223,43 +356,173 @@ camisetas.sort((a, b) => {
   }
 
   .migas {
+    position: relative;
+    z-index: 20;
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
     padding: 25px 0 15px;
     color: #777;
     font-size: 14px;
   }
 
-  .migas a {
+  .migas > a {
     color: #16805a;
     text-decoration: none;
   }
 
+  .menu-liga {
+    position: relative;
+  }
+
+  .enlace-liga {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    border: 0;
+    color: #16805a;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+  }
+
+  .enlace-liga:hover {
+    text-decoration: underline;
+  }
+
+  .enlace-liga:focus-visible {
+    outline: 2px solid #16805a;
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  .flecha-menu {
+    font-size: 10px;
+    transition: transform 0.16s ease;
+  }
+
+  .desplegable-liga {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 1000;
+    width: 380px;
+    max-width: calc(100vw - 30px);
+    overflow: hidden;
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+    border: 1px solid #dcdcdc;
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+    transition:
+      opacity 0.16s ease,
+      transform 0.16s ease,
+      visibility 0.16s ease;
+  }
+
+  .menu-liga.abierto .desplegable-liga {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .menu-liga.abierto .flecha-menu {
+    transform: rotate(180deg);
+  }
+
+  .titulo-desplegable {
+    padding: 12px 14px;
+    border-bottom: 1px solid #ececec;
+    color: #555;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    background: #fafafa;
+  }
+
+  .lista-equipos {
+    max-height: 390px;
+    padding: 7px;
+    overflow-y: auto;
+  }
+
+  .enlace-equipo-menu {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    color: #202124;
+    text-decoration: none;
+    font-size: 13px;
+  }
+
+  .enlace-equipo-menu:hover {
+    color: #16805a;
+    background: #f0f6f3;
+  }
+
+  .enlace-equipo-menu.activo {
+    color: #16805a;
+    font-weight: bold;
+    background: #e4f2eb;
+  }
+
+  .enlace-equipo-menu img {
+    width: 27px;
+    height: 27px;
+    flex: 0 0 27px;
+    object-fit: contain;
+  }
+
+  .nombre-equipo-menu {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .marca-activo {
+    margin-left: auto;
+    color: #16805a;
+    font-size: 16px;
+    font-weight: bold;
+  }
+
   .equipo-cabecera {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  margin-bottom: 22px;
-  padding: 18px 22px;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  background: white;
-}
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 22px;
+    padding: 18px 22px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    background: white;
+  }
 
   .escudo-grande {
-  width: 72px;
-  height: 72px;
-  flex: 0 0 72px;
-  display: grid;
-  place-items: center;
-}
+    width: 72px;
+    height: 72px;
+    flex: 0 0 72px;
+    display: grid;
+    place-items: center;
+  }
 
   .escudo-grande img {
-  max-width: 66px;
-  max-height: 66px;
-  object-fit: contain;
-}
+    max-width: 66px;
+    max-height: 66px;
+    object-fit: contain;
+  }
 
   .categoria {
     color: #16805a;
@@ -270,18 +533,16 @@ camisetas.sort((a, b) => {
   }
 
   .equipo-cabecera h1 {
-  margin: 5px 0;
-  font-size: 32px;
-}
-
-  
+    margin: 5px 0;
+    font-size: 32px;
+  }
 
   .galeria {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
-  padding-bottom: 60px;
-}
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    padding-bottom: 60px;
+  }
 
   .foto {
     min-width: 0;
@@ -302,10 +563,10 @@ camisetas.sort((a, b) => {
   }
 
   .foto-imagen {
-  height: 210px;
-  overflow: hidden;
-  background: #eee;
-}
+    height: 210px;
+    overflow: hidden;
+    background: #eee;
+  }
 
   .foto-imagen img {
     width: 100%;
@@ -315,15 +576,14 @@ camisetas.sort((a, b) => {
   }
 
   .foto-texto {
-  padding: 9px 10px;
-}
+    padding: 9px 10px;
+  }
 
   .foto-texto strong {
-  display: block;
-  font-size: 13px;
-  line-height: 1.3;
-}
-
+    display: block;
+    font-size: 13px;
+    line-height: 1.3;
+  }
 
   .sin-fotos {
     padding: 80px 20px;
@@ -347,39 +607,57 @@ camisetas.sort((a, b) => {
   }
 
   @media (max-width: 1000px) {
-  .galeria {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 800px) {
-  .galeria {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 600px) {
-  .equipo-cabecera h1 {
-    font-size: 27px;
+    .galeria {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
   }
 
-  .galeria {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  @media (max-width: 800px) {
+    .galeria {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
   }
 
-  .foto-imagen {
-    height: 195px;
-  }
-}
+  @media (max-width: 600px) {
+    .equipo-cabecera {
+      padding: 15px;
+    }
 
-@media (max-width: 400px) {
-  .galeria {
-    grid-template-columns: 1fr;
+    .equipo-cabecera h1 {
+      font-size: 27px;
+    }
+
+    .desplegable-liga {
+      position: fixed;
+      top: 75px;
+      left: 15px;
+      right: 15px;
+      width: auto;
+      max-width: none;
+      max-height: calc(100vh - 95px);
+    }
+
+    .lista-equipos {
+      max-height: calc(100vh - 145px);
+    }
+
+    .galeria {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .foto-imagen {
+      height: 195px;
+    }
   }
 
-  .foto-imagen {
-    height: auto;
-    aspect-ratio: 1 / 1;
+  @media (max-width: 400px) {
+    .galeria {
+      grid-template-columns: 1fr;
+    }
+
+    .foto-imagen {
+      height: auto;
+      aspect-ratio: 1 / 1;
+    }
   }
-}
 </style>
