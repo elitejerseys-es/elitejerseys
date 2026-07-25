@@ -36,6 +36,7 @@ interface Camiseta {
 }
 
 const { equipo, categoria } = Astro.props;
+
 const equipoSlug = crearSlug(equipo);
 
 const categoriaActual = categorias.find(
@@ -47,6 +48,13 @@ const equiposCategoria = categoriaActual
       .slice()
       .sort((a, b) => a.localeCompare(b, "es"))
   : [];
+
+const categoriasOrdenadas = categorias.map((item) => ({
+  ...item,
+  equipos: item.equipos
+    .slice()
+    .sort((a, b) => a.localeCompare(b, "es"))
+}));
 
 const carpetaEquipo = path.join(
   process.cwd(),
@@ -138,10 +146,95 @@ camisetas.sort((a, b) => {
     </header>
 
     <main class="contenedor">
-      <nav class="migas">
-        <a href="/">Inicio</a>
+      <nav class="migas" aria-label="Navegación">
+        <!-- DESPLEGABLE DE INICIO -->
+
+        <div class="menu-inicio">
+          <button
+            class="enlace-inicio"
+            type="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+          >
+            <span>Inicio</span>
+            <span class="flecha-inicio">▾</span>
+          </button>
+
+          <div
+            class="desplegable-inicio"
+            aria-hidden="true"
+          >
+            <div class="titulo-desplegable">
+              Ligas y selecciones
+            </div>
+
+            <div class="lista-categorias">
+              {
+                categoriasOrdenadas.map((item) => (
+                  <details class="categoria-menu">
+                    <summary class="categoria-resumen">
+                      <span class="categoria-info">
+                        <span class="logo-categoria">
+                          <img
+                            src={item.logo}
+                            alt={`Logo de ${item.nombre}`}
+                            loading="lazy"
+                          />
+                        </span>
+
+                        <span>{item.nombre}</span>
+                      </span>
+
+                      <span class="flecha-categoria">▾</span>
+                    </summary>
+
+                    <div class="equipos-categoria">
+                      {
+                        item.equipos.map((nombreEquipo) => (
+                          <a
+                            href={`/equipos/${crearSlug(nombreEquipo)}`}
+                            class:list={[
+                              "enlace-equipo-inicio",
+                              {
+                                activo: nombreEquipo === equipo
+                              }
+                            ]}
+                          >
+                            <img
+                              src={obtenerEscudo(nombreEquipo)}
+                              alt=""
+                              loading="lazy"
+                              onerror="this.style.visibility='hidden'"
+                            />
+
+                            <span class="nombre-equipo-menu">
+                              {nombreEquipo}
+                            </span>
+
+                            {
+                              nombreEquipo === equipo && (
+                                <span
+                                  class="marca-activo"
+                                  aria-label="Equipo actual"
+                                >
+                                  ✓
+                                </span>
+                              )
+                            }
+                          </a>
+                        ))
+                      }
+                    </div>
+                  </details>
+                ))
+              }
+            </div>
+          </div>
+        </div>
 
         <span>›</span>
+
+        <!-- DESPLEGABLE DE LA LIGA ACTUAL -->
 
         <div class="menu-liga">
           <button
@@ -178,6 +271,7 @@ camisetas.sort((a, b) => {
                       src={obtenerEscudo(nombreEquipo)}
                       alt=""
                       loading="lazy"
+                      onerror="this.style.visibility='hidden'"
                     />
 
                     <span class="nombre-equipo-menu">
@@ -263,53 +357,114 @@ camisetas.sort((a, b) => {
     </main>
 
     <script>
+      const botonInicio =
+        document.querySelector<HTMLButtonElement>(".enlace-inicio");
+
+      const menuInicio =
+        document.querySelector<HTMLElement>(".menu-inicio");
+
+      const desplegableInicio =
+        document.querySelector<HTMLElement>(".desplegable-inicio");
+
       const botonLiga =
         document.querySelector<HTMLButtonElement>(".enlace-liga");
 
       const menuLiga =
         document.querySelector<HTMLElement>(".menu-liga");
 
-      const desplegable =
+      const desplegableLiga =
         document.querySelector<HTMLElement>(".desplegable-liga");
 
-      const cerrarMenu = () => {
-        menuLiga?.classList.remove("abierto");
-        botonLiga?.setAttribute("aria-expanded", "false");
-        desplegable?.setAttribute("aria-hidden", "true");
+      const cerrarInicio = () => {
+        menuInicio?.classList.remove("abierto");
+        botonInicio?.setAttribute("aria-expanded", "false");
+        desplegableInicio?.setAttribute("aria-hidden", "true");
       };
 
-      const abrirMenu = () => {
+      const abrirInicio = () => {
+        cerrarLiga();
+
+        menuInicio?.classList.add("abierto");
+        botonInicio?.setAttribute("aria-expanded", "true");
+        desplegableInicio?.setAttribute("aria-hidden", "false");
+      };
+
+      const cerrarLiga = () => {
+        menuLiga?.classList.remove("abierto");
+        botonLiga?.setAttribute("aria-expanded", "false");
+        desplegableLiga?.setAttribute("aria-hidden", "true");
+      };
+
+      const abrirLiga = () => {
+        cerrarInicio();
+
         menuLiga?.classList.add("abierto");
         botonLiga?.setAttribute("aria-expanded", "true");
-        desplegable?.setAttribute("aria-hidden", "false");
+        desplegableLiga?.setAttribute("aria-hidden", "false");
       };
+
+      botonInicio?.addEventListener("click", () => {
+        const estaAbierto =
+          menuInicio?.classList.contains("abierto") ?? false;
+
+        if (estaAbierto) {
+          cerrarInicio();
+        } else {
+          abrirInicio();
+        }
+      });
 
       botonLiga?.addEventListener("click", () => {
         const estaAbierto =
           menuLiga?.classList.contains("abierto") ?? false;
 
         if (estaAbierto) {
-          cerrarMenu();
+          cerrarLiga();
         } else {
-          abrirMenu();
+          abrirLiga();
         }
       });
 
       document.addEventListener("click", (evento) => {
+        if (!(evento.target instanceof Node)) return;
+
+        if (
+          menuInicio &&
+          !menuInicio.contains(evento.target)
+        ) {
+          cerrarInicio();
+        }
+
         if (
           menuLiga &&
-          evento.target instanceof Node &&
           !menuLiga.contains(evento.target)
         ) {
-          cerrarMenu();
+          cerrarLiga();
         }
       });
 
       document.addEventListener("keydown", (evento) => {
         if (evento.key === "Escape") {
-          cerrarMenu();
-          botonLiga?.focus();
+          cerrarInicio();
+          cerrarLiga();
         }
+      });
+
+      const categoriasMenu =
+        document.querySelectorAll<HTMLDetailsElement>(
+          ".categoria-menu"
+        );
+
+      categoriasMenu.forEach((categoriaMenu) => {
+        categoriaMenu.addEventListener("toggle", () => {
+          if (!categoriaMenu.open) return;
+
+          categoriasMenu.forEach((otraCategoria) => {
+            if (otraCategoria !== categoriaMenu) {
+              otraCategoria.open = false;
+            }
+          });
+        });
       });
     </script>
   </body>
@@ -355,6 +510,8 @@ camisetas.sort((a, b) => {
     font-size: 14px;
   }
 
+  /* MIGAS DE PAN */
+
   .migas {
     position: relative;
     z-index: 20;
@@ -367,15 +524,12 @@ camisetas.sort((a, b) => {
     font-size: 14px;
   }
 
-  .migas > a {
-    color: #16805a;
-    text-decoration: none;
-  }
-
+  .menu-inicio,
   .menu-liga {
     position: relative;
   }
 
+  .enlace-inicio,
   .enlace-liga {
     display: inline-flex;
     align-items: center;
@@ -389,20 +543,176 @@ camisetas.sort((a, b) => {
     background: transparent;
   }
 
+  .enlace-inicio:hover,
   .enlace-liga:hover {
     text-decoration: underline;
   }
 
+  .enlace-inicio:focus-visible,
   .enlace-liga:focus-visible {
     outline: 2px solid #16805a;
     outline-offset: 3px;
     border-radius: 3px;
   }
 
-  .flecha-menu {
+  .flecha-inicio,
+  .flecha-menu,
+  .flecha-categoria {
     font-size: 10px;
     transition: transform 0.16s ease;
   }
+
+  .menu-inicio.abierto .flecha-inicio,
+  .menu-liga.abierto .flecha-menu {
+    transform: rotate(180deg);
+  }
+
+  /* DESPLEGABLE DE INICIO */
+
+  .desplegable-inicio {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 1000;
+    width: 430px;
+    max-width: calc(100vw - 30px);
+    overflow: hidden;
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+    border: 1px solid #dcdcdc;
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+    transition:
+      opacity 0.16s ease,
+      transform 0.16s ease,
+      visibility 0.16s ease;
+  }
+
+  .menu-inicio.abierto .desplegable-inicio {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .titulo-desplegable {
+    padding: 12px 14px;
+    border-bottom: 1px solid #ececec;
+    color: #555;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    background: #fafafa;
+  }
+
+  .lista-categorias {
+    max-height: 520px;
+    padding: 8px;
+    overflow-y: auto;
+  }
+
+  .categoria-menu {
+    margin-bottom: 7px;
+    overflow: hidden;
+    border: 1px solid #e2e2e2;
+    border-radius: 9px;
+    background: white;
+  }
+
+  .categoria-menu:last-child {
+    margin-bottom: 0;
+  }
+
+  .categoria-resumen {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 64px;
+    padding: 9px 12px;
+    cursor: pointer;
+    list-style: none;
+    font-weight: bold;
+  }
+
+  .categoria-resumen::-webkit-details-marker {
+    display: none;
+  }
+
+  .categoria-resumen:hover {
+    background: #f7faf8;
+  }
+
+  .categoria-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-categoria {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #e2e5e3;
+    border-radius: 9px;
+    background: #f4f8f6;
+  }
+
+  .logo-categoria img {
+    max-width: 35px;
+    max-height: 35px;
+    object-fit: contain;
+  }
+
+  .categoria-menu[open] .flecha-categoria {
+    transform: rotate(180deg);
+  }
+
+  .equipos-categoria {
+    max-height: 340px;
+    padding: 7px;
+    overflow-y: auto;
+    border-top: 1px solid #ececec;
+    background: #fbfbfb;
+  }
+
+  .enlace-equipo-inicio {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    color: #202124;
+    text-decoration: none;
+    font-size: 13px;
+  }
+
+  .enlace-equipo-inicio:hover {
+    color: #16805a;
+    background: #edf5f1;
+  }
+
+  .enlace-equipo-inicio.activo {
+    color: #16805a;
+    font-weight: bold;
+    background: #e4f2eb;
+  }
+
+  .enlace-equipo-inicio img {
+    width: 27px;
+    height: 27px;
+    flex: 0 0 27px;
+    object-fit: contain;
+  }
+
+  /* DESPLEGABLE DE LIGA ACTUAL */
 
   .desplegable-liga {
     position: absolute;
@@ -431,21 +741,6 @@ camisetas.sort((a, b) => {
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
-  }
-
-  .menu-liga.abierto .flecha-menu {
-    transform: rotate(180deg);
-  }
-
-  .titulo-desplegable {
-    padding: 12px 14px;
-    border-bottom: 1px solid #ececec;
-    color: #555;
-    font-size: 12px;
-    font-weight: bold;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    background: #fafafa;
   }
 
   .lista-equipos {
@@ -499,6 +794,8 @@ camisetas.sort((a, b) => {
     font-weight: bold;
   }
 
+  /* CABECERA DEL EQUIPO */
+
   .equipo-cabecera {
     display: flex;
     align-items: center;
@@ -536,6 +833,8 @@ camisetas.sort((a, b) => {
     margin: 5px 0;
     font-size: 32px;
   }
+
+  /* GALERÍA */
 
   .galeria {
     display: grid;
@@ -627,6 +926,7 @@ camisetas.sort((a, b) => {
       font-size: 27px;
     }
 
+    .desplegable-inicio,
     .desplegable-liga {
       position: fixed;
       top: 75px;
@@ -637,8 +937,13 @@ camisetas.sort((a, b) => {
       max-height: calc(100vh - 95px);
     }
 
+    .lista-categorias,
     .lista-equipos {
       max-height: calc(100vh - 145px);
+    }
+
+    .equipos-categoria {
+      max-height: calc(100vh - 270px);
     }
 
     .galeria {
@@ -652,12 +957,21 @@ camisetas.sort((a, b) => {
 
   @media (max-width: 400px) {
     .galeria {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
     }
 
     .foto-imagen {
       height: auto;
       aspect-ratio: 1 / 1;
+    }
+
+    .foto-texto {
+      padding: 7px;
+    }
+
+    .foto-texto strong {
+      font-size: 11px;
     }
   }
 </style>
