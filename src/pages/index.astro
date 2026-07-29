@@ -19,30 +19,132 @@ const carpetaCamisetas = path.join(
   "camisetas"
 );
 
-let totalCamisetas = 0;
+const extensionesCompatibles = /\.(jpg|jpeg|png|webp)$/i;
+const patronCamiseta = /^\d{4}-\d{4}-.+\.(jpg|jpeg|png|webp)$/i;
 
-if (fs.existsSync(carpetaCamisetas)) {
-  const carpetasEquipos = fs
-    .readdirSync(carpetaCamisetas, { withFileTypes: true })
-    .filter((entrada) => entrada.isDirectory());
+const obtenerNombresBaseUnicos = (rutaEquipo: string) => {
+  if (!fs.existsSync(rutaEquipo)) return new Set<string>();
 
-  for (const carpeta of carpetasEquipos) {
-    const rutaEquipo = path.join(carpetaCamisetas, carpeta.name);
+  const nombresBase = new Set<string>();
 
-    totalCamisetas += fs
-      .readdirSync(rutaEquipo)
-      .filter((archivo) =>
-        /\.(jpg|jpeg|png|webp)$/i.test(archivo)
-      ).length;
+  for (const entrada of fs.readdirSync(rutaEquipo, { withFileTypes: true })) {
+    if (!entrada.isFile() || !patronCamiseta.test(entrada.name)) continue;
+
+    nombresBase.add(
+      entrada.name
+        .replace(extensionesCompatibles, "")
+        .toLowerCase()
+    );
+  }
+
+  return nombresBase;
+};
+
+const camisetasPorEquipo = new Map<string, number>();
+
+for (const categoria of categorias) {
+  for (const equipo of categoria.equipos) {
+    const slug = crearSlug(equipo);
+    const rutaEquipo = path.join(carpetaCamisetas, slug);
+    camisetasPorEquipo.set(slug, obtenerNombresBaseUnicos(rutaEquipo).size);
   }
 }
 
-const categoriasOrdenadas = categorias.map((categoria) => ({
+const totalCamisetas = [...camisetasPorEquipo.values()].reduce(
+  (total, cantidad) => total + cantidad,
+  0
+);
+
+const categoriasConMetricas = categorias.map((categoria) => {
+  const camisetas = categoria.equipos.reduce(
+    (total, equipo) =>
+      total + (camisetasPorEquipo.get(crearSlug(equipo)) ?? 0),
+    0
+  );
+
+  return {
+    ...categoria,
+    camisetas
+  };
+});
+
+const categoriasOrdenadas = categoriasConMetricas.map((categoria) => ({
   ...categoria,
   equipos: categoria.equipos
     .slice()
     .sort((a, b) => a.localeCompare(b, "es"))
 }));
+
+const aliasEquipos: Record<string, string[]> = {
+  "paris-saint-germain": ["psg", "paris sg"],
+  "olympique-de-marseille": ["om", "marseille"],
+  "olympique-lyonnais": ["lyon", "ol"],
+  "manchester-united": ["man united", "man utd", "united"],
+  "manchester-city": ["man city", "city"],
+  "tottenham-hotspur": ["tottenham", "spurs"],
+  "wolverhampton-wanderers": ["wolves"],
+  "brighton-and-hove-albion": ["brighton"],
+  "bayern-munich": ["bayern", "bayern munchen"],
+  "borussia-monchengladbach": ["gladbach"],
+  "inter": ["inter milan", "internazionale"],
+  "ac-milan": ["milan"],
+  "juventus": ["juve"],
+  "fc-barcelona": ["barca", "barcelona"],
+  "real-madrid": ["madrid"],
+  "atletico-de-madrid": ["atleti", "atletico"],
+  "athletic-club": ["athletic", "bilbao"]
+};
+
+const indiceEquipos = categoriasOrdenadas.flatMap((categoria) =>
+  categoria.equipos.map((equipo) => {
+    const slug = crearSlug(equipo);
+    const alias = aliasEquipos[slug] ?? [];
+
+    return {
+      nombre: equipo,
+      nombreNormalizado: [equipo, ...alias]
+        .join(" ")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, ""),
+      slug,
+      href: `/equipos/${slug}`,
+      escudo: obtenerEscudo(equipo),
+      categoria: categoria.nombre,
+      camisetas: camisetasPorEquipo.get(slug) ?? 0
+    };
+  })
+);
+
+const tituloPagina = "Elite Jerseys | Catálogo de camisetas de fútbol";
+const descripcionPagina =
+  `Explora ${totalCamisetas} camisetas de ${totalEquipos} equipos, organizadas por liga, temporada y tipo de equipación.`;
+
+const canonicalUrl = new URL("/", Astro.url.origin).href;
+const imagenSocial = new URL(
+  "/images/logo-elite-jerseys.png",
+  Astro.url.origin
+).href;
+
+const datosEstructurados = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: "Elite Jerseys",
+  description: descripcionPagina,
+  url: canonicalUrl,
+  primaryImageOfPage: imagenSocial,
+  mainEntity: {
+    "@type": "ItemList",
+    numberOfItems: totalEquipos,
+    itemListElement: indiceEquipos.map((item, indice) => ({
+      "@type": "ListItem",
+      position: indice + 1,
+      name: item.nombre,
+      url: new URL(item.href, Astro.url.origin).href
+    }))
+  }
+};
+
 ---
 
 <!doctype html>
@@ -55,21 +157,58 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
       content="width=device-width, initial-scale=1"
     />
 
-    <meta
-      name="description"
-      content="Catálogo online de camisetas de fútbol Elite Jerseys"
-    />
-
+    <meta name="description" content={descripcionPagina} />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#111713" />
 
-    <title>Elite Jerseys | Catálogo de camisetas de fútbol</title>
+    <link rel="canonical" href={canonicalUrl} />
+    <link
+      rel="preload"
+      href="/images/logo-elite-jerseys.png"
+      as="image"
+      fetchpriority="high"
+    />
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Elite Jerseys" />
+    <meta property="og:title" content={tituloPagina} />
+    <meta property="og:description" content={descripcionPagina} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={imagenSocial} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={tituloPagina} />
+    <meta name="twitter:description" content={descripcionPagina} />
+    <meta name="twitter:image" content={imagenSocial} />
+
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify(datosEstructurados)}
+    />
+
+    <title>{tituloPagina}</title>
   </head>
 
   <body>
+    <a class="saltar-contenido" href="#contenido-principal">
+      Saltar al contenido
+    </a>
+
     <header class="cabecera">
       <div class="contenedor cabecera-interior">
         <a href="/" class="marca" aria-label="Página de inicio">
-          <span class="marca-icono">EJ</span>
+          <span class="marca-icono">
+            <img
+              src="/images/logo-elite-jerseys.png"
+              alt=""
+              width="46"
+              height="46"
+              decoding="async"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
+            />
+            <span class="marca-icono-fallback">EJ</span>
+          </span>
 
           <span class="marca-texto">
             <strong>Elite Jerseys</strong>
@@ -79,7 +218,7 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
       </div>
     </header>
 
-    <main>
+    <main id="contenido-principal">
       <section class="hero">
         <div class="contenedor hero-interior">
           <div class="hero-contenido">
@@ -106,23 +245,6 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
                 Buscar equipo
               </a>
             </div>
-
-            <div class="estadisticas" aria-label="Estadísticas del catálogo">
-              <div class="estadistica">
-                <strong>{categorias.length}</strong>
-                <span>Categorías</span>
-              </div>
-
-              <div class="estadistica">
-                <strong>{totalEquipos}</strong>
-                <span>Equipos</span>
-              </div>
-
-              <div class="estadistica">
-                <strong>{totalCamisetas}</strong>
-                <span>Camisetas</span>
-              </div>
-            </div>
           </div>
 
           <div class="hero-visual" aria-hidden="true">
@@ -138,7 +260,14 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
                 {
                   categoriasOrdenadas.slice(0, 5).map((categoria) => (
                     <div class="hero-categoria">
-                      <img src={categoria.logo} alt="" />
+                      <img
+                        src={categoria.logo}
+                        alt=""
+                        width="28"
+                        height="28"
+                        loading="lazy"
+                        decoding="async"
+                      />
                       <span>{categoria.nombre}</span>
                     </div>
                   ))
@@ -159,10 +288,6 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
               Abre una categoría para consultar todos sus equipos.
             </p>
           </div>
-
-          <span class="contador-categorias">
-            {categorias.length} categorías
-          </span>
         </div>
 
         <div id="buscar" class="buscador-contenedor">
@@ -172,7 +297,7 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
               <h3>Encuentra tu equipo</h3>
             </div>
 
-            <span class="atajo-teclado">Escribe para buscar</span>
+            <span class="atajo-teclado"><kbd>/</kbd> para buscar</span>
           </div>
 
           <div class="buscador">
@@ -184,6 +309,10 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
               placeholder="Real Madrid, Arsenal, Milan, España..."
               autocomplete="off"
               aria-label="Buscar equipo"
+              aria-controls="resultados-directos"
+              aria-describedby="resultado-busqueda"
+              enterkeyhint="search"
+              spellcheck="false"
             />
 
             <button
@@ -196,13 +325,19 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
             </button>
           </div>
 
-          <p id="resultado-busqueda" class="resultado-busqueda">
+          <p
+            id="resultado-busqueda"
+            class="resultado-busqueda"
+            aria-live="polite"
+          >
             Escribe el nombre de un equipo para encontrarlo rápidamente.
           </p>
 
           <div
             id="resultados-directos"
             class="resultados-directos"
+            role="listbox"
+            aria-label="Resultados de búsqueda"
             hidden
           ></div>
         </div>
@@ -213,19 +348,25 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
               <article
                 class="categoria"
                 data-categoria={categoria.nombre.toLowerCase()}
-                style={`--indice:${indice}`}
+                data-slug={categoria.slug}
+                style={`--indice:${indice}; --categoria-color:${["#ef4444","#6b21a8","#2563eb","#111827","#dc2626","#0f766e"][indice] ?? "#16805a"}`}
               >
                 <button
                   class="categoria-cabecera"
                   type="button"
                   aria-expanded="false"
+                  aria-controls={`equipos-${categoria.slug}`}
+                  id={`boton-${categoria.slug}`}
                 >
                   <div class="categoria-info">
                     <div class="logo-liga">
                       <img
                         src={categoria.logo}
                         alt={`Logotipo de ${categoria.nombre}`}
+                        width="46"
+                        height="46"
                         loading="lazy"
+                        decoding="async"
                         onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
                       />
 
@@ -236,7 +377,7 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
                       <strong>{categoria.nombre}</strong>
 
                       <small>
-                        {categoria.equipos.length} equipos
+                        {categoria.equipos.length} equipos · {categoria.camisetas} camisetas
                       </small>
                     </span>
                   </div>
@@ -248,7 +389,10 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
                           <img
                             src={obtenerEscudo(equipo)}
                             alt=""
+                            width="27"
+                            height="27"
                             loading="lazy"
+                            decoding="async"
                             onerror="this.style.display='none'"
                           />
                         </span>
@@ -257,12 +401,17 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
                   </div>
 
                   <span class="categoria-derecha">
-                    <span class="ver-equipos">Ver equipos</span>
-                    <span class="flecha">⌄</span>
+                                        <span class="flecha">⌄</span>
                   </span>
                 </button>
 
-                <div class="equipos" hidden>
+                <div
+                  id={`equipos-${categoria.slug}`}
+                  class="equipos"
+                  role="region"
+                  aria-labelledby={`boton-${categoria.slug}`}
+                  hidden
+                >
                   {
                     categoria.equipos.map((equipo) => (
                       <a
@@ -274,7 +423,10 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
                           <img
                             src={obtenerEscudo(equipo)}
                             alt={`Escudo de ${equipo}`}
+                            width="36"
+                            height="36"
                             loading="lazy"
+                            decoding="async"
                             onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
                           />
 
@@ -313,7 +465,23 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
       </div>
     </footer>
 
+    <script
+      id="indice-equipos"
+      type="application/json"
+      set:html={JSON.stringify(indiceEquipos)}
+    />
+
     <script>
+      interface EquipoIndice {
+        nombre: string;
+        nombreNormalizado: string;
+        slug: string;
+        href: string;
+        escudo: string;
+        categoria: string;
+        camisetas: number;
+      }
+
       const botonesCategoria =
         document.querySelectorAll<HTMLButtonElement>(
           ".categoria-cabecera"
@@ -323,221 +491,426 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
         document.querySelectorAll<HTMLElement>(".categoria");
 
       const buscador =
-        document.querySelector<HTMLInputElement>("#buscador-equipos");
+        document.querySelector<HTMLInputElement>(
+          "#buscador-equipos"
+        );
 
       const botonLimpiar =
-        document.querySelector<HTMLButtonElement>("#limpiar-buscador");
+        document.querySelector<HTMLButtonElement>(
+          "#limpiar-buscador"
+        );
 
       const textoResultado =
-        document.querySelector<HTMLElement>("#resultado-busqueda");
+        document.querySelector<HTMLElement>(
+          "#resultado-busqueda"
+        );
 
       const sinResultados =
-        document.querySelector<HTMLElement>("#sin-resultados");
+        document.querySelector<HTMLElement>(
+          "#sin-resultados"
+        );
 
       const resultadosDirectos =
-        document.querySelector<HTMLElement>("#resultados-directos");
+        document.querySelector<HTMLElement>(
+          "#resultados-directos"
+        );
 
-      const cerrarCategorias = (
-        excepcion?: HTMLButtonElement
-      ) => {
-        botonesCategoria.forEach((otroBoton) => {
-          if (otroBoton === excepcion) return;
+      const indiceElemento =
+        document.querySelector<HTMLScriptElement>(
+          "#indice-equipos"
+        );
 
-          otroBoton.setAttribute("aria-expanded", "false");
+      let indiceEquipos: EquipoIndice[] = [];
+      let indiceResultadoActivo = -1;
 
-          const otroContenido = otroBoton.nextElementSibling;
-
-          if (otroContenido instanceof HTMLElement) {
-            otroContenido.hidden = true;
-          }
-        });
-      };
-
-      botonesCategoria.forEach((boton) => {
-        boton.addEventListener("click", () => {
-          const contenido = boton.nextElementSibling;
-          const abierto =
-            boton.getAttribute("aria-expanded") === "true";
-
-          cerrarCategorias(boton);
-
-          boton.setAttribute(
-            "aria-expanded",
-            String(!abierto)
-          );
-
-          if (contenido instanceof HTMLElement) {
-            contenido.hidden = abierto;
-          }
-        });
-      });
+      try {
+        indiceEquipos = JSON.parse(
+          indiceElemento?.textContent ?? "[]"
+        );
+      } catch {
+        indiceEquipos = [];
+      }
 
       const normalizarTexto = (texto: string) =>
         texto
           .toLowerCase()
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
+          .replace(/\s+/g, " ")
           .trim();
 
-      const filtrarEquipos = () => {
-        const busqueda = normalizarTexto(
-          buscador?.value ?? ""
+      const claveCategorias =
+        "elite-jerseys:categorias-abiertas";
+
+      const obtenerCategoriasGuardadas = (): string[] => {
+        try {
+          return JSON.parse(
+            localStorage.getItem(claveCategorias) ?? "[]"
+          );
+        } catch {
+          return [];
+        }
+      };
+
+      const guardarCategoriasAbiertas = () => {
+        const abiertas = [...categoriasElementos]
+          .filter((categoria) => {
+            const boton =
+              categoria.querySelector<HTMLButtonElement>(
+                ".categoria-cabecera"
+              );
+
+            return boton?.getAttribute("aria-expanded") === "true";
+          })
+          .map((categoria) => categoria.dataset.slug ?? "")
+          .filter(Boolean);
+
+        localStorage.setItem(
+          claveCategorias,
+          JSON.stringify(abiertas)
+        );
+      };
+
+      const establecerCategoria = (
+        boton: HTMLButtonElement,
+        abierta: boolean,
+        guardar = true
+      ) => {
+        boton.setAttribute(
+          "aria-expanded",
+          String(abierta)
         );
 
-        let totalCoincidencias = 0;
+        const idContenido =
+          boton.getAttribute("aria-controls");
 
-        const coincidencias: {
-          nombre: string;
-          href: string;
-          escudo: string;
-          categoria: string;
-        }[] = [];
+        const contenido = idContenido
+          ? document.getElementById(idContenido)
+          : boton.nextElementSibling;
+
+        if (contenido instanceof HTMLElement) {
+          contenido.hidden = !abierta;
+        }
+
+        if (guardar) guardarCategoriasAbiertas();
+      };
+
+      const cerrarCategorias = (
+        excepcion?: HTMLButtonElement
+      ) => {
+        botonesCategoria.forEach((boton) => {
+          if (boton !== excepcion) {
+            establecerCategoria(boton, false, false);
+          }
+        });
+
+        guardarCategoriasAbiertas();
+      };
+
+      botonesCategoria.forEach((boton) => {
+        boton.addEventListener("click", () => {
+          const abierta =
+            boton.getAttribute("aria-expanded") === "true";
+
+          establecerCategoria(boton, !abierta);
+        });
+      });
+
+
+      const categoriasGuardadas =
+        new Set(obtenerCategoriasGuardadas());
+
+      categoriasElementos.forEach((categoria) => {
+        const boton =
+          categoria.querySelector<HTMLButtonElement>(
+            ".categoria-cabecera"
+          );
+
+        if (!boton) return;
+
+        establecerCategoria(
+          boton,
+          categoriasGuardadas.has(
+            categoria.dataset.slug ?? ""
+          ),
+          false
+        );
+      });
+
+
+      const actualizarUrl = (busqueda: string) => {
+        const url = new URL(window.location.href);
+
+        if (busqueda) {
+          url.searchParams.set("q", busqueda);
+        } else {
+          url.searchParams.delete("q");
+        }
+
+        window.history.replaceState({}, "", url);
+      };
+
+      const renderizarResultados = (
+        coincidencias: EquipoIndice[]
+      ) => {
+        if (!resultadosDirectos) return;
+
+        resultadosDirectos.replaceChildren();
+        indiceResultadoActivo = -1;
+
+        if (coincidencias.length === 0) {
+          resultadosDirectos.hidden = true;
+          buscador?.removeAttribute("aria-activedescendant");
+          return;
+        }
+
+        const fragmento = document.createDocumentFragment();
+
+        coincidencias.slice(0, 10).forEach(
+          (resultado, indice) => {
+            const enlace = document.createElement("a");
+            enlace.id = `resultado-${indice}`;
+            enlace.className = "resultado-directo";
+            enlace.href = resultado.href;
+            enlace.setAttribute("role", "option");
+            enlace.setAttribute("aria-selected", "false");
+
+            const imagen = document.createElement("img");
+            imagen.src = resultado.escudo;
+            imagen.alt = "";
+            imagen.width = 40;
+            imagen.height = 40;
+            imagen.loading = "lazy";
+            imagen.decoding = "async";
+
+            const textos = document.createElement("span");
+            textos.className =
+              "resultado-directo-textos";
+
+            const nombre = document.createElement("strong");
+            nombre.textContent = resultado.nombre;
+
+            const detalle = document.createElement("small");
+            detalle.textContent =
+              `${resultado.categoria} · ${resultado.camisetas} camisetas`;
+
+            const flecha = document.createElement("span");
+            flecha.className =
+              "resultado-directo-flecha";
+            flecha.textContent = "›";
+            flecha.setAttribute("aria-hidden", "true");
+
+            textos.append(nombre, detalle);
+            enlace.append(imagen, textos, flecha);
+            fragmento.append(enlace);
+          }
+        );
+
+        resultadosDirectos.append(fragmento);
+        resultadosDirectos.hidden = false;
+      };
+
+      const resultadosRenderizados = () =>
+        resultadosDirectos
+          ? [
+              ...resultadosDirectos.querySelectorAll<
+                HTMLAnchorElement
+              >(".resultado-directo")
+            ]
+          : [];
+
+      const seleccionarResultado = (indice: number) => {
+        const resultados = resultadosRenderizados();
+
+        if (resultados.length === 0) return;
+
+        indiceResultadoActivo =
+          (indice + resultados.length) %
+          resultados.length;
+
+        resultados.forEach((resultado, posicion) => {
+          const activo =
+            posicion === indiceResultadoActivo;
+
+          resultado.classList.toggle(
+            "seleccionado",
+            activo
+          );
+
+          resultado.setAttribute(
+            "aria-selected",
+            String(activo)
+          );
+
+          if (activo) {
+            buscador?.setAttribute(
+              "aria-activedescendant",
+              resultado.id
+            );
+
+            resultado.scrollIntoView({
+              block: "nearest"
+            });
+          }
+        });
+      };
+
+      const filtrarEquipos = ({
+        actualizarDireccion = true
+      }: {
+        actualizarDireccion?: boolean;
+      } = {}) => {
+        const valor = buscador?.value.trim() ?? "";
+        const busqueda = normalizarTexto(valor);
+
+        const coincidencias = busqueda
+          ? indiceEquipos.filter((item) =>
+              item.nombreNormalizado.includes(busqueda)
+            )
+          : [];
 
         categoriasElementos.forEach((categoria) => {
-          const botonesEquipos =
-            categoria.querySelectorAll<HTMLAnchorElement>(".equipo");
+          const enlaces =
+            categoria.querySelectorAll<HTMLAnchorElement>(
+              ".equipo"
+            );
 
           const botonCategoria =
             categoria.querySelector<HTMLButtonElement>(
               ".categoria-cabecera"
             );
 
-          const contenidoEquipos =
-            categoria.querySelector<HTMLElement>(".equipos");
-
-          const nombreCategoria =
-            categoria
-              .querySelector<HTMLElement>(".categoria-textos strong")
-              ?.textContent?.trim() ?? "";
-
           let coincidenciasCategoria = 0;
 
-          botonesEquipos.forEach((equipo) => {
-            const nombreOriginal =
-              equipo
-                .querySelector<HTMLElement>(".nombre-equipo")
-                ?.textContent?.trim() ?? "";
-
-            const nombreNormalizado =
-              normalizarTexto(nombreOriginal);
+          enlaces.forEach((enlace) => {
+            const nombre = normalizarTexto(
+              enlace.dataset.equipo ?? ""
+            );
 
             const coincide =
               busqueda === "" ||
-              nombreNormalizado.includes(busqueda);
+              nombre.includes(busqueda);
 
-            equipo.hidden = !coincide;
+            enlace.hidden = !coincide;
 
-            if (coincide && busqueda !== "") {
-              coincidenciasCategoria += 1;
-              totalCoincidencias += 1;
-
-              coincidencias.push({
-                nombre: nombreOriginal,
-                href: equipo.getAttribute("href") ?? "#",
-                escudo:
-                  equipo
-                    .querySelector<HTMLImageElement>(".escudo img")
-                    ?.getAttribute("src") ?? "",
-                categoria: nombreCategoria
-              });
+            if (coincide && busqueda) {
+              coincidenciasCategoria++;
             }
           });
 
-          const mostrarCategoria =
-            busqueda === "" || coincidenciasCategoria > 0;
-
-          categoria.hidden = !mostrarCategoria;
-
-          if (
+          categoria.hidden =
             busqueda !== "" &&
-            coincidenciasCategoria > 0 &&
-            botonCategoria &&
-            contenidoEquipos
-          ) {
-            botonCategoria.setAttribute(
-              "aria-expanded",
-              "true"
-            );
+            coincidenciasCategoria === 0;
 
-            contenidoEquipos.hidden = false;
-          }
-
-          if (
-            busqueda === "" &&
-            botonCategoria &&
-            contenidoEquipos
-          ) {
-            botonCategoria.setAttribute(
-              "aria-expanded",
-              "false"
-            );
-
-            contenidoEquipos.hidden = true;
+          if (botonCategoria) {
+            if (busqueda) {
+              establecerCategoria(
+                botonCategoria,
+                coincidenciasCategoria > 0,
+                false
+              );
+            } else {
+              establecerCategoria(
+                botonCategoria,
+                categoriasGuardadas.has(
+                  categoria.dataset.slug ?? ""
+                ),
+                false
+              );
+            }
           }
         });
 
-        if (resultadosDirectos) {
-          resultadosDirectos.innerHTML = "";
+        renderizarResultados(coincidencias);
 
-          if (busqueda !== "" && coincidencias.length > 0) {
-            coincidencias.slice(0, 8).forEach((resultado) => {
-              const enlace = document.createElement("a");
-              enlace.className = "resultado-directo";
-              enlace.href = resultado.href;
+        if (busqueda && coincidencias.length === 1) {
+          const objetivo = document.querySelector<HTMLElement>(
+            `.equipo[href="${coincidencias[0].href}"]`
+          );
 
-              const imagen = document.createElement("img");
-              imagen.src = resultado.escudo;
-              imagen.alt = "";
-              imagen.loading = "lazy";
-
-              const textos = document.createElement("span");
-              textos.className = "resultado-directo-textos";
-
-              const nombre = document.createElement("strong");
-              nombre.textContent = resultado.nombre;
-
-              const categoria = document.createElement("small");
-              categoria.textContent = resultado.categoria;
-
-              const flecha = document.createElement("span");
-              flecha.className = "resultado-directo-flecha";
-              flecha.textContent = "›";
-
-              textos.append(nombre, categoria);
-              enlace.append(imagen, textos, flecha);
-              resultadosDirectos.appendChild(enlace);
-            });
-
-            resultadosDirectos.hidden = false;
-          } else {
-            resultadosDirectos.hidden = true;
-          }
+          objetivo?.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+          });
         }
 
         if (botonLimpiar) {
-          botonLimpiar.hidden = busqueda === "";
+          botonLimpiar.hidden = valor === "";
         }
 
         if (textoResultado) {
-          if (busqueda === "") {
+          if (!busqueda) {
             textoResultado.textContent =
               "Escribe el nombre de un equipo para encontrarlo rápidamente.";
-          } else if (totalCoincidencias === 1) {
+          } else if (coincidencias.length === 1) {
             textoResultado.textContent =
-              "Se ha encontrado 1 equipo. Pulsa el resultado para abrirlo.";
+              "Se ha encontrado 1 equipo.";
           } else {
             textoResultado.textContent =
-              `Se han encontrado ${totalCoincidencias} equipos.`;
+              `Se han encontrado ${coincidencias.length} equipos.`;
           }
         }
 
         if (sinResultados) {
           sinResultados.hidden =
-            busqueda === "" || totalCoincidencias > 0;
+            busqueda === "" ||
+            coincidencias.length > 0;
         }
+
+        if (actualizarDireccion) {
+          actualizarUrl(valor);
+        }
+
       };
 
-      buscador?.addEventListener("input", filtrarEquipos);
+      let temporizadorBusqueda: number | undefined;
+
+      buscador?.addEventListener("input", () => {
+        window.clearTimeout(temporizadorBusqueda);
+
+        temporizadorBusqueda = window.setTimeout(
+          () => filtrarEquipos(),
+          70
+        );
+      });
+
+      buscador?.addEventListener("keydown", (evento) => {
+        const resultados = resultadosRenderizados();
+
+        if (
+          evento.key === "ArrowDown" &&
+          resultados.length > 0
+        ) {
+          evento.preventDefault();
+          seleccionarResultado(
+            indiceResultadoActivo + 1
+          );
+        }
+
+        if (
+          evento.key === "ArrowUp" &&
+          resultados.length > 0
+        ) {
+          evento.preventDefault();
+          seleccionarResultado(
+            indiceResultadoActivo - 1
+          );
+        }
+
+        if (
+          evento.key === "Enter" &&
+          indiceResultadoActivo >= 0
+        ) {
+          evento.preventDefault();
+          resultados[indiceResultadoActivo]?.click();
+        }
+
+        if (evento.key === "Escape") {
+          buscador.value = "";
+          filtrarEquipos();
+          buscador.focus();
+        }
+      });
 
       botonLimpiar?.addEventListener("click", () => {
         if (!buscador) return;
@@ -546,6 +919,73 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
         filtrarEquipos();
         buscador.focus();
       });
+
+      document.addEventListener("keydown", (evento) => {
+        const objetivo = evento.target;
+
+        const escribiendo =
+          objetivo instanceof HTMLInputElement ||
+          objetivo instanceof HTMLTextAreaElement ||
+          objetivo instanceof HTMLSelectElement ||
+          (objetivo instanceof HTMLElement &&
+            objetivo.isContentEditable);
+
+        if (evento.key === "/" && !escribiendo) {
+          evento.preventDefault();
+          buscador?.focus();
+          buscador?.select();
+        }
+      });
+
+      window.addEventListener("popstate", () => {
+        if (!buscador) return;
+
+        buscador.value =
+          new URL(window.location.href)
+            .searchParams.get("q") ?? "";
+
+        filtrarEquipos({
+          actualizarDireccion: false
+        });
+      });
+
+      if (buscador) {
+        buscador.value =
+          new URL(window.location.href)
+            .searchParams.get("q") ?? "";
+
+        if (buscador.value) {
+          filtrarEquipos({
+            actualizarDireccion: false
+          });
+        }
+      }
+
+      if ("IntersectionObserver" in window) {
+        const observerCategorias = new IntersectionObserver(
+          (entradas, observer) => {
+            entradas.forEach((entrada) => {
+              if (!entrada.isIntersecting) return;
+
+              entrada.target.classList.add("categoria-visible");
+              observer.unobserve(entrada.target);
+            });
+          },
+          { rootMargin: "160px 0px" }
+        );
+
+        categoriasElementos.forEach((categoria) => {
+          observerCategorias.observe(categoria);
+        });
+      } else {
+        categoriasElementos.forEach((categoria) => {
+          categoria.classList.add("categoria-visible");
+        });
+      }
+
+      document.documentElement.classList.add(
+        "pagina-cargada"
+      );
     </script>
   </body>
 </html>
@@ -1622,6 +2062,453 @@ const categoriasOrdenadas = categorias.map((categoria) => ({
   @media (max-width:760px){
     .hero{
       padding-block:34px 24px;
+    }
+  }
+
+
+  /* ===== Revisión integral de rendimiento y accesibilidad ===== */
+
+  .saltar-contenido {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 3000;
+    padding: 10px 14px;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+    background: #111713;
+    transform: translateY(-150%);
+    transition: transform 0.16s ease;
+  }
+
+  .saltar-contenido:focus {
+    transform: translateY(0);
+  }
+
+  .marca-icono {
+    overflow: hidden;
+  }
+
+  .marca-icono img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .marca-icono-fallback {
+    width: 100%;
+    height: 100%;
+    display: none;
+    place-items: center;
+  }
+
+  kbd {
+    display: inline-grid;
+    min-width: 22px;
+    min-height: 22px;
+    place-items: center;
+    padding: 0 6px;
+    border: 1px solid #d6ddd9;
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    color: #536158;
+    font: inherit;
+    font-weight: 800;
+    background: #f7f9f8;
+  }
+
+  .categoria {
+    content-visibility: auto;
+    contain-intrinsic-size: 92px;
+  }
+
+  .equipo {
+    contain: layout paint style;
+  }
+
+  .equipo-textos {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .equipo-textos small {
+    display: block;
+    margin-top: 4px;
+    color: #87918b;
+    font-size: 9px;
+    font-weight: 650;
+  }
+
+  .resultado-directo,
+  .equipo,
+  .categoria-cabecera,
+  .boton {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @media (hover: none) {
+    .categoria:hover,
+    .equipo:hover,
+    .boton:hover {
+      transform: none;
+    }
+  }
+
+  @media (max-width: 650px) {
+    .equipo-textos small {
+      font-size: 8px;
+    }
+  }
+
+  @media print {
+    .cabecera,
+    .hero-acciones,
+    .buscador-contenedor,
+    .pie {
+      display: none !important;
+    }
+
+    .hero {
+      color: #111;
+      background: #fff;
+    }
+
+    .hero h1 span,
+    .etiqueta-superior {
+      color: #111;
+    }
+
+    .equipos {
+      display: grid !important;
+    }
+  }
+
+
+  /* ==============================================================
+     INDEX DEFINITIVO — ESTABILIDAD, RENDIMIENTO Y ACCESIBILIDAD
+     ============================================================== */
+
+  :global(html) {
+    opacity: 0;
+    transition: opacity 160ms ease;
+  }
+
+  :global(html.pagina-cargada) {
+    opacity: 1;
+  }
+
+  .cabecera,
+  .cabecera:hover,
+  .cabecera:focus-within,
+  .cabecera:active {
+    position: relative !important;
+    top: auto !important;
+    border: 0 !important;
+    border-bottom: 0 !important;
+    color: #172019 !important;
+    background: #f4f8f5 !important;
+    background-color: #f4f8f5 !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    filter: none !important;
+    transition: none !important;
+  }
+
+  .cabecera::before,
+  .cabecera::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  .marca,
+  .marca:hover,
+  .marca:focus,
+  .marca:focus-visible,
+  .marca:active,
+  .marca:visited {
+    color: #172019 !important;
+    background: transparent !important;
+    filter: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .marca-texto strong,
+  .marca:hover .marca-texto strong {
+    color: #111713 !important;
+  }
+
+  .marca-texto small,
+  .marca:hover .marca-texto small {
+    color: #748078 !important;
+  }
+
+  .marca-icono,
+  .marca-icono:hover,
+  .marca:hover .marca-icono {
+    color: #d7ad4d !important;
+    background:
+      linear-gradient(145deg, #17231c, #080c0a) !important;
+    filter: none !important;
+    transform: none !important;
+  }
+
+  .acciones-catalogo {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .boton-compacto {
+    min-height: 33px;
+    padding: 0 12px;
+    border: 1px solid #dce3df;
+    border-radius: 999px;
+    color: #536158;
+    font-size: 11px;
+    font-weight: 750;
+    cursor: pointer;
+    background: #fff;
+    transition:
+      border-color 0.15s ease,
+      color 0.15s ease,
+      background 0.15s ease;
+  }
+
+  .boton-compacto:hover {
+    border-color: #16805a;
+    color: #116b4b;
+    background: #f2f8f4;
+  }
+
+  .resultado-directo.seleccionado {
+    border-color: #16805a;
+    color: #116b4b;
+    background: #edf7f1;
+    box-shadow: 0 0 0 3px rgba(22, 128, 90, 0.1);
+  }
+
+  .categoria {
+    content-visibility: auto;
+    contain-intrinsic-size: 92px;
+  }
+
+  .categoria[hidden],
+  .equipo[hidden] {
+    display: none !important;
+  }
+
+  .categoria-cabecera,
+  .equipo,
+  .resultado-directo {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .categoria-cabecera:hover {
+    background: #fbfcfb !important;
+  }
+
+  .categoria:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 34px rgba(23, 34, 27, 0.08);
+  }
+
+  .equipo:hover {
+    transform: translateY(-2px);
+  }
+
+  @media (max-width: 650px) {
+    .acciones-catalogo {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .boton-compacto {
+      min-height: 36px;
+    }
+
+    .seccion-cabecera {
+      width: 100%;
+    }
+  }
+
+  @media (hover: none) {
+    .categoria:hover,
+    .equipo:hover,
+    .resultado-directo:hover {
+      transform: none !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(html) {
+      opacity: 1 !important;
+      transition: none !important;
+    }
+  }
+
+
+  /* ==============================================================
+     INDEX V3 DEFINITIVO — DISEÑO LIMPIO Y PREMIUM
+     ============================================================== */
+
+  .estadisticas,
+  .acciones-catalogo,
+  .contador-categorias,
+  .ver-equipos,
+  .categoria-textos small,
+  .equipo-textos small {
+    display: none !important;
+  }
+
+  .seccion-cabecera {
+    align-items: flex-start !important;
+  }
+
+  .categoria {
+    position: relative;
+    isolation: isolate;
+    opacity: 0;
+    transform: translateY(12px);
+    transition:
+      opacity 220ms ease,
+      transform 220ms ease,
+      border-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .categoria::before {
+    content: "";
+    position: absolute;
+    inset: -30% auto auto -10%;
+    z-index: -1;
+    width: 280px;
+    height: 180px;
+    border-radius: 50%;
+    pointer-events: none;
+    background: color-mix(
+      in srgb,
+      var(--categoria-color) 10%,
+      transparent
+    );
+    filter: blur(42px);
+    opacity: 0;
+    transition: opacity 180ms ease;
+  }
+
+  .categoria-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .categoria:hover::before,
+  .categoria:focus-within::before {
+    opacity: 1;
+  }
+
+  .categoria-cabecera {
+    min-height: 88px !important;
+  }
+
+  .categoria-textos strong {
+    font-size: 19px !important;
+  }
+
+  .categoria-derecha {
+    gap: 0 !important;
+  }
+
+  .flecha {
+    width: 36px !important;
+    height: 36px !important;
+    background: #edf2ef !important;
+  }
+
+  .categoria-cabecera[aria-expanded="true"] .flecha {
+    color: white !important;
+    background: #16805a !important;
+  }
+
+  .mini-escudo {
+    transition:
+      transform 160ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .categoria:hover .mini-escudo {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(20, 35, 26, 0.12);
+  }
+
+  .equipo {
+    min-height: 66px !important;
+    border-radius: 12px !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+  }
+
+  .equipo:hover {
+    border-color: color-mix(
+      in srgb,
+      var(--categoria-color) 28%,
+      #dfe5e1
+    ) !important;
+    color: #16805a !important;
+  }
+
+  .nombre-equipo {
+    font-size: 12px !important;
+    font-weight: 760 !important;
+  }
+
+  .escudo img {
+    transition: transform 160ms ease;
+  }
+
+  .equipo:hover .escudo img {
+    transform: scale(1.05);
+  }
+
+  .hero {
+    min-height: 0 !important;
+  }
+
+  .hero-interior {
+    min-height: 470px !important;
+  }
+
+  @media (max-width: 650px) {
+    .categoria {
+      opacity: 1;
+      transform: none;
+    }
+
+    .categoria-cabecera {
+      min-height: 76px !important;
+    }
+
+    .equipos {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .equipos {
+      grid-template-columns: 1fr !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .categoria,
+    .mini-escudo,
+    .escudo img {
+      opacity: 1 !important;
+      transform: none !important;
+      transition: none !important;
     }
   }
 

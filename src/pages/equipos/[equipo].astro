@@ -29,6 +29,8 @@ interface Props {
 
 interface Camiseta {
   src: string;
+  fullSrc: string;
+  thumbSrc: string;
   temporada: string;
   tipo: string;
   tipoSlug: string;
@@ -94,28 +96,104 @@ const convertirTipo = (tipo: string) =>
 const camisetas: Camiseta[] = [];
 
 if (fs.existsSync(carpetaEquipo)) {
-  const archivos = fs
-    .readdirSync(carpetaEquipo)
-    .filter((archivo) =>
-      /^\d{4}-\d{4}-.+\.(jpg|jpeg|png|webp)$/i.test(archivo)
-    );
+  const entradas = fs
+    .readdirSync(carpetaEquipo, { withFileTypes: true })
+    .filter((entrada) => entrada.isFile())
+    .map((entrada) => entrada.name);
 
-  for (const archivo of archivos) {
-    const sinExtension = archivo.replace(
-      /\.(jpg|jpeg|png|webp)$/i,
-      ""
-    );
+  const patronImagen = /^\d{4}-\d{4}-.+\.(jpg|jpeg|png|webp)$/i;
+  const extensionesPermitidas = /\.(jpg|jpeg|png|webp)$/i;
 
+  for (const archivo of entradas) {
+    if (
+      extensionesPermitidas.test(archivo) &&
+      !patronImagen.test(archivo)
+    ) {
+      console.warn(
+        `[Elite Jerseys] Nombre de camiseta no válido: ${equipoSlug}/${archivo}`
+      );
+    }
+  }
+
+  const prioridadExtension: Record<string, number> = {
+    webp: 1,
+    jpg: 2,
+    jpeg: 3,
+    png: 4
+  };
+
+  const originalesPorBase = new Map<string, string>();
+  const miniaturasPorBase = new Map<string, string>();
+
+  const elegirMejorFormato = (
+    mapa: Map<string, string>,
+    clave: string,
+    archivo: string
+  ) => {
+    const actual = mapa.get(clave);
+
+    if (!actual) {
+      mapa.set(clave, archivo);
+      return;
+    }
+
+    const extensionNueva = archivo.split(".").pop()?.toLowerCase() ?? "";
+    const extensionActual = actual.split(".").pop()?.toLowerCase() ?? "";
+
+    if (
+      (prioridadExtension[extensionNueva] ?? 99) <
+      (prioridadExtension[extensionActual] ?? 99)
+    ) {
+      mapa.set(clave, archivo);
+    }
+  };
+
+  for (const archivo of entradas.filter((nombre) => patronImagen.test(nombre))) {
+    const sinExtension = archivo.replace(extensionesPermitidas, "");
+    const esMiniatura = sinExtension.toLowerCase().endsWith("-thumb");
+    const nombreBase = esMiniatura
+      ? sinExtension.slice(0, -"-thumb".length)
+      : sinExtension;
+
+    const clave = nombreBase.toLowerCase();
+
+    elegirMejorFormato(
+      esMiniatura ? miniaturasPorBase : originalesPorBase,
+      clave,
+      archivo
+    );
+  }
+
+  for (const [clave, archivo] of originalesPorBase) {
+    const sinExtension = archivo.replace(extensionesPermitidas, "");
     const partes = sinExtension.split("-");
-
     const inicio = partes[0];
     const fin = partes[1];
-    const tipoSlug = partes.slice(2).join("-");
+    const tipoSlug = partes.slice(2).join("-").toLowerCase();
 
-    if (!inicio || !fin || !tipoSlug) continue;
+    if (
+      !inicio ||
+      !fin ||
+      !tipoSlug ||
+      !/^\d{4}$/.test(inicio) ||
+      !/^\d{4}$/.test(fin)
+    ) {
+      console.warn(
+        `[Elite Jerseys] Archivo ignorado por formato incorrecto: ${equipoSlug}/${archivo}`
+      );
+      continue;
+    }
+
+    const miniatura = miniaturasPorBase.get(clave);
+    const fullSrc = `/camisetas/${equipoSlug}/${archivo}`;
+    const thumbSrc = miniatura
+      ? `/camisetas/${equipoSlug}/${miniatura}`
+      : fullSrc;
 
     camisetas.push({
-      src: `/camisetas/${equipoSlug}/${archivo}`,
+      src: thumbSrc,
+      fullSrc,
+      thumbSrc,
       temporada: `${inicio}/${fin}`,
       tipo: convertirTipo(tipoSlug),
       tipoSlug,
@@ -130,7 +208,14 @@ camisetas.sort((a, b) => {
     return b.ordenTemporada - a.ordenTemporada;
   }
 
-  return a.ordenTipo - b.ordenTipo;
+  if (a.ordenTipo !== b.ordenTipo) {
+    return a.ordenTipo - b.ordenTipo;
+  }
+
+  return a.tipoSlug.localeCompare(b.tipoSlug, "es", {
+    numeric: true,
+    sensitivity: "base"
+  });
 });
 
 const temporadas = [...new Set(camisetas.map((camiseta) => camiseta.temporada))];
@@ -323,12 +408,64 @@ const escudoUrlAbsoluta = new URL(
   obtenerEscudo(equipo),
   Astro.url.origin
 ).href;
+
+const imagenSocial = camisetas[0]
+  ? new URL(camisetas[0].fullSrc, Astro.url.origin).href
+  : escudoUrlAbsoluta;
+
+const urlCanonica = new URL(Astro.url.pathname, Astro.url.origin).href;
+const urlEquipoAnterior = new URL(`/equipos/${crearSlug(equipoAnterior)}`, Astro.url.origin).href;
+const urlEquipoSiguiente = new URL(`/equipos/${crearSlug(equipoSiguiente)}`, Astro.url.origin).href;
+
+const datosEstructurados = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: `Camisetas de ${equipo}`,
+  description: `Colección de camisetas de ${equipo} organizada por temporada y tipo.`,
+  url: urlCanonica,
+  primaryImageOfPage: imagenSocial,
+  isPartOf: {
+    "@type": "WebSite",
+    name: "Elite Jerseys",
+    url: Astro.url.origin
+  },
+  about: {
+    "@type": "SportsTeam",
+    name: equipo,
+    image: escudoUrlAbsoluta
+  },
+  numberOfItems: camisetas.length,
+  breadcrumb: {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Inicio", item: new URL("/", Astro.url.origin).href },
+      { "@type": "ListItem", position: 2, name: categoria, item: urlCanonica },
+      { "@type": "ListItem", position: 3, name: equipo, item: urlCanonica }
+    ]
+  },
+  mainEntity: {
+    "@type": "ItemList",
+    numberOfItems: camisetas.length,
+    itemListElement: camisetas.map((camiseta, indice) => ({
+      "@type": "ListItem",
+      position: indice + 1,
+      name: `${equipo} ${camiseta.temporada} ${camiseta.tipo}`,
+      url: `${urlCanonica}#${camiseta.temporada.replace("/", "-")}-${camiseta.tipoSlug}`,
+      image: {
+        "@type": "ImageObject",
+        contentUrl: new URL(camiseta.fullSrc, Astro.url.origin).href,
+        caption: `${equipo} ${camiseta.temporada} ${camiseta.tipo}`
+      }
+    }))
+  }
+};
 ---
 
 <!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <script is:inline>document.documentElement.classList.add("pagina-lista");</script>
 
     <meta
       name="viewport"
@@ -341,6 +478,31 @@ const escudoUrlAbsoluta = new URL(
     />
 
     <meta name="theme-color" content={colorNavegador} />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href={urlCanonica} />
+
+    {
+      camisetas[0] && (
+        <link
+          rel="preload"
+          as="image"
+          href={camisetas[0].thumbSrc}
+          fetchpriority="high"
+        />
+      )
+    }
+
+    {
+      equipoAnterior && (
+        <link rel="prefetch" href={`/equipos/${crearSlug(equipoAnterior)}`} />
+      )
+    }
+
+    {
+      equipoSiguiente && (
+        <link rel="prefetch" href={`/equipos/${crearSlug(equipoSiguiente)}`} />
+      )
+    }
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Elite Jerseys" />
@@ -349,8 +511,9 @@ const escudoUrlAbsoluta = new URL(
       property="og:description"
       content={`Explora todas las camisetas de ${equipo} por temporada y tipo de equipación.`}
     />
-    <meta property="og:image" content={escudoUrlAbsoluta} />
-    <meta property="og:url" content={Astro.url.href} />
+    <meta property="og:image" content={imagenSocial} />
+    <meta property="og:url" content={urlCanonica} />
+    <meta property="og:image:alt" content={`Camisetas de ${equipo}`} />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={`${equipo} | Elite Jerseys`} />
@@ -358,7 +521,7 @@ const escudoUrlAbsoluta = new URL(
       name="twitter:description"
       content={`Catálogo de camisetas de ${equipo} en Elite Jerseys.`}
     />
-    <meta name="twitter:image" content={escudoUrlAbsoluta} />
+    <meta name="twitter:image" content={imagenSocial} />
 
     <link
       rel="icon"
@@ -366,6 +529,9 @@ const escudoUrlAbsoluta = new URL(
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23111713'/%3E%3Ctext x='32' y='40' text-anchor='middle' font-family='Arial' font-size='25' font-weight='700' fill='%23d7ad4d'%3EEJ%3C/text%3E%3C/svg%3E"
     />
 
+    <script type="application/ld+json" set:html={JSON.stringify(datosEstructurados)} />
+    <link rel="prefetch" href={urlEquipoAnterior} />
+    <link rel="prefetch" href={urlEquipoSiguiente} />
     <title>{equipo} | Elite Jerseys</title>
   </head>
 
@@ -382,12 +548,11 @@ const escudoUrlAbsoluta = new URL(
       `--club-bg-strength:${intensidadFondo}`
     ].join(";")}
   >
-    <div class="fondo-paleta-club" aria-hidden="true">
-      <span class="halo halo-primario"></span>
-      <span class="halo halo-secundario"></span>
-      <span class="halo halo-acento"></span>
-      <span class="trama-club"></span>
-    </div>
+    <a class="saltar-contenido" href="#contenido-principal">
+      Saltar al contenido
+    </a>
+
+    <div class="fondo-paleta-club" aria-hidden="true"></div>
     <img
       class="fondo-escudo-equipo"
       src={obtenerEscudo(equipo)}
@@ -416,7 +581,7 @@ const escudoUrlAbsoluta = new URL(
       </div>
     </header>
 
-    <main class="contenedor">
+    <main id="contenido-principal" class="contenedor" tabindex="-1">
       <nav class="migas" aria-label="Navegación">
         <div class="menu-inicio">
           <button
@@ -424,18 +589,39 @@ const escudoUrlAbsoluta = new URL(
             type="button"
             aria-haspopup="true"
             aria-expanded="false"
+            aria-controls="menu-global"
           >
             <span>Inicio</span>
             <span class="flecha-inicio">▾</span>
           </button>
 
           <div
+            id="menu-global"
             class="desplegable-inicio"
             aria-hidden="true"
           >
             <div class="titulo-desplegable">
               Ligas y selecciones
             </div>
+
+            <label class="busqueda-menu">
+              <span class="busqueda-menu-icono" aria-hidden="true">⌕</span>
+              <input
+                id="buscar-menu-global"
+                type="search"
+                placeholder="Buscar liga o equipo..."
+                autocomplete="off"
+                aria-label="Buscar liga o equipo"
+              />
+              <button
+                class="limpiar-busqueda-menu"
+                type="button"
+                aria-label="Limpiar búsqueda"
+                hidden
+              >
+                ×
+              </button>
+            </label>
 
             <div class="lista-categorias">
               {
@@ -466,6 +652,7 @@ const escudoUrlAbsoluta = new URL(
                               "enlace-equipo-inicio",
                               { activo: nombreEquipo === equipo }
                             ]}
+                            aria-current={nombreEquipo === equipo ? "page" : undefined}
                           >
                             <img
                               src={obtenerEscudo(nombreEquipo)}
@@ -502,18 +689,39 @@ const escudoUrlAbsoluta = new URL(
             type="button"
             aria-haspopup="true"
             aria-expanded="false"
+            aria-controls="menu-liga"
           >
             <span>{categoria}</span>
             <span class="flecha-menu">▾</span>
           </button>
 
           <div
+            id="menu-liga"
             class="desplegable-liga"
             aria-hidden="true"
           >
             <div class="titulo-desplegable">
               Equipos de {categoria}
             </div>
+
+            <label class="busqueda-menu">
+              <span class="busqueda-menu-icono" aria-hidden="true">⌕</span>
+              <input
+                id="buscar-menu-liga"
+                type="search"
+                placeholder="Buscar equipo..."
+                autocomplete="off"
+                aria-label={`Buscar equipo de ${categoria}`}
+              />
+              <button
+                class="limpiar-busqueda-menu"
+                type="button"
+                aria-label="Limpiar búsqueda"
+                hidden
+              >
+                ×
+              </button>
+            </label>
 
             <div class="lista-equipos">
               {
@@ -524,6 +732,7 @@ const escudoUrlAbsoluta = new URL(
                       "enlace-equipo-menu",
                       { activo: nombreEquipo === equipo }
                     ]}
+                    aria-current={nombreEquipo === equipo ? "page" : undefined}
                   >
                     <img
                       src={obtenerEscudo(nombreEquipo)}
@@ -551,6 +760,15 @@ const escudoUrlAbsoluta = new URL(
         <span class="separador">›</span>
         <strong>{equipo}</strong>
       </nav>
+
+      <button
+        id="fondo-menus"
+        class="fondo-menus"
+        type="button"
+        aria-label="Cerrar menú"
+        tabindex="-1"
+        hidden
+      ></button>
 
       <section class="equipo-hero">
         <img
@@ -677,29 +895,40 @@ const escudoUrlAbsoluta = new URL(
               }
             </div>
 
-            <p id="contador-resultados" class="contador-resultados">
+            <p
+              id="contador-resultados"
+              class="contador-resultados"
+              aria-live="polite"
+            >
               Mostrando {camisetas.length} camisetas
             </p>
 
-            <section class="galeria">
+            <section class="galeria" aria-label={`Camisetas de ${equipo}`}>
               {
                 camisetas.map((camiseta, indice) => (
                   <button
+                    id={`${camiseta.temporada.replace("/", "-")}-${camiseta.tipoSlug}`}
                     class="foto"
                     type="button"
                     data-indice={indice}
+                    data-orden={indice}
                     data-temporada={camiseta.temporada}
                     data-tipo={camiseta.tipoSlug}
-                    data-src={camiseta.src}
+                    data-src={camiseta.thumbSrc}
+                    data-full-src={camiseta.fullSrc}
                     data-titulo={`${equipo} · ${camiseta.temporada} · ${camiseta.tipo}`}
+                    aria-label={`Abrir ${camiseta.tipo.toLowerCase()} de ${equipo}, temporada ${camiseta.temporada}`}
                   >
                     <div class="foto-imagen">
                       <img
-                        src={camiseta.src}
+                        src={camiseta.thumbSrc}
                         alt={`${equipo} ${camiseta.temporada} ${camiseta.tipo}`}
-                        loading={indice < 3 ? "eager" : "lazy"}
+                        width="800"
+                        height="1000"
+                        loading={indice === 0 ? "eager" : "lazy"}
                         decoding="async"
                         fetchpriority={indice === 0 ? "high" : "auto"}
+                        sizes="(max-width: 520px) 50vw, (max-width: 900px) 33vw, 260px"
                         onload="this.classList.add('cargada')"
                         onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
                       />
@@ -722,6 +951,8 @@ const escudoUrlAbsoluta = new URL(
                 ))
               }
             </section>
+
+            <div id="cargar-mas-observador" class="cargar-mas-observador" aria-hidden="true"><span></span></div>
 
             <section id="sin-filtros" class="sin-filtros" hidden>
               <span>⚽</span>
@@ -748,7 +979,8 @@ const escudoUrlAbsoluta = new URL(
       aria-hidden="true"
       role="dialog"
       aria-modal="true"
-      aria-label="Vista ampliada"
+      aria-labelledby="visor-titulo"
+      tabindex="-1"
     >
       <div class="visor-fondo" data-cerrar-visor></div>
 
@@ -759,7 +991,13 @@ const escudoUrlAbsoluta = new URL(
           aria-label="Cerrar imagen"
           data-cerrar-visor
         >
-          ×
+          <svg
+            class="icono-control-visor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M6 6L18 18M18 6L6 18" />
+          </svg>
         </button>
 
         <button
@@ -767,7 +1005,13 @@ const escudoUrlAbsoluta = new URL(
           type="button"
           aria-label="Imagen anterior"
         >
-          ‹
+          <svg
+            class="icono-control-visor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M15 5L8 12L15 19" />
+          </svg>
         </button>
 
         <figure>
@@ -776,6 +1020,9 @@ const escudoUrlAbsoluta = new URL(
               id="visor-imagen"
               src=""
               alt=""
+              width="800"
+              height="1000"
+              decoding="async"
               onerror="this.style.opacity='0';"
             />
           </div>
@@ -783,13 +1030,23 @@ const escudoUrlAbsoluta = new URL(
           <div class="visor-pie">
             <figcaption id="visor-titulo"></figcaption>
 
-            <div class="controles-zoom">
-              <button id="zoom-menos" type="button" aria-label="Alejar">−</button>
-              <span id="zoom-valor">100%</span>
-              <button id="zoom-mas" type="button" aria-label="Acercar">+</button>
-              <button id="zoom-restablecer" type="button">Restablecer</button>
+            <div class="visor-estado">
+              <span id="visor-contador" aria-live="polite">1 / 1</span>
+              <div class="controles-zoom">
+                <button id="zoom-menos" type="button" aria-label="Alejar">−</button>
+                <span id="zoom-valor">100%</span>
+                <button id="zoom-mas" type="button" aria-label="Acercar">+</button>
+                <button id="zoom-restablecer" type="button">Restablecer</button>
+                <button id="visor-pantalla-completa" type="button" aria-label="Activar pantalla completa" title="Pantalla completa">⛶</button>
+              </div>
             </div>
           </div>
+
+          <div
+            id="visor-miniaturas"
+            class="visor-miniaturas"
+            aria-label="Miniaturas de camisetas"
+          ></div>
         </figure>
 
         <button
@@ -797,68 +1054,165 @@ const escudoUrlAbsoluta = new URL(
           type="button"
           aria-label="Imagen siguiente"
         >
-          ›
+          <svg
+            class="icono-control-visor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M9 5L16 12L9 19" />
+          </svg>
         </button>
       </div>
     </div>
 
     <script>
-      const botonInicio =
-        document.querySelector<HTMLButtonElement>(".enlace-inicio");
+      const $ = <T extends Element>(selector: string) =>
+        document.querySelector<T>(selector);
 
-      const menuInicio =
-        document.querySelector<HTMLElement>(".menu-inicio");
+      const $$ = <T extends Element>(selector: string) =>
+        Array.from(document.querySelectorAll<T>(selector));
 
-      const desplegableInicio =
-        document.querySelector<HTMLElement>(".desplegable-inicio");
+      const botonInicio = $<HTMLButtonElement>(".enlace-inicio");
+      const menuInicio = $<HTMLElement>(".menu-inicio");
+      const desplegableInicio = $<HTMLElement>(".desplegable-inicio");
+      const botonLiga = $<HTMLButtonElement>(".enlace-liga");
+      const menuLiga = $<HTMLElement>(".menu-liga");
+      const desplegableLiga = $<HTMLElement>(".desplegable-liga");
+      const fondoMenus = $<HTMLButtonElement>("#fondo-menus");
+      const buscarMenuGlobal =
+        $<HTMLInputElement>("#buscar-menu-global");
+      const buscarMenuLiga =
+        $<HTMLInputElement>("#buscar-menu-liga");
 
-      const botonLiga =
-        document.querySelector<HTMLButtonElement>(".enlace-liga");
+      const posicionarPanel = (
+        boton: HTMLButtonElement | null,
+        panel: HTMLElement | null
+      ) => {
+        if (!boton || !panel) return;
 
-      const menuLiga =
-        document.querySelector<HTMLElement>(".menu-liga");
+        /*
+         * En escritorio los paneles quedan anclados por CSS justo debajo
+         * de su botón. En móvil se muestran como panel inferior.
+         */
+        panel.style.removeProperty("--menu-top");
+        panel.style.removeProperty("--menu-left");
+        panel.style.removeProperty("--menu-right");
+        panel.style.removeProperty("--menu-max-height");
+      };
 
-      const desplegableLiga =
-        document.querySelector<HTMLElement>(".desplegable-liga");
+      const actualizarFondoMenus = () => {
+        const abierto =
+          menuInicio?.classList.contains("abierto") ||
+          menuLiga?.classList.contains("abierto");
+
+        if (fondoMenus) fondoMenus.hidden = !abierto;
+        document.body.classList.toggle(
+          "menu-superpuesto-abierto",
+          Boolean(abierto)
+        );
+      };
+
+      const cambiarEstadoMenu = (
+        contenedor: HTMLElement | null,
+        boton: HTMLButtonElement | null,
+        panel: HTMLElement | null,
+        abierto: boolean
+      ) => {
+        if (abierto) posicionarPanel(boton, panel);
+
+        contenedor?.classList.toggle("abierto", abierto);
+        boton?.setAttribute("aria-expanded", String(abierto));
+        panel?.setAttribute("aria-hidden", String(!abierto));
+
+        actualizarFondoMenus();
+
+        if (abierto) {
+          window.requestAnimationFrame(() => {
+            panel
+              ?.querySelector<HTMLInputElement>(".busqueda-menu input")
+              ?.focus();
+          });
+        }
+      };
 
       const cerrarInicio = () => {
-        menuInicio?.classList.remove("abierto");
-        botonInicio?.setAttribute("aria-expanded", "false");
-        desplegableInicio?.setAttribute("aria-hidden", "true");
+        cambiarEstadoMenu(
+          menuInicio,
+          botonInicio,
+          desplegableInicio,
+          false
+        );
+
+        if (buscarMenuGlobal) {
+          buscarMenuGlobal.value = "";
+          buscarMenuGlobal.dispatchEvent(new Event("input"));
+        }
+      };
+
+      const cerrarLiga = () => {
+        cambiarEstadoMenu(
+          menuLiga,
+          botonLiga,
+          desplegableLiga,
+          false
+        );
+
+        if (buscarMenuLiga) {
+          buscarMenuLiga.value = "";
+          buscarMenuLiga.dispatchEvent(new Event("input"));
+        }
       };
 
       const abrirInicio = () => {
         cerrarLiga();
-        menuInicio?.classList.add("abierto");
-        botonInicio?.setAttribute("aria-expanded", "true");
-        desplegableInicio?.setAttribute("aria-hidden", "false");
-      };
-
-      const cerrarLiga = () => {
-        menuLiga?.classList.remove("abierto");
-        botonLiga?.setAttribute("aria-expanded", "false");
-        desplegableLiga?.setAttribute("aria-hidden", "true");
+        cambiarEstadoMenu(
+          menuInicio,
+          botonInicio,
+          desplegableInicio,
+          true
+        );
       };
 
       const abrirLiga = () => {
         cerrarInicio();
-        menuLiga?.classList.add("abierto");
-        botonLiga?.setAttribute("aria-expanded", "true");
-        desplegableLiga?.setAttribute("aria-hidden", "false");
+        cambiarEstadoMenu(
+          menuLiga,
+          botonLiga,
+          desplegableLiga,
+          true
+        );
       };
 
       botonInicio?.addEventListener("click", () => {
-        const estaAbierto =
-          menuInicio?.classList.contains("abierto") ?? false;
-
-        estaAbierto ? cerrarInicio() : abrirInicio();
+        menuInicio?.classList.contains("abierto")
+          ? cerrarInicio()
+          : abrirInicio();
       });
 
       botonLiga?.addEventListener("click", () => {
-        const estaAbierto =
-          menuLiga?.classList.contains("abierto") ?? false;
+        menuLiga?.classList.contains("abierto")
+          ? cerrarLiga()
+          : abrirLiga();
+      });
 
-        estaAbierto ? cerrarLiga() : abrirLiga();
+      fondoMenus?.addEventListener("click", () => {
+        cerrarInicio();
+        cerrarLiga();
+      });
+
+      const reposicionarMenuAbierto = () => {
+        if (menuInicio?.classList.contains("abierto")) {
+          posicionarPanel(botonInicio, desplegableInicio);
+        }
+
+        if (menuLiga?.classList.contains("abierto")) {
+          posicionarPanel(botonLiga, desplegableLiga);
+        }
+      };
+
+      window.addEventListener("resize", reposicionarMenuAbierto);
+      window.addEventListener("scroll", reposicionarMenuAbierto, {
+        passive: true
       });
 
       document.addEventListener("click", (evento) => {
@@ -873,8 +1227,120 @@ const escudoUrlAbsoluta = new URL(
         }
       });
 
-      const categoriasMenu =
-        document.querySelectorAll<HTMLDetailsElement>(".categoria-menu");
+      const normalizarBusquedaMenu = (valor: string) =>
+        valor
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .trim();
+
+      const configurarBusquedaMenu = (
+        input: HTMLInputElement | null,
+        panel: HTMLElement | null,
+        selectorItems: string
+      ) => {
+        if (!input || !panel) return;
+
+        const botonLimpiar =
+          input.parentElement?.querySelector<HTMLButtonElement>(
+            ".limpiar-busqueda-menu"
+          );
+
+        const aplicar = () => {
+          const valor = normalizarBusquedaMenu(input.value);
+          const elementos =
+            panel.querySelectorAll<HTMLElement>(selectorItems);
+
+          elementos.forEach((elemento) => {
+            const texto = normalizarBusquedaMenu(
+              elemento.textContent ?? ""
+            );
+
+            const coincide = valor === "" || texto.includes(valor);
+            elemento.hidden = !coincide;
+
+            if (
+              elemento instanceof HTMLDetailsElement &&
+              valor !== ""
+            ) {
+              elemento.open = coincide;
+            }
+          });
+
+          if (botonLimpiar) {
+            botonLimpiar.hidden = input.value.length === 0;
+          }
+        };
+
+        input.addEventListener("input", aplicar);
+
+        botonLimpiar?.addEventListener("click", () => {
+          input.value = "";
+          aplicar();
+          input.focus();
+        });
+      };
+
+      configurarBusquedaMenu(
+        buscarMenuGlobal,
+        desplegableInicio,
+        ".categoria-menu"
+      );
+
+      configurarBusquedaMenu(
+        buscarMenuLiga,
+        desplegableLiga,
+        ".enlace-equipo-menu"
+      );
+
+      const listasDesplegables = $$<HTMLElement>(
+        ".lista-categorias, .lista-equipos"
+      );
+
+      listasDesplegables.forEach((lista) => {
+        lista.addEventListener(
+          "wheel",
+          (evento) => {
+            const puedeBajar =
+              lista.scrollTop + lista.clientHeight <
+              lista.scrollHeight - 1;
+
+            const puedeSubir = lista.scrollTop > 0;
+            const bajando = evento.deltaY > 0;
+            const subiendo = evento.deltaY < 0;
+
+            /*
+             * Deja actuar al scroll nativo dentro de la lista.
+             * Solo bloquea la propagación para que no se mueva la página.
+             */
+            if (
+              (bajando && puedeBajar) ||
+              (subiendo && puedeSubir)
+            ) {
+              evento.stopPropagation();
+              return;
+            }
+
+            evento.preventDefault();
+            evento.stopPropagation();
+          },
+          { passive: false }
+        );
+
+        lista.addEventListener("pointerdown", (evento) => {
+          evento.stopPropagation();
+        });
+
+        lista.addEventListener(
+          "touchstart",
+          (evento) => {
+            evento.stopPropagation();
+          },
+          { passive: true }
+        );
+      });
+
+      const categoriasMenu = $$<HTMLDetailsElement>(".categoria-menu");
 
       categoriasMenu.forEach((categoriaMenu) => {
         categoriaMenu.addEventListener("toggle", () => {
@@ -889,164 +1355,354 @@ const escudoUrlAbsoluta = new URL(
       });
 
       const filtroTemporada =
-        document.querySelector<HTMLSelectElement>("#filtro-temporada");
+        $<HTMLSelectElement>("#filtro-temporada");
 
       const filtrosRapidos =
-        document.querySelectorAll<HTMLButtonElement>(".filtro-rapido");
+        $$<HTMLButtonElement>(".filtro-rapido");
 
-      const tarjetas =
-        Array.from(document.querySelectorAll<HTMLButtonElement>(".foto"));
+      const tarjetas = $$<HTMLButtonElement>(".foto");
+      const contador = $<HTMLElement>("#contador-resultados");
+      const sinFiltros = $<HTMLElement>("#sin-filtros");
+      const observadorCarga = $<HTMLElement>("#cargar-mas-observador");
+      const TAMANO_LOTE = 18;
+      let limiteRenderizado = TAMANO_LOTE;
+      let totalCoincidenciasFiltro = tarjetas.length;
 
-      const contador =
-        document.querySelector<HTMLElement>("#contador-resultados");
+      const parametrosIniciales = new URLSearchParams(location.search);
+      let tipoActivo = parametrosIniciales.get("tipo") ?? "todos";
+      const temporadaInicial =
+        parametrosIniciales.get("temporada") ?? "todas";
 
-      const sinFiltros =
-        document.querySelector<HTMLElement>("#sin-filtros");
-
-      let tipoActivo = "todos";
-
-      const aplicarFiltros = () => {
+      const sincronizarUrl = () => {
+        const url = new URL(location.href);
         const temporada = filtroTemporada?.value ?? "todas";
 
-        let visibles = 0;
-
-        tarjetas.forEach((tarjeta) => {
-          const coincideTemporada =
-            temporada === "todas" ||
-            tarjeta.dataset.temporada === temporada;
-
-          const coincideTipo =
-            tipoActivo === "todos" ||
-            tarjeta.dataset.tipo === tipoActivo;
-
-          const mostrar =
-            coincideTemporada &&
-            coincideTipo;
-
-          tarjeta.hidden = !mostrar;
-
-          if (mostrar) visibles += 1;
-        });
-
-        if (contador) {
-          contador.textContent =
-            visibles === 1
-              ? "Mostrando 1 camiseta"
-              : `Mostrando ${visibles} camisetas`;
+        if (temporada === "todas") {
+          url.searchParams.delete("temporada");
+        } else {
+          url.searchParams.set("temporada", temporada);
         }
 
-        if (sinFiltros) {
-          sinFiltros.hidden = visibles > 0;
+        if (tipoActivo === "todos") {
+          url.searchParams.delete("tipo");
+        } else {
+          url.searchParams.set("tipo", tipoActivo);
         }
+
+        history.replaceState(null, "", url);
       };
 
-      filtroTemporada?.addEventListener("change", aplicarFiltros);
+      const actualizarLoteVisible = () => {
+        const coincidentes = tarjetas.filter((tarjeta) => tarjeta.dataset.coincideFiltro === "true");
+        coincidentes.forEach((tarjeta, indice) => {
+          const fueraDelLote = indice >= limiteRenderizado;
+          tarjeta.classList.toggle("fuera-lote", fueraDelLote);
+          tarjeta.setAttribute("aria-hidden", String(fueraDelLote));
+        });
+        const mostradas = Math.min(limiteRenderizado, coincidentes.length);
+        if (contador) contador.textContent = coincidentes.length === 1 ? "Mostrando 1 camiseta" : mostradas < coincidentes.length ? `Mostrando ${mostradas} de ${coincidentes.length} camisetas` : `Mostrando ${coincidentes.length} camisetas`;
+        if (observadorCarga) observadorCarga.hidden = mostradas >= coincidentes.length || coincidentes.length === 0;
+      };
+
+      const aplicarFiltros = (actualizarUrl = true) => {
+        const temporada = filtroTemporada?.value ?? "todas";
+        totalCoincidenciasFiltro = 0;
+        limiteRenderizado = TAMANO_LOTE;
+        tarjetas.forEach((tarjeta) => {
+          const coincideTemporada = temporada === "todas" || tarjeta.dataset.temporada === temporada;
+          const coincideTipo = tipoActivo === "todos" || tarjeta.dataset.tipo === tipoActivo;
+          const coincide = coincideTemporada && coincideTipo;
+          tarjeta.hidden = !coincide;
+          tarjeta.dataset.coincideFiltro = String(coincide);
+          if (coincide) totalCoincidenciasFiltro++;
+        });
+        filtrosRapidos.forEach((boton) => {
+          const activo = (boton.dataset.filtroTipo ?? "todos") === tipoActivo;
+          boton.classList.toggle("activo", activo);
+          boton.setAttribute("aria-pressed", String(activo));
+        });
+        if (sinFiltros) sinFiltros.hidden = totalCoincidenciasFiltro > 0;
+        actualizarLoteVisible();
+        if (actualizarUrl) sincronizarUrl();
+      };
+
+      const cargarSiguienteLote = () => {
+        if (limiteRenderizado >= totalCoincidenciasFiltro) return;
+        limiteRenderizado += TAMANO_LOTE;
+        actualizarLoteVisible();
+      };
+
+      if (observadorCarga && "IntersectionObserver" in window) {
+        const observer = new IntersectionObserver((entradas) => {
+          if (entradas.some((entrada) => entrada.isIntersecting)) cargarSiguienteLote();
+        }, { rootMargin: "450px 0px" });
+        observer.observe(observadorCarga);
+      }
+
+      if (
+        filtroTemporada &&
+        Array.from(filtroTemporada.options).some(
+          (opcion) => opcion.value === temporadaInicial
+        )
+      ) {
+        filtroTemporada.value = temporadaInicial;
+      }
+
+      if (
+        !filtrosRapidos.some(
+          (boton) =>
+            (boton.dataset.filtroTipo ?? "todos") === tipoActivo
+        )
+      ) {
+        tipoActivo = "todos";
+      }
+
+      filtroTemporada?.addEventListener("change", () =>
+        aplicarFiltros()
+      );
 
       filtrosRapidos.forEach((boton) => {
         boton.addEventListener("click", () => {
-          filtrosRapidos.forEach((otro) => otro.classList.remove("activo"));
-          boton.classList.add("activo");
-
           tipoActivo = boton.dataset.filtroTipo ?? "todos";
           aplicarFiltros();
         });
       });
 
-      const visor =
-        document.querySelector<HTMLElement>("#visor");
+      aplicarFiltros(false);
 
-      const visorImagen =
-        document.querySelector<HTMLImageElement>("#visor-imagen");
-
-      const visorTitulo =
-        document.querySelector<HTMLElement>("#visor-titulo");
-
+      const visor = $<HTMLElement>("#visor");
+      const visorImagen = $<HTMLImageElement>("#visor-imagen");
+      const visorTitulo = $<HTMLElement>("#visor-titulo");
       const botonAnterior =
-        document.querySelector<HTMLButtonElement>(".visor-anterior");
-
+        $<HTMLButtonElement>(".visor-anterior");
       const botonSiguiente =
-        document.querySelector<HTMLButtonElement>(".visor-siguiente");
-
-      const zoomMas =
-        document.querySelector<HTMLButtonElement>("#zoom-mas");
-
-      const zoomMenos =
-        document.querySelector<HTMLButtonElement>("#zoom-menos");
-
+        $<HTMLButtonElement>(".visor-siguiente");
+      const botonCerrar =
+        $<HTMLButtonElement>(".visor-cerrar");
+      const zoomMas = $<HTMLButtonElement>("#zoom-mas");
+      const zoomMenos = $<HTMLButtonElement>("#zoom-menos");
       const zoomRestablecer =
-        document.querySelector<HTMLButtonElement>("#zoom-restablecer");
-
-      const zoomValor =
-        document.querySelector<HTMLElement>("#zoom-valor");
+        $<HTMLButtonElement>("#zoom-restablecer");
+      const zoomValor = $<HTMLElement>("#zoom-valor");
+      const visorMiniaturas =
+        $<HTMLElement>("#visor-miniaturas");
+      const visorImagenContenedor =
+        $<HTMLElement>(".visor-imagen-contenedor");
+      const visorContador = $<HTMLElement>("#visor-contador");
+      const botonPantallaCompleta = $<HTMLButtonElement>("#visor-pantalla-completa");
 
       let indiceActual = 0;
       let nivelZoom = 1;
       let inicioDeslizamientoX = 0;
+      let disparadorVisor: HTMLButtonElement | null = null;
 
-      const actualizarZoom = () => {
+      let desplazamientoX = 0;
+      let desplazamientoY = 0;
+      let arrastrandoImagen = false;
+      let origenArrastreX = 0;
+      let origenArrastreY = 0;
+      let origenDesplazamientoX = 0;
+      let origenDesplazamientoY = 0;
+
+      const actualizarTransformacionImagen = () => {
         if (!visorImagen) return;
 
-        visorImagen.style.transform = `scale(${nivelZoom})`;
+        visorImagen.style.transform =
+          `translate3d(${desplazamientoX}px, ${desplazamientoY}px, 0) scale(${nivelZoom})`;
+
+        visorImagen.classList.toggle(
+          "ampliada",
+          nivelZoom > 1
+        );
 
         if (zoomValor) {
           zoomValor.textContent = `${Math.round(nivelZoom * 100)}%`;
         }
       };
 
+      const actualizarZoom = () => {
+        if (nivelZoom <= 1) {
+          desplazamientoX = 0;
+          desplazamientoY = 0;
+        }
+
+        actualizarTransformacionImagen();
+      };
+
       const restablecerZoom = () => {
         nivelZoom = 1;
-        actualizarZoom();
+        desplazamientoX = 0;
+        desplazamientoY = 0;
+        actualizarTransformacionImagen();
       };
 
       const tarjetasVisibles = () =>
-        tarjetas.filter((tarjeta) => !tarjeta.hidden);
+        tarjetas.filter((tarjeta) => !tarjeta.hidden && tarjeta.dataset.coincideFiltro === "true");
 
-      const mostrarEnVisor = (tarjeta: HTMLButtonElement) => {
+      const renderizarMiniaturas = () => {
+        if (!visorMiniaturas) return;
+
+        const visibles = tarjetasVisibles();
+        visorMiniaturas.replaceChildren();
+
+        if (visibles.length <= 1) {
+          visorMiniaturas.hidden = true;
+          return;
+        }
+
+        const fragmento = document.createDocumentFragment();
+
+        visibles.forEach((tarjeta, indice) => {
+          const boton = document.createElement("button");
+          boton.type = "button";
+          boton.className = "visor-miniatura";
+          boton.classList.toggle("activa", indice === indiceActual);
+          boton.setAttribute(
+            "aria-label",
+            `Abrir ${tarjeta.dataset.titulo ?? "camiseta"}`
+          );
+
+          const imagen = document.createElement("img");
+          imagen.src =
+            tarjeta.querySelector<HTMLImageElement>(".foto-imagen img")
+              ?.currentSrc ||
+            tarjeta.dataset.src ||
+            tarjeta.dataset.fullSrc ||
+            "";
+          imagen.alt = "";
+          imagen.width = 54;
+          imagen.height = 68;
+          imagen.loading = "lazy";
+          imagen.decoding = "async";
+
+          boton.append(imagen);
+          boton.addEventListener("click", () => {
+            mostrarEnVisor(tarjeta, true);
+          });
+
+          fragmento.append(boton);
+        });
+
+        visorMiniaturas.append(fragmento);
+        visorMiniaturas.hidden = false;
+      };
+
+      const precargarVecinas = () => {
+        const visibles = tarjetasVisibles();
+        if (visibles.length < 2) return;
+
+        [-1, 1].forEach((direccion) => {
+          const indice =
+            (indiceActual + direccion + visibles.length) %
+            visibles.length;
+
+          const src = visibles[indice]?.dataset.fullSrc;
+          if (!src) return;
+
+          const imagen = new Image();
+          imagen.decoding = "async";
+          imagen.src = src;
+        });
+      };
+
+      const actualizarNavegacionVisor = () => {
+        const visibles = tarjetasVisibles();
+        const hayVarias = visibles.length > 1;
+        if (botonAnterior) botonAnterior.hidden = !hayVarias;
+        if (botonSiguiente) botonSiguiente.hidden = !hayVarias;
+        if (visorContador) visorContador.textContent = `${indiceActual + 1} / ${Math.max(1, visibles.length)}`;
+        requestAnimationFrame(() => visorMiniaturas?.querySelector<HTMLElement>(".visor-miniatura.activa")?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" }));
+      };
+
+      const mostrarEnVisor = (
+        tarjeta: HTMLButtonElement,
+        conservarDisparador = false
+      ) => {
         if (!visor || !visorImagen || !visorTitulo) return;
 
         const visibles = tarjetasVisibles();
-        indiceActual = visibles.indexOf(tarjeta);
+        const nuevoIndice = visibles.indexOf(tarjeta);
+        if (nuevoIndice < 0) return;
 
-        visorImagen.src = tarjeta.dataset.src ?? "";
+        indiceActual = nuevoIndice;
+
+        if (!conservarDisparador) {
+          disparadorVisor = tarjeta;
+        }
+
+        visorImagen.style.opacity = "0";
+        visorImagen.src =
+          tarjeta.dataset.fullSrc ??
+          tarjeta.dataset.src ??
+          "";
         visorImagen.alt = tarjeta.dataset.titulo ?? "";
         visorTitulo.textContent = tarjeta.dataset.titulo ?? "";
 
         restablecerZoom();
+        actualizarNavegacionVisor();
+        renderizarMiniaturas();
         visor.classList.add("abierto");
         visor.setAttribute("aria-hidden", "false");
         document.body.classList.add("sin-scroll");
+
+        requestAnimationFrame(() => {
+          visor.focus({ preventScroll: true });
+        });
+
+        precargarVecinas();
       };
 
+      visorImagen?.addEventListener("load", () => {
+        visorImagen.style.opacity = "1";
+      });
+
       const cerrarVisor = () => {
-        visor?.classList.remove("abierto");
-        visor?.setAttribute("aria-hidden", "true");
+        if (!visor?.classList.contains("abierto")) return;
+
+        visor.classList.remove("abierto");
+        visor.setAttribute("aria-hidden", "true");
         document.body.classList.remove("sin-scroll");
         restablecerZoom();
+
+        if (visorImagen) {
+          visorImagen.removeAttribute("src");
+          visorImagen.alt = "";
+        }
+
+        disparadorVisor?.focus({ preventScroll: true });
       };
 
       const cambiarImagen = (direccion: number) => {
         const visibles = tarjetasVisibles();
-
         if (visibles.length === 0) return;
 
         indiceActual =
-          (indiceActual + direccion + visibles.length) % visibles.length;
+          (indiceActual + direccion + visibles.length) %
+          visibles.length;
 
-        mostrarEnVisor(visibles[indiceActual]);
+        const tarjeta = visibles[indiceActual];
+        if (tarjeta) {
+          mostrarEnVisor(tarjeta, true);
+        }
       };
 
       tarjetas.forEach((tarjeta) => {
-        tarjeta.addEventListener("click", () => mostrarEnVisor(tarjeta));
+        tarjeta.addEventListener("click", () =>
+          mostrarEnVisor(tarjeta)
+        );
       });
 
-      document
-        .querySelectorAll<HTMLElement>("[data-cerrar-visor]")
-        .forEach((elemento) => {
-          elemento.addEventListener("click", cerrarVisor);
-        });
+      $$<HTMLElement>("[data-cerrar-visor]").forEach((elemento) => {
+        elemento.addEventListener("click", cerrarVisor);
+      });
 
-      botonAnterior?.addEventListener("click", () => cambiarImagen(-1));
-      botonSiguiente?.addEventListener("click", () => cambiarImagen(1));
+      botonAnterior?.addEventListener("click", () =>
+        cambiarImagen(-1)
+      );
+
+      botonSiguiente?.addEventListener("click", () =>
+        cambiarImagen(1)
+      );
 
       zoomMas?.addEventListener("click", () => {
         nivelZoom = Math.min(2.5, nivelZoom + 0.25);
@@ -1058,7 +1714,10 @@ const escudoUrlAbsoluta = new URL(
         actualizarZoom();
       });
 
-      zoomRestablecer?.addEventListener("click", restablecerZoom);
+      zoomRestablecer?.addEventListener(
+        "click",
+        restablecerZoom
+      );
 
       visorImagen?.addEventListener("dblclick", () => {
         nivelZoom = nivelZoom === 1 ? 1.75 : 1;
@@ -1069,47 +1728,183 @@ const escudoUrlAbsoluta = new URL(
         "wheel",
         (evento) => {
           if (!visor?.classList.contains("abierto")) return;
-
           evento.preventDefault();
-
-          nivelZoom = Math.min(
-            2.5,
-            Math.max(
-              0.75,
-              nivelZoom + (evento.deltaY < 0 ? 0.15 : -0.15)
-            )
-          );
-
+          const anterior = nivelZoom;
+          const siguiente = Math.min(3, Math.max(1, nivelZoom + (evento.deltaY < 0 ? 0.15 : -0.15)));
+          if (siguiente === anterior) return;
+          const rect = visorImagen.getBoundingClientRect();
+          const cursorX = evento.clientX - (rect.left + rect.width / 2);
+          const cursorY = evento.clientY - (rect.top + rect.height / 2);
+          const proporcion = siguiente / anterior;
+          desplazamientoX = cursorX - (cursorX - desplazamientoX) * proporcion;
+          desplazamientoY = cursorY - (cursorY - desplazamientoY) * proporcion;
+          nivelZoom = siguiente;
           actualizarZoom();
         },
         { passive: false }
       );
 
-      visor?.addEventListener("touchstart", (evento) => {
-        inicioDeslizamientoX = evento.touches[0]?.clientX ?? 0;
+      visorImagen?.addEventListener("pointerdown", (evento) => {
+        if (nivelZoom <= 1) return;
+
+        arrastrandoImagen = true;
+        origenArrastreX = evento.clientX;
+        origenArrastreY = evento.clientY;
+        origenDesplazamientoX = desplazamientoX;
+        origenDesplazamientoY = desplazamientoY;
+
+        visorImagen.setPointerCapture(evento.pointerId);
+        visorImagen.classList.add("arrastrando");
+        evento.preventDefault();
       });
 
-      visor?.addEventListener("touchend", (evento) => {
-        const finalX = evento.changedTouches[0]?.clientX ?? 0;
-        const diferencia = finalX - inicioDeslizamientoX;
+      visorImagen?.addEventListener("pointermove", (evento) => {
+        if (!arrastrandoImagen) return;
 
-        if (Math.abs(diferencia) < 55) return;
+        desplazamientoX =
+          origenDesplazamientoX +
+          (evento.clientX - origenArrastreX);
 
-        cambiarImagen(diferencia > 0 ? -1 : 1);
+        desplazamientoY =
+          origenDesplazamientoY +
+          (evento.clientY - origenArrastreY);
+
+        actualizarTransformacionImagen();
       });
+
+      const terminarArrastre = (evento?: PointerEvent) => {
+        if (!arrastrandoImagen) return;
+
+        arrastrandoImagen = false;
+        visorImagen?.classList.remove("arrastrando");
+
+        if (
+          evento &&
+          visorImagen?.hasPointerCapture(evento.pointerId)
+        ) {
+          visorImagen.releasePointerCapture(evento.pointerId);
+        }
+      };
+
+      visorImagen?.addEventListener("pointerup", terminarArrastre);
+      visorImagen?.addEventListener("pointercancel", terminarArrastre);
+      visorImagen?.addEventListener("lostpointercapture", () => {
+        arrastrandoImagen = false;
+        visorImagen?.classList.remove("arrastrando");
+      });
+
+      botonPantallaCompleta?.addEventListener("click", async () => {
+        try {
+          if (document.fullscreenElement) await document.exitFullscreen();
+          else await visor?.requestFullscreen();
+        } catch {}
+      });
+
+      visor?.addEventListener(
+        "touchstart",
+        (evento) => {
+          inicioDeslizamientoX =
+            evento.touches[0]?.clientX ?? 0;
+        },
+        { passive: true }
+      );
+
+      visor?.addEventListener(
+        "touchend",
+        (evento) => {
+          if (nivelZoom > 1) return;
+
+          const finalX =
+            evento.changedTouches[0]?.clientX ?? 0;
+          const diferencia = finalX - inicioDeslizamientoX;
+
+          if (Math.abs(diferencia) < 55) return;
+          cambiarImagen(diferencia > 0 ? -1 : 1);
+        },
+        { passive: true }
+      );
 
       document.addEventListener("keydown", (evento) => {
+        const visorAbierto =
+          visor?.classList.contains("abierto") ?? false;
+
         if (evento.key === "Escape") {
           cerrarInicio();
           cerrarLiga();
           cerrarVisor();
+          return;
         }
 
-        if (!visor?.classList.contains("abierto")) return;
+        if (!visorAbierto) return;
 
-        if (evento.key === "ArrowLeft") cambiarImagen(-1);
-        if (evento.key === "ArrowRight") cambiarImagen(1);
+        if (evento.key === "ArrowLeft") {
+          evento.preventDefault();
+          cambiarImagen(-1);
+        }
+
+        if (evento.key === "ArrowRight") { evento.preventDefault(); cambiarImagen(1); }
+        if (evento.key === "Home") { evento.preventDefault(); const primera = tarjetasVisibles()[0]; if (primera) mostrarEnVisor(primera, true); }
+        if (evento.key === "End") { evento.preventDefault(); const visibles = tarjetasVisibles(); const ultima = visibles[visibles.length - 1]; if (ultima) mostrarEnVisor(ultima, true); }
+        if (evento.key.toLowerCase() === "f") { evento.preventDefault(); botonPantallaCompleta?.click(); }
+
+        if (evento.key === "+" || evento.key === "=") {
+          evento.preventDefault();
+          nivelZoom = Math.min(2.5, nivelZoom + 0.25);
+          actualizarZoom();
+        }
+
+        if (evento.key === "-") {
+          evento.preventDefault();
+          nivelZoom = Math.max(0.75, nivelZoom - 0.25);
+          actualizarZoom();
+        }
+
+        if (evento.key === "0") {
+          evento.preventDefault();
+          restablecerZoom();
+        }
+
+        if (evento.key === "Tab" && visor) {
+          const enfocables = $$<HTMLElement>(
+            "#visor button:not([hidden]), #visor [href], #visor [tabindex]:not([tabindex='-1'])"
+          ).filter(
+            (elemento) =>
+              !elemento.hasAttribute("disabled") &&
+              elemento.offsetParent !== null
+          );
+
+          if (enfocables.length === 0) return;
+
+          const primero = enfocables[0];
+          const ultimo = enfocables[enfocables.length - 1];
+
+          if (evento.shiftKey && document.activeElement === primero) {
+            evento.preventDefault();
+            ultimo?.focus();
+          } else if (
+            !evento.shiftKey &&
+            document.activeElement === ultimo
+          ) {
+            evento.preventDefault();
+            primero?.focus();
+          }
+        }
       });
+
+      const claveScroll = `elite-scroll:${location.pathname}`;
+      window.addEventListener("pagehide", () => sessionStorage.setItem(claveScroll, String(window.scrollY)));
+      window.addEventListener("pageshow", (evento) => {
+        document.body.classList.remove("sin-scroll");
+        cerrarInicio();
+        cerrarLiga();
+        const posicion = Number(sessionStorage.getItem(claveScroll) ?? "0");
+        if (evento.persisted || posicion > 0) requestAnimationFrame(() => window.scrollTo({ top: posicion, behavior: "instant" }));
+        document.documentElement.classList.add("pagina-lista");
+      });
+      document.querySelectorAll<HTMLAnchorElement>("a[href^='/equipos/']").forEach((enlace) => enlace.addEventListener("click", () => {
+        sessionStorage.setItem(claveScroll, String(window.scrollY));
+        document.documentElement.classList.add("pagina-saliendo");
+      }));
     </script>
   </body>
 </html>
@@ -3425,101 +4220,6 @@ const escudoUrlAbsoluta = new URL(
   }
 
 
-  /* ==============================================================
-     FONDO FIJO POR EQUIPO
-     ============================================================== */
-
-  .fondo-paleta-club {
-    position: fixed;
-    z-index: -5;
-    inset: 66px 0 0;
-    overflow: hidden;
-    background:
-      radial-gradient(
-        circle at 12% 12%,
-        rgba(var(--club-bg-main-rgb), 0.24),
-        transparent 34rem
-      ),
-      radial-gradient(
-        circle at 88% 18%,
-        rgba(var(--club-bg-secondary-rgb), 0.18),
-        transparent 36rem
-      ),
-      radial-gradient(
-        circle at 72% 88%,
-        rgba(var(--club-accent-rgb), 0.10),
-        transparent 32rem
-      ),
-      linear-gradient(
-        145deg,
-        rgba(var(--club-bg-main-rgb), 0.12),
-        rgba(255, 255, 255, 0.90) 36%,
-        rgba(var(--club-bg-secondary-rgb), 0.10) 72%,
-        rgba(246, 248, 247, 0.96)
-      );
-    pointer-events: none;
-  }
-
-  .fondo-paleta-club::before,
-  .fondo-paleta-club::after,
-  .fondo-paleta-club .halo,
-  .fondo-paleta-club .trama-club {
-    display: none !important;
-  }
-
-  .fondo-escudo-equipo {
-    display: none !important;
-  }
-
-  :global(body)::after {
-    display: none !important;
-  }
-
-  .equipo-hero,
-  .foto,
-  .navegacion-equipos a,
-  .migas {
-    transition:
-      transform 0.18s ease,
-      border-color 0.18s ease,
-      box-shadow 0.18s ease,
-      background-color 0.18s ease;
-  }
-
-  .equipo-hero:hover,
-  .migas:hover {
-    background:
-      linear-gradient(
-        112deg,
-        rgba(255, 255, 255, 0.985) 0%,
-        rgba(255, 255, 255, 0.94) 62%,
-        rgba(255, 255, 255, 0.86) 100%
-      );
-  }
-
-  @media (max-width: 760px) {
-    .fondo-paleta-club {
-      inset: 60px 0 0;
-      background:
-        radial-gradient(
-          circle at 10% 8%,
-          rgba(var(--club-bg-main-rgb), 0.20),
-          transparent 25rem
-        ),
-        radial-gradient(
-          circle at 92% 28%,
-          rgba(var(--club-bg-secondary-rgb), 0.15),
-          transparent 27rem
-        ),
-        linear-gradient(
-          155deg,
-          rgba(var(--club-bg-main-rgb), 0.10),
-          rgba(255, 255, 255, 0.92) 42%,
-          rgba(var(--club-bg-secondary-rgb), 0.09)
-        );
-    }
-  }
-
 
   /* ==============================================================
      FONDO DEFINITIVO: FIJO, ESTABLE Y SIN CAMBIOS AL PASAR EL RATÓN
@@ -3686,6 +4386,1486 @@ const escudoUrlAbsoluta = new URL(
           rgba(255, 255, 255, 0.94) 44%,
           rgba(var(--club-bg-secondary-rgb), 0.06)
         ) !important;
+    }
+  }
+
+
+  /* ==============================================================
+     OPTIMIZACIÓN, ACCESIBILIDAD Y ESTABILIDAD FINAL
+     ============================================================== */
+
+  .saltar-contenido {
+    position: fixed;
+    z-index: 10000;
+    top: 10px;
+    left: 10px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    color: #fff;
+    font-weight: 800;
+    text-decoration: none;
+    background: #111713;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+    transform: translateY(-150%);
+    transition: transform 0.16s ease;
+  }
+
+  .saltar-contenido:focus {
+    transform: translateY(0);
+  }
+
+  :where(
+    a,
+    button,
+    select,
+    summary,
+    [tabindex]
+  ):focus-visible {
+    outline: 3px solid rgba(var(--club-primary-rgb), 0.48);
+    outline-offset: 3px;
+  }
+
+  .galeria {
+    contain: layout style;
+  }
+
+  .foto {
+    content-visibility: auto;
+    contain-intrinsic-size: 260px 370px;
+    scroll-margin-top: 90px;
+  }
+
+  .foto[hidden] {
+    display: none !important;
+  }
+
+  .foto-imagen {
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+  }
+
+  .foto-imagen img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    transition:
+      opacity 0.2s ease,
+      transform 0.24s ease;
+  }
+
+  .foto:hover .foto-imagen img {
+    transform: scale(1.018);
+  }
+
+  .visor {
+    overscroll-behavior: contain;
+  }
+
+  .visor-contenido {
+    touch-action: pan-y;
+  }
+
+  #visor-imagen {
+    transition:
+      opacity 0.16s ease,
+      transform 0.16s ease;
+    will-change: transform;
+  }
+
+  .visor[aria-hidden="true"] {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .visor.abierto[aria-hidden="false"] {
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .filtro-rapido[aria-pressed="true"] {
+    border-color: rgba(var(--club-primary-rgb), 0.48);
+  }
+
+  [aria-current="page"] {
+    font-weight: 800;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+
+    .foto:hover .foto-imagen img {
+      transform: none;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .foto {
+      contain-intrinsic-size: 180px 245px;
+    }
+
+    .foto-imagen {
+      aspect-ratio: 1 / 1;
+    }
+  }
+
+
+  /* ==============================================================
+     CORRECCIÓN DEFINITIVA DEL VISOR
+     Evita que la imagen ampliada se comprima en una columna estrecha.
+     ============================================================== */
+
+  .visor {
+    overflow: hidden !important;
+  }
+
+  .visor-contenido {
+    width: min(1180px, calc(100vw - 32px)) !important;
+    height: min(920px, calc(100vh - 32px)) !important;
+    min-height: 0 !important;
+    grid-template-columns: 56px minmax(280px, 1fr) 56px !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    align-items: center !important;
+  }
+
+  .visor-contenido > figure {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    display: grid !important;
+    grid-template-rows: minmax(0, 1fr) auto !important;
+    align-items: stretch !important;
+    justify-items: center !important;
+    overflow: hidden !important;
+  }
+
+  .visor-imagen-contenedor {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: auto !important;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+  }
+
+  #visor-imagen {
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    flex: 0 0 auto !important;
+    object-fit: contain !important;
+    object-position: center !important;
+    border-radius: 15px;
+  }
+
+  .visor-pie {
+    width: min(800px, 100%) !important;
+    min-height: 44px;
+  }
+
+  @media (max-width: 760px) {
+    .visor {
+      padding: 8px !important;
+    }
+
+    .visor-contenido {
+      width: 100% !important;
+      height: calc(100dvh - 16px) !important;
+      grid-template-columns: 40px minmax(0, 1fr) 40px !important;
+      gap: 5px !important;
+    }
+
+    .visor-contenido > figure {
+      height: calc(100dvh - 28px) !important;
+    }
+
+    .visor-imagen-contenedor {
+      border-radius: 12px !important;
+    }
+
+    #visor-imagen {
+      border-radius: 12px !important;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .visor-contenido {
+      grid-template-columns: 34px minmax(0, 1fr) 34px !important;
+      gap: 2px !important;
+    }
+
+    .visor-anterior,
+    .visor-siguiente {
+      width: 34px !important;
+      height: 34px !important;
+      font-size: 24px !important;
+    }
+  }
+
+
+  /* ==============================================================
+     VISOR CON COLORES FIJOS
+     Evita variaciones de color al mover el ratón dentro del visor.
+     ============================================================== */
+
+  .visor,
+  .visor:hover,
+  .visor:focus-within,
+  .visor:active {
+    background: rgba(10, 14, 12, 0.94) !important;
+    background-color: rgba(10, 14, 12, 0.94) !important;
+    background-image: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    mix-blend-mode: normal !important;
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .visor-fondo,
+  .visor-fondo:hover,
+  .visor-fondo:focus,
+  .visor-fondo:active {
+    background: rgba(10, 14, 12, 0.94) !important;
+    background-color: rgba(10, 14, 12, 0.94) !important;
+    background-image: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    mix-blend-mode: normal !important;
+    opacity: 1 !important;
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .visor-contenido,
+  .visor-contenido:hover,
+  .visor-contenido:focus-within,
+  .visor-contenido:active {
+    background: #eef4f1 !important;
+    background-color: #eef4f1 !important;
+    background-image: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    mix-blend-mode: normal !important;
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .visor-contenido > figure,
+  .visor-contenido > figure:hover,
+  .visor-imagen-contenedor,
+  .visor-imagen-contenedor:hover,
+  .visor-pie,
+  .visor-pie:hover {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    mix-blend-mode: normal !important;
+    transition: none !important;
+    animation: none !important;
+  }
+
+  #visor-imagen,
+  #visor-imagen:hover,
+  #visor-imagen:focus,
+  #visor-imagen:active {
+    filter: none !important;
+    opacity: 1 !important;
+    mix-blend-mode: normal !important;
+    transition:
+      transform 0.16s ease !important;
+  }
+
+  .visor-anterior,
+  .visor-siguiente,
+  .visor-cerrar,
+  #zoom-menos,
+  #zoom-mas,
+  #zoom-restablecer {
+    filter: none !important;
+    backdrop-filter: none !important;
+    mix-blend-mode: normal !important;
+  }
+
+  .visor-anterior:hover,
+  .visor-siguiente:hover,
+  .visor-cerrar:hover,
+  #zoom-menos:hover,
+  #zoom-mas:hover,
+  #zoom-restablecer:hover {
+    filter: none !important;
+    backdrop-filter: none !important;
+    mix-blend-mode: normal !important;
+  }
+
+
+  /* ==============================================================
+     VISOR PREMIUM NEGRO — VERSIÓN DEFINITIVA
+     ============================================================== */
+
+  .visor,
+  .visor:hover,
+  .visor:focus-within,
+  .visor:active {
+    padding: 18px !important;
+    background: #050605 !important;
+    background-color: #050605 !important;
+    background-image: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    mix-blend-mode: normal !important;
+  }
+
+  .visor-fondo,
+  .visor-fondo:hover,
+  .visor-fondo:focus,
+  .visor-fondo:active {
+    background: #050605 !important;
+    background-color: #050605 !important;
+    background-image: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .visor-contenido,
+  .visor-contenido:hover,
+  .visor-contenido:focus-within,
+  .visor-contenido:active {
+    width: min(1320px, calc(100vw - 36px)) !important;
+    height: min(960px, calc(100dvh - 36px)) !important;
+    grid-template-columns: 64px minmax(0, 1fr) 64px !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    gap: 14px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .visor-contenido > figure,
+  .visor-contenido > figure:hover {
+    width: 100% !important;
+    height: 100% !important;
+    display: grid !important;
+    grid-template-rows: minmax(0, 1fr) auto auto !important;
+    gap: 10px !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    background: transparent !important;
+  }
+
+  .visor-imagen-contenedor,
+  .visor-imagen-contenedor:hover {
+    position: relative;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-radius: 18px !important;
+    background: #000 !important;
+    background-color: #000 !important;
+    background-image: none !important;
+    box-shadow:
+      0 24px 70px rgba(0, 0, 0, 0.55),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.04) !important;
+    cursor: default;
+    touch-action: none;
+  }
+
+  #visor-imagen,
+  #visor-imagen:hover,
+  #visor-imagen:focus,
+  #visor-imagen:active {
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    object-position: center !important;
+    border-radius: 14px !important;
+    opacity: 1;
+    filter: none !important;
+    mix-blend-mode: normal !important;
+    transform-origin: center center;
+    transition:
+      transform 0.16s ease,
+      opacity 0.18s ease !important;
+    user-select: none;
+    -webkit-user-drag: none;
+    will-change: transform;
+  }
+
+  #visor-imagen.ampliada {
+    cursor: grab;
+  }
+
+  #visor-imagen.arrastrando {
+    cursor: grabbing;
+    transition: none !important;
+  }
+
+  .visor-pie,
+  .visor-pie:hover {
+    width: 100% !important;
+    min-height: 48px;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 18px !important;
+    padding: 6px 2px 0 !important;
+    color: #fff !important;
+    background: transparent !important;
+  }
+
+  .visor figcaption {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 12px !important;
+  }
+
+  .controles-zoom {
+    background: rgba(24, 24, 24, 0.92) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 999px !important;
+    padding: 5px !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  }
+
+  .controles-zoom button,
+  #zoom-valor {
+    color: #fff !important;
+    background: transparent !important;
+  }
+
+  .controles-zoom button:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+  }
+
+  .visor-cerrar,
+  .visor-anterior,
+  .visor-siguiente {
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    color: #fff !important;
+    background: rgba(24, 24, 24, 0.84) !important;
+    backdrop-filter: none !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  .visor-cerrar:hover,
+  .visor-anterior:hover,
+  .visor-siguiente:hover {
+    color: #fff !important;
+    background: rgba(58, 58, 58, 0.95) !important;
+    transform: scale(1.04);
+  }
+
+  .visor-cerrar {
+    top: 18px !important;
+    right: 18px !important;
+    z-index: 20 !important;
+  }
+
+  .visor-miniaturas {
+    width: 100%;
+    min-height: 78px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px 2px 2px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  }
+
+  .visor-miniaturas[hidden] {
+    display: none !important;
+  }
+
+  .visor-miniatura {
+    width: 58px;
+    height: 72px;
+    flex: 0 0 58px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    padding: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 9px;
+    cursor: pointer;
+    background: #111;
+    opacity: 0.56;
+    transition:
+      opacity 0.16s ease,
+      border-color 0.16s ease,
+      transform 0.16s ease;
+  }
+
+  .visor-miniatura:hover,
+  .visor-miniatura.activa {
+    opacity: 1;
+    border-color: #d7ad4d;
+    transform: translateY(-2px);
+  }
+
+  .visor-miniatura img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 6px;
+  }
+
+  @media (max-width: 760px) {
+    .visor {
+      padding: 8px !important;
+    }
+
+    .visor-contenido {
+      width: 100% !important;
+      height: calc(100dvh - 16px) !important;
+      grid-template-columns: 42px minmax(0, 1fr) 42px !important;
+      gap: 5px !important;
+    }
+
+    .visor-contenido > figure {
+      grid-template-rows: minmax(0, 1fr) auto auto !important;
+      gap: 7px !important;
+    }
+
+    .visor-imagen-contenedor {
+      border-radius: 12px !important;
+    }
+
+    .visor-pie {
+      align-items: flex-start !important;
+      flex-direction: column !important;
+      gap: 7px !important;
+    }
+
+    .visor-miniaturas {
+      justify-content: flex-start;
+      min-height: 66px;
+    }
+
+    .visor-miniatura {
+      width: 48px;
+      height: 60px;
+      flex-basis: 48px;
+    }
+
+    .visor-cerrar {
+      top: 10px !important;
+      right: 10px !important;
+    }
+  }
+
+  @media (max-width: 430px) {
+    .visor-contenido {
+      grid-template-columns: 34px minmax(0, 1fr) 34px !important;
+    }
+
+    .visor-anterior,
+    .visor-siguiente {
+      width: 34px !important;
+      height: 34px !important;
+      font-size: 24px !important;
+    }
+
+    .controles-zoom {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+
+  /* ==============================================================
+     MENÚS SUPERPUESTOS PREMIUM — VERSIÓN DEFINITIVA
+     ============================================================== */
+
+  .migas {
+    z-index: 1300 !important;
+  }
+
+  .menu-inicio,
+  .menu-liga {
+    position: relative !important;
+  }
+
+  .fondo-menus {
+    position: fixed;
+    inset: 0;
+    z-index: 1390;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    cursor: default;
+    background: rgba(8, 13, 10, 0.22);
+    backdrop-filter: blur(2px);
+    opacity: 1;
+    animation: aparecerFondoMenu 150ms ease both;
+  }
+
+  .fondo-menus[hidden] {
+    display: none !important;
+  }
+
+  .desplegable-inicio,
+  .desplegable-liga {
+    position: fixed !important;
+    top: var(--menu-top, 90px) !important;
+    left: var(--menu-left, 20px) !important;
+    right: auto !important;
+    bottom: auto !important;
+    z-index: 1400 !important;
+    max-height: var(--menu-max-height, calc(100dvh - 120px)) !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(255, 255, 255, 0.58) !important;
+    border-radius: 18px !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow:
+      0 28px 80px rgba(9, 20, 14, 0.24),
+      0 8px 24px rgba(9, 20, 14, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(22px) saturate(135%) !important;
+    transform: translateY(-8px) scale(0.985) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform-origin: top left !important;
+    transition:
+      opacity 150ms ease,
+      transform 150ms ease,
+      visibility 150ms ease !important;
+  }
+
+  .desplegable-inicio {
+    width: min(470px, calc(100vw - 24px)) !important;
+  }
+
+  .desplegable-liga {
+    width: min(410px, calc(100vw - 24px)) !important;
+  }
+
+  .menu-inicio.abierto .desplegable-inicio,
+  .menu-liga.abierto .desplegable-liga {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translateY(0) scale(1) !important;
+  }
+
+  .titulo-desplegable {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    background: rgba(248, 250, 249, 0.94) !important;
+    backdrop-filter: blur(16px);
+  }
+
+  .busqueda-menu {
+    position: sticky;
+    top: 43px;
+    z-index: 4;
+    display: block;
+    padding: 11px 12px;
+    border-bottom: 1px solid rgba(26, 42, 32, 0.08);
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(16px);
+  }
+
+  .busqueda-menu input {
+    width: 100%;
+    height: 42px;
+    padding: 0 40px 0 39px;
+    border: 1px solid #dbe3de;
+    border-radius: 11px;
+    outline: none;
+    color: #172019;
+    font-size: 13px;
+    background: #f7faf8;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      background 0.15s ease;
+  }
+
+  .busqueda-menu input:focus {
+    border-color: #16805a;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(22, 128, 90, 0.1);
+  }
+
+  .busqueda-menu-icono {
+    position: absolute;
+    top: 50%;
+    left: 25px;
+    z-index: 2;
+    color: #7c8880;
+    font-size: 22px;
+    transform: translateY(-50%) rotate(-18deg);
+  }
+
+  .limpiar-busqueda-menu {
+    position: absolute;
+    top: 50%;
+    right: 21px;
+    z-index: 2;
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    color: #647168;
+    font-size: 18px;
+    cursor: pointer;
+    background: #e9efeb;
+    transform: translateY(-50%);
+  }
+
+  .limpiar-busqueda-menu[hidden] {
+    display: none !important;
+  }
+
+  .lista-categorias,
+  .lista-equipos {
+    max-height: calc(var(--menu-max-height, 620px) - 104px) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(22, 128, 90, 0.48) transparent;
+  }
+
+  .lista-categorias::-webkit-scrollbar,
+  .lista-equipos::-webkit-scrollbar,
+  .equipos-categoria::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .lista-categorias::-webkit-scrollbar-thumb,
+  .lista-equipos::-webkit-scrollbar-thumb,
+  .equipos-categoria::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(22, 128, 90, 0.42);
+    background-clip: padding-box;
+  }
+
+  .enlace-equipo-menu.activo,
+  .enlace-equipo-inicio.activo {
+    border-color: rgba(22, 128, 90, 0.28) !important;
+    color: #116b4b !important;
+    background: rgba(22, 128, 90, 0.1) !important;
+    box-shadow: inset 3px 0 0 #16805a;
+  }
+
+  .menu-inicio.abierto .flecha-inicio,
+  .menu-liga.abierto .flecha-menu {
+    transform: rotate(180deg) !important;
+  }
+
+  @keyframes aparecerFondoMenu {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @media (max-width: 700px) {
+    .fondo-menus {
+      background: rgba(4, 8, 6, 0.46);
+      backdrop-filter: blur(5px);
+    }
+
+    .desplegable-inicio,
+    .desplegable-liga {
+      top: auto !important;
+      left: 8px !important;
+      right: 8px !important;
+      bottom: 8px !important;
+      width: auto !important;
+      max-width: none !important;
+      max-height: min(78dvh, 720px) !important;
+      border-radius: 22px !important;
+      transform:
+        translateY(calc(100% + 24px))
+        scale(1) !important;
+      transform-origin: bottom center !important;
+      box-shadow:
+        0 -18px 60px rgba(0, 0, 0, 0.2),
+        0 18px 60px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    .menu-inicio.abierto .desplegable-inicio,
+    .menu-liga.abierto .desplegable-liga {
+      transform: translateY(0) scale(1) !important;
+    }
+
+    .desplegable-inicio::before,
+    .desplegable-liga::before {
+      content: "";
+      display: block;
+      width: 46px;
+      height: 5px;
+      margin: 9px auto 2px;
+      border-radius: 999px;
+      background: #cbd4ce;
+    }
+
+    .titulo-desplegable {
+      top: 0;
+      padding-top: 10px;
+      text-align: center;
+    }
+
+    .busqueda-menu {
+      top: 42px;
+    }
+
+    .lista-categorias,
+    .lista-equipos {
+      max-height: calc(min(78dvh, 720px) - 112px) !important;
+    }
+
+    body.menu-superpuesto-abierto {
+      overflow: hidden;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .desplegable-inicio,
+    .desplegable-liga,
+    .fondo-menus {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+
+
+  /* MOTOR V2 */
+  :global(html){opacity:0;transition:opacity 180ms ease} :global(html.pagina-lista){opacity:1} :global(html.pagina-saliendo){opacity:0}
+  .foto.fuera-lote{display:none!important}.cargar-mas-observador{width:100%;height:54px;display:grid;place-items:center;margin-top:12px}.cargar-mas-observador[hidden]{display:none!important}.cargar-mas-observador span{width:30px;height:30px;border:3px solid rgba(23,63,53,.12);border-top-color:var(--club-primary);border-radius:50%;animation:girarCarga .75s linear infinite}@keyframes girarCarga{to{transform:rotate(360deg)}}
+  .foto{border:1px solid rgba(17,28,22,.08)!important;box-shadow:0 8px 24px rgba(15,27,20,.07),0 2px 6px rgba(15,27,20,.04)!important;transform:translateY(0);transition:transform 180ms ease,border-color 180ms ease,box-shadow 180ms ease!important;content-visibility:auto;contain-intrinsic-size:360px 460px}.foto:hover{border-color:rgba(var(--club-primary-rgb),.24)!important;transform:translateY(-3px)!important;box-shadow:0 18px 42px rgba(15,27,20,.12),0 4px 12px rgba(15,27,20,.06)!important}
+  .foto-imagen{position:relative;overflow:hidden;background:#111}.foto-imagen::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(105deg,rgba(255,255,255,.02) 25%,rgba(255,255,255,.11) 42%,rgba(255,255,255,.02) 60%),#151816;background-size:220% 100%;animation:skeletonElite 1.25s ease-in-out infinite;opacity:1;transition:opacity 220ms ease}.foto-imagen:has(img.cargada)::before{opacity:0}@keyframes skeletonElite{from{background-position:120% 0}to{background-position:-120% 0}}
+  .badge-tipo{border:1px solid rgba(255,255,255,.65);box-shadow:0 4px 12px rgba(20,30,25,.08),inset 0 1px 0 rgba(255,255,255,.65)}
+  .visor-estado{display:flex;align-items:center;justify-content:flex-end;gap:12px}#visor-contador{min-width:58px;color:rgba(255,255,255,.72);font-size:11px;font-variant-numeric:tabular-nums;text-align:center}#visor-pantalla-completa{min-width:34px;font-size:17px}:global(:fullscreen .visor-contenido){width:calc(100vw - 28px)!important;height:calc(100vh - 28px)!important}
+  @media(min-width:701px){.fondo-menus{background:transparent!important;backdrop-filter:none!important}.desplegable-inicio,.desplegable-liga{border:1px solid rgba(18,34,24,.12)!important;background:rgba(255,255,255,.98)!important;box-shadow:0 24px 65px rgba(9,20,14,.18),0 8px 22px rgba(9,20,14,.1)!important}}
+  @media(hover:none){.foto:hover{transform:none!important}}@media(max-width:700px){.visor-estado{width:100%;justify-content:space-between}#visor-contador{text-align:left}}@media(prefers-reduced-motion:reduce){:global(html),.foto,.foto-imagen::before{transition:none!important;animation:none!important}}
+
+
+  /* ==============================================================
+     CORRECCIÓN FINAL DEL PIE Y MINIATURAS DEL VISOR
+     Mantiene toda la zona inferior negra en estado normal y hover.
+     ============================================================== */
+
+  .visor-pie,
+  .visor-pie:hover,
+  .visor-pie:focus-within,
+  .visor-pie:active,
+  .visor-estado,
+  .visor-estado:hover,
+  .visor-estado:focus-within,
+  .visor-estado:active,
+  .controles-zoom,
+  .controles-zoom:hover,
+  .controles-zoom:focus-within,
+  .controles-zoom:active,
+  .visor-miniaturas,
+  .visor-miniaturas:hover,
+  .visor-miniaturas:focus-within,
+  .visor-miniaturas:active {
+    color: #ffffff !important;
+    background: #050605 !important;
+    background-color: #050605 !important;
+    background-image: none !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    mix-blend-mode: normal !important;
+    box-shadow: none !important;
+  }
+
+  .visor-pie {
+    width: 100% !important;
+    padding: 8px 2px 4px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .visor-miniaturas {
+    width: 100% !important;
+    min-height: 82px !important;
+    padding: 8px 4px 4px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.07) !important;
+    border-radius: 0 !important;
+  }
+
+  .visor-miniatura,
+  .visor-miniatura:hover,
+  .visor-miniatura:focus,
+  .visor-miniatura:focus-visible,
+  .visor-miniatura:active {
+    color: #ffffff !important;
+    background: #111311 !important;
+    background-color: #111311 !important;
+    background-image: none !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    mix-blend-mode: normal !important;
+    box-shadow: none !important;
+  }
+
+  .visor-miniatura:hover,
+  .visor-miniatura.activa,
+  .visor-miniatura.activa:hover {
+    border-color: #d7ad4d !important;
+    background: #171917 !important;
+    opacity: 1 !important;
+  }
+
+  .visor-miniatura img,
+  .visor-miniatura:hover img,
+  .visor-miniatura:focus img,
+  .visor-miniatura:active img {
+    filter: none !important;
+    opacity: 1 !important;
+    mix-blend-mode: normal !important;
+    background: #000 !important;
+  }
+
+  .controles-zoom {
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 999px !important;
+    background: #151715 !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38) !important;
+  }
+
+  .controles-zoom button,
+  .controles-zoom button:hover,
+  .controles-zoom button:focus,
+  .controles-zoom button:focus-visible,
+  .controles-zoom button:active,
+  #zoom-valor,
+  #visor-pantalla-completa,
+  #visor-pantalla-completa:hover,
+  #visor-pantalla-completa:focus,
+  #visor-pantalla-completa:active {
+    color: #ffffff !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    mix-blend-mode: normal !important;
+    box-shadow: none !important;
+  }
+
+  .controles-zoom button:hover,
+  #visor-pantalla-completa:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  #visor-contador,
+  #visor-contador:hover,
+  #visor-contador:focus,
+  #visor-contador:active,
+  #visor-titulo,
+  #visor-titulo:hover {
+    color: rgba(255, 255, 255, 0.9) !important;
+    background: transparent !important;
+  }
+
+  @media (max-width: 700px) {
+    .visor-pie {
+      padding-inline: 2px !important;
+    }
+
+    .visor-miniaturas {
+      min-height: 70px !important;
+    }
+  }
+
+
+  /* ==============================================================
+     CORRECCIÓN DEFINITIVA DEL SCROLL EN DESPLEGABLES DE ESCRITORIO
+     ============================================================== */
+
+  .desplegable-inicio,
+  .desplegable-liga {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+  }
+
+  .titulo-desplegable,
+  .busqueda-menu {
+    flex: 0 0 auto !important;
+  }
+
+  .lista-categorias,
+  .lista-equipos {
+    min-height: 0 !important;
+    flex: 1 1 auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: scroll !important;
+    overscroll-behavior-y: contain !important;
+    touch-action: pan-y !important;
+    pointer-events: auto !important;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .lista-categorias > *,
+  .lista-equipos > * {
+    pointer-events: auto !important;
+  }
+
+  @media (min-width: 701px) {
+    .desplegable-inicio,
+    .desplegable-liga {
+      height: min(
+        var(--menu-max-height, calc(100dvh - 120px)),
+        650px
+      ) !important;
+      max-height: calc(100dvh - 24px) !important;
+    }
+
+    .lista-categorias,
+    .lista-equipos {
+      height: 100% !important;
+      max-height: 100% !important;
+    }
+
+    body.menu-superpuesto-abierto {
+      overflow: auto !important;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .desplegable-inicio,
+    .desplegable-liga {
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    .lista-categorias,
+    .lista-equipos {
+      flex: 1 1 auto !important;
+      max-height: none !important;
+    }
+  }
+
+
+  /* ==============================================================
+     CENTRADO PERFECTO DE LOS CONTROLES DEL VISOR
+     ============================================================== */
+
+  .visor-cerrar,
+  .visor-anterior,
+  .visor-siguiente {
+    display: grid !important;
+    place-items: center !important;
+    padding: 0 !important;
+    text-align: center !important;
+    line-height: 1 !important;
+    font-size: 0 !important;
+    text-indent: 0 !important;
+  }
+
+  .visor-cerrar::before,
+  .visor-anterior::before,
+  .visor-siguiente::before {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    color: currentColor;
+    font-family:
+      Arial,
+      Helvetica,
+      sans-serif;
+    font-weight: 400;
+    line-height: 1;
+    transform: translateY(-1px);
+    pointer-events: none;
+  }
+
+  .visor-cerrar::before {
+    content: "×";
+    font-size: 28px;
+  }
+
+  .visor-anterior::before {
+    content: "‹";
+    font-size: 38px;
+    transform: translate(-1px, -1px);
+  }
+
+  .visor-siguiente::before {
+    content: "›";
+    font-size: 38px;
+    transform: translate(1px, -1px);
+  }
+
+  .visor-cerrar:hover::before,
+  .visor-cerrar:focus-visible::before,
+  .visor-anterior:hover::before,
+  .visor-anterior:focus-visible::before,
+  .visor-siguiente:hover::before,
+  .visor-siguiente:focus-visible::before {
+    color: inherit;
+  }
+
+  @media (max-width: 430px) {
+    .visor-cerrar::before {
+      font-size: 25px;
+    }
+
+    .visor-anterior::before,
+    .visor-siguiente::before {
+      font-size: 32px;
+    }
+  }
+
+
+  /* ==============================================================
+     ICONOS SVG CENTRADOS DE FORMA MATEMÁTICA
+     ============================================================== */
+
+  .visor-cerrar,
+  .visor-anterior,
+  .visor-siguiente {
+    display: grid !important;
+    place-items: center !important;
+    padding: 0 !important;
+    line-height: 0 !important;
+    text-indent: 0 !important;
+    font-size: 0 !important;
+  }
+
+  .visor-cerrar::before,
+  .visor-anterior::before,
+  .visor-siguiente::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  .icono-control-visor {
+    width: 24px;
+    height: 24px;
+    display: block;
+    overflow: visible;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
+    transform: none !important;
+  }
+
+  .visor-cerrar .icono-control-visor {
+    width: 22px;
+    height: 22px;
+  }
+
+  .visor-anterior .icono-control-visor,
+  .visor-siguiente .icono-control-visor {
+    width: 27px;
+    height: 27px;
+  }
+
+  @media (max-width: 430px) {
+    .visor-cerrar .icono-control-visor {
+      width: 20px;
+      height: 20px;
+    }
+
+    .visor-anterior .icono-control-visor,
+    .visor-siguiente .icono-control-visor {
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+
+  /* ==============================================================
+     MENÚS ANCLADOS BAJO INICIO Y LIGA + SCROLL NATIVO EN PC
+     ============================================================== */
+
+  .migas {
+    position: relative !important;
+    overflow: visible !important;
+    z-index: 1500 !important;
+  }
+
+  .menu-inicio,
+  .menu-liga {
+    position: relative !important;
+    z-index: 1510 !important;
+  }
+
+  @media (min-width: 701px) {
+    .desplegable-inicio,
+    .desplegable-liga {
+      position: absolute !important;
+      top: calc(100% + 10px) !important;
+      right: auto !important;
+      bottom: auto !important;
+      z-index: 1600 !important;
+
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: 0 !important;
+      height: auto !important;
+      max-height: min(650px, calc(100vh - 145px)) !important;
+
+      overflow: hidden !important;
+      transform-origin: top left !important;
+    }
+
+    .desplegable-inicio {
+      left: 0 !important;
+      width: min(470px, calc(100vw - 28px)) !important;
+    }
+
+    .desplegable-liga {
+      left: 0 !important;
+      width: min(420px, calc(100vw - 28px)) !important;
+    }
+
+    .titulo-desplegable,
+    .busqueda-menu {
+      position: relative !important;
+      top: auto !important;
+      flex: 0 0 auto !important;
+    }
+
+    .lista-categorias,
+    .lista-equipos {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      height: auto !important;
+      max-height: min(525px, calc(100vh - 255px)) !important;
+
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      overscroll-behavior: contain !important;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      touch-action: pan-y !important;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .lista-categorias::-webkit-scrollbar,
+    .lista-equipos::-webkit-scrollbar {
+      width: 9px;
+    }
+
+    .lista-categorias::-webkit-scrollbar-track,
+    .lista-equipos::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .lista-categorias::-webkit-scrollbar-thumb,
+    .lista-equipos::-webkit-scrollbar-thumb {
+      border: 2px solid transparent;
+      border-radius: 999px;
+      background: rgba(22, 128, 90, 0.5);
+      background-clip: padding-box;
+    }
+
+    .fondo-menus {
+      background: transparent !important;
+      backdrop-filter: none !important;
+    }
+
+    body.menu-superpuesto-abierto {
+      overflow: auto !important;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .desplegable-inicio,
+    .desplegable-liga {
+      position: fixed !important;
+      top: auto !important;
+      left: 8px !important;
+      right: 8px !important;
+      bottom: 8px !important;
+    }
+  }
+
+
+  /* ==============================================================
+     CORRECCIÓN: CABECERA SIN TAPAR CONTENIDO AL HACER SCROLL EN PC
+     ============================================================== */
+
+  @media (min-width: 701px) {
+    .cabecera {
+      position: relative !important;
+      top: auto !important;
+      z-index: 1200 !important;
+    }
+
+    .migas {
+      position: relative !important;
+      top: auto !important;
+      z-index: 1500 !important;
+    }
+
+    main {
+      scroll-margin-top: 0 !important;
+    }
+
+    :global(html) {
+      scroll-padding-top: 0 !important;
+    }
+  }
+
+
+  /* ==============================================================
+     CORRECCIÓN FINAL DE CABECERA EN PC
+     - Elimina la línea que aparece al hacer scroll.
+     - Mantiene los colores de Elite Jerseys totalmente fijos.
+     ============================================================== */
+
+  @media (min-width: 701px) {
+    .cabecera,
+    .cabecera:hover,
+    .cabecera:focus-within,
+    .cabecera:active {
+      position: relative !important;
+      top: auto !important;
+      z-index: 1200 !important;
+
+      border: 0 !important;
+      border-bottom: 0 !important;
+      outline: 0 !important;
+
+      color: #172019 !important;
+      background: #f4f8f5 !important;
+      background-color: #f4f8f5 !important;
+      background-image: none !important;
+
+      box-shadow: none !important;
+      filter: none !important;
+      backdrop-filter: none !important;
+      mix-blend-mode: normal !important;
+      transition: none !important;
+    }
+
+    .cabecera::before,
+    .cabecera::after {
+      content: none !important;
+      display: none !important;
+    }
+
+    .cabecera-interior {
+      border: 0 !important;
+      outline: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    .marca,
+    .marca:hover,
+    .marca:focus,
+    .marca:focus-visible,
+    .marca:active,
+    .marca:visited {
+      color: #172019 !important;
+      background: transparent !important;
+      background-color: transparent !important;
+      background-image: none !important;
+      text-decoration: none !important;
+      filter: none !important;
+      opacity: 1 !important;
+      box-shadow: none !important;
+      transform: none !important;
+      transition: none !important;
+    }
+
+    .marca-texto,
+    .marca-texto:hover,
+    .marca-texto strong,
+    .marca:hover .marca-texto strong,
+    .marca:focus .marca-texto strong {
+      color: #111713 !important;
+      background: transparent !important;
+      filter: none !important;
+      opacity: 1 !important;
+    }
+
+    .marca-texto small,
+    .marca:hover .marca-texto small,
+    .marca:focus .marca-texto small {
+      color: #748078 !important;
+      background: transparent !important;
+      filter: none !important;
+      opacity: 1 !important;
+    }
+
+    .marca-icono,
+    .marca-icono:hover,
+    .marca:hover .marca-icono,
+    .marca:focus .marca-icono {
+      color: #d7ad4d !important;
+      background:
+        linear-gradient(145deg, #17231c, #080c0a) !important;
+      border-color: rgba(213, 168, 61, 0.2) !important;
+      filter: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+
+    .marca-icono img,
+    .marca:hover .marca-icono img,
+    .marca:focus .marca-icono img {
+      filter: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+
+    main,
+    .migas {
+      border-top: 0 !important;
+    }
+
+    :global(body) {
+      border-top: 0 !important;
     }
   }
 
