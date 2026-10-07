@@ -1991,7 +1991,56 @@ const datosEstructurados = {
         document.documentElement.classList.add("pagina-saliendo");
       }));
     </script>
-  </body>
+  
+
+<style is:global>
+/* V40 · el configurador no cambia de fondo al pasar el ratón */
+@media (min-width: 861px) {
+  #ej-config,
+  #ej-config:hover,
+  #ej-config:focus-within {
+    background: #fff !important;
+  }
+}
+</style>
+
+
+
+<style is:global>
+/* V41 · corrección real del fondo hover del configurador */
+@media (min-width: 861px) {
+  #ej-order-panel,
+  #ej-order-panel:hover,
+  #ej-order-panel:focus-within,
+  #ej-order-panel .ej-order-body,
+  #ej-order-panel:hover .ej-order-body,
+  #ej-config-view,
+  #ej-config-view:hover {
+    background-color: #fff !important;
+    background-image: none !important;
+  }
+
+  #ej-config-view .ej-order-product,
+  #ej-config-view .ej-order-product:hover,
+  #ej-config-view .ej-order-field,
+  #ej-config-view .ej-order-field:hover,
+  #ej-config-view .ej-order-row,
+  #ej-config-view .ej-order-row:hover,
+  #ej-config-view .ej-order-check,
+  #ej-config-view .ej-order-check:hover {
+    background-color: #fff !important;
+    background-image: none !important;
+  }
+
+  #ej-config-view .ej-order-pricebox,
+  #ej-config-view .ej-order-pricebox:hover {
+    background-color: #f2f6f3 !important;
+    background-image: none !important;
+  }
+}
+</style>
+
+</body>
 </html>
 
 <style>
@@ -6946,6 +6995,10 @@ const datosEstructurados = {
 
     // Captura el clic ANTES que el visor anterior.
     document.addEventListener("click", (e) => {
+      // El botón del pedido vive dentro de .foto. Debe pasar al
+      // manejador del carrito sin activar el visor de la camiseta.
+      if (e.target.closest?.(".ej-order-add")) return;
+
       const tarjeta = e.target.closest?.(".foto");
       if (!tarjeta) return;
       e.preventDefault();
@@ -8536,12 +8589,21 @@ const datosEstructurados = {
 #ej-cart-items img{display:none !important;}
 </style>
 
-<script is:inline>
+<script>
+import { createClient } from "@supabase/supabase-js";
+
 (() => {
   const RECEIVER = "34689733097";
   const FORMSPREE_ENDPOINT = "https://formspree.io/f/xvkzkkao";
+  const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
+  const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+  const supabase = SUPABASE_URL && SUPABASE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_KEY)
+    : null;
+
   const STORE = "eliteJerseysPedidoV1";
   const ORDER_ID_STORE = "eliteJerseysPendingOrderIdV1";
+  const DB_SAVED_STORE = "eliteJerseysSupabaseSavedOrderV1";
   const $ = s => document.querySelector(s);
   const TEAM_CATEGORY = $("#ej-order-panel")?.dataset.category || "";
   const IS_NATIONAL_LEAGUE = TEAM_CATEGORY !== "Selecciones";
@@ -8612,7 +8674,9 @@ const datosEstructurados = {
       const b=document.createElement("button");
       b.type="button"; b.className="ej-order-add"; b.textContent="Añadir al pedido";
       b.setAttribute("aria-label","Añadir esta camiseta al pedido");
-      b.dataset.image=img.currentSrc||img.src;
+      b.dataset.image=card.dataset?.fullSrc || img.currentSrc || img.src;
+      b.dataset.temporada=card.dataset?.temporada || "";
+      b.dataset.tipo=card.dataset?.tipo || "";
       card.appendChild(b);
     });
   }
@@ -8630,9 +8694,11 @@ const datosEstructurados = {
     }
     const {card,img,text}=detectCard(btn);
     current={
-      image:btn.dataset.image || img?.currentSrc || img?.src || "",
+      image:btn.dataset.image || card?.dataset?.fullSrc || img?.currentSrc || img?.src || "",
       name:(document.querySelector("h1")?.textContent||document.title.split("|")[0]||"Camiseta").trim(),
-      detail:text || "Camiseta"
+      detail:text || "Camiseta",
+      temporada:btn.dataset.temporada || card?.dataset?.temporada || "",
+      tipo:btn.dataset.tipo || card?.dataset?.tipo || ""
     };
     $("#ej-order-img").src=current.image;
     $("#ej-order-name").textContent=current.name;
@@ -8879,6 +8945,88 @@ const datosEstructurados = {
     return {...c,phone};
   }
 
+  async function saveOrderToSupabase({orderId, customer, total, safeCart}){
+    if(!supabase){
+      throw new Error("Supabase no está configurado.");
+    }
+
+    // Si Supabase ya confirmó este mismo número durante esta sesión,
+    // un reintento de Formspree no vuelve a duplicar el pedido.
+    if(sessionStorage.getItem(DB_SAVED_STORE) === orderId){
+      return;
+    }
+
+    // Generamos el UUID del pedido en el navegador. Así el visitante solo
+    // necesita permiso INSERT y no necesita SELECT sobre la tabla pedidos.
+    // Esto mantiene privados todos los pedidos para usuarios anónimos.
+    const pedidoId = crypto.randomUUID();
+
+    const { error: pedidoError } = await supabase
+      .from("pedidos")
+      .insert({
+        id: pedidoId,
+        numero_pedido: orderId,
+        nombre_cliente: customer.name,
+        telefono: customer.phone,
+        total,
+        estado: "Nuevo",
+        notas: null
+      });
+
+    if(pedidoError){
+      throw pedidoError;
+    }
+
+    const articulos = safeCart.map((x) => {
+      const isChild = x.product === "Conjunto niño";
+      const versionText = isChild ? "Única" : (/Jugador/i.test(x.product || "") ? "Jugador" : "Aficionado");
+      const productoText = isChild ? "Conjunto niño" : "Camiseta adulto";
+      const cantidad = safeQty(x.qty);
+      const importe = Number(x.total) || 0;
+      const precioUnitario = cantidad > 0 ? importe / cantidad : importe;
+      // Guardamos una ruta pública relativa, nunca localhost ni el dominio actual.
+      // Así la misma referencia funciona en desarrollo y en Netlify.
+      let imagenUrl = String(x.image || "").trim();
+      try {
+        const parsedImageUrl = new URL(imagenUrl, window.location.origin);
+        imagenUrl = `${parsedImageUrl.pathname}${parsedImageUrl.search}${parsedImageUrl.hash}`;
+      } catch {
+        if (imagenUrl && !imagenUrl.startsWith("/")) imagenUrl = `/${imagenUrl}`;
+      }
+
+      return {
+        pedido_id: pedidoId,
+        equipo: String(x.name || ""),
+        temporada: String(x.temporada || ""),
+        tipo_camiseta: String(x.tipo || ""),
+        producto: productoText,
+        version: versionText,
+        talla: String(x.size || ""),
+        cantidad,
+        nombre_dorsal: Boolean(x.personalize),
+        nombre_personalizado: x.personalize ? String(x.playerName || "") : null,
+        dorsal: x.personalize ? String(x.playerNumber || "") : null,
+        parches: Boolean(x.patches),
+        tipo_parche: x.patches ? (String(x.patchType || "") || null) : null,
+        precio_unitario: precioUnitario,
+        importe,
+        imagen_url: imagenUrl
+      };
+    });
+
+    const { error: articulosError } = await supabase
+      .from("articulos_pedido")
+      .insert(articulos);
+
+    if(articulosError){
+      // El usuario anónimo no tiene permiso DELETE (intencionadamente).
+      // Mostramos el error sin abrir permisos de lectura/borrado públicos.
+      throw articulosError;
+    }
+
+    sessionStorage.setItem(DB_SAVED_STORE, orderId);
+  }
+
   let orderSending=false;
 
   $("#ej-send-order").onclick=async()=>{
@@ -8912,6 +9060,13 @@ const datosEstructurados = {
     payload.append("_subject",`Nuevo pedido ${orderId} · ${c.name} · ${money(total)}`);
 
     try{
+      await saveOrderToSupabase({
+        orderId,
+        customer:c,
+        total,
+        safeCart
+      });
+
       const response=await fetch(FORMSPREE_ENDPOINT,{
         method:"POST",
         body:payload,
@@ -8933,9 +9088,11 @@ const datosEstructurados = {
       // Evita que el mismo pedido reaparezca al recargar después de enviarlo.
       localStorage.removeItem(STORE);
       sessionStorage.removeItem(ORDER_ID_STORE);
+      sessionStorage.removeItem(DB_SAVED_STORE);
     }catch(err){
       status.className="ej-order-status error";
-      status.innerHTML="<b>No se ha podido enviar el pedido.</b><br>No se ha confirmado la recepción. Inténtalo de nuevo o utiliza WhatsApp.";
+      console.error("[Elite Jerseys] Error al guardar/enviar pedido:", err);
+      status.innerHTML="<b>No se ha podido completar el pedido.</b><br>No se ha confirmado el guardado y envío. Inténtalo de nuevo o utiliza WhatsApp.";
       btn.disabled=false;
       btn.textContent="Reintentar envío";
     }finally{
