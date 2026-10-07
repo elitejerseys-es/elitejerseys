@@ -2512,4 +2512,267 @@ const datosEstructurados = {
     }
   }
 
+
+  /* ==============================================================
+     INDEX MOBILE FINAL — ESCUDOS, TARJETAS Y BUSCADOR
+     Mantiene 2 columnas en móvil y normaliza todos los escudos.
+     ============================================================== */
+  @media (max-width: 650px) {
+    .contenedor {
+      width: calc(100% - 24px) !important;
+    }
+
+    .categoria {
+      overflow: hidden;
+      border-radius: 18px !important;
+    }
+
+    .categoria-cabecera {
+      min-height: 82px !important;
+      grid-template-columns: minmax(0, 1fr) auto !important;
+      gap: 10px !important;
+      padding: 14px 15px !important;
+    }
+
+    .categoria-info {
+      min-width: 0;
+      gap: 13px !important;
+    }
+
+    .logo-liga {
+      width: 54px !important;
+      height: 54px !important;
+      flex: 0 0 54px !important;
+      padding: 5px;
+      overflow: hidden;
+    }
+
+    .logo-liga img {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 44px !important;
+      max-height: 44px !important;
+      object-fit: contain !important;
+      object-position: center !important;
+    }
+
+    .categoria-textos strong {
+      overflow-wrap: anywhere;
+      font-size: 17px !important;
+      line-height: 1.15 !important;
+    }
+
+    .flecha {
+      width: 38px !important;
+      height: 38px !important;
+      flex: 0 0 38px !important;
+    }
+
+    .equipos,
+    .equipos[hidden="false"] {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 10px !important;
+      padding: 12px !important;
+    }
+
+    .equipo {
+      min-width: 0 !important;
+      min-height: 88px !important;
+      display: grid !important;
+      grid-template-columns: 52px minmax(0, 1fr) !important;
+      align-items: center !important;
+      gap: 10px !important;
+      padding: 10px 11px !important;
+      border-radius: 14px !important;
+    }
+
+    .escudo {
+      width: 52px !important;
+      height: 52px !important;
+      flex: none !important;
+      display: grid !important;
+      place-items: center !important;
+      overflow: visible !important;
+    }
+
+    .escudo img {
+      display: block;
+      width: 46px !important;
+      height: 46px !important;
+      max-width: 46px !important;
+      max-height: 46px !important;
+      object-fit: contain !important;
+      object-position: center !important;
+      transform: none !important;
+    }
+
+    .escudo-provisional {
+      width: 42px !important;
+      height: 42px !important;
+    }
+
+    .nombre-equipo {
+      min-width: 0 !important;
+      display: block !important;
+      overflow: visible !important;
+      font-size: clamp(11px, 3.15vw, 14px) !important;
+      font-weight: 780 !important;
+      line-height: 1.18 !important;
+      text-overflow: clip !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      word-break: normal !important;
+    }
+
+    .flecha-equipo {
+      display: none !important;
+    }
+
+    .buscador-contenedor {
+      position: relative;
+      z-index: 20;
+      overflow: visible;
+      padding: 14px !important;
+      border-radius: 18px !important;
+    }
+
+    .buscador input {
+      width: 100%;
+      min-width: 0;
+      height: 52px !important;
+      padding: 0 44px !important;
+      font-size: 16px !important; /* evita zoom automático de iOS */
+    }
+
+    :global(.resultados-directos) {
+      width: 100%;
+      max-height: min(56vh, 430px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+    }
+
+    :global(.resultado-directo) {
+      min-height: 66px;
+      gap: 12px;
+      padding: 10px 12px;
+    }
+
+    :global(.resultado-directo img) {
+      width: 44px !important;
+      height: 44px !important;
+      flex: 0 0 44px !important;
+      object-fit: contain !important;
+      object-position: center !important;
+    }
+  }
+
+  @media (max-width: 430px) {
+    .equipos {
+      gap: 8px !important;
+      padding: 10px !important;
+    }
+
+    .equipo {
+      min-height: 84px !important;
+      grid-template-columns: 46px minmax(0, 1fr) !important;
+      gap: 8px !important;
+      padding: 9px !important;
+    }
+
+    .escudo {
+      width: 46px !important;
+      height: 46px !important;
+    }
+
+    .escudo img {
+      width: 42px !important;
+      height: 42px !important;
+      max-width: 42px !important;
+      max-height: 42px !important;
+    }
+
+    .nombre-equipo {
+      font-size: clamp(10.5px, 3.25vw, 13px) !important;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .contenedor {
+      width: calc(100% - 16px) !important;
+    }
+
+    .equipos {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 6px !important;
+      padding: 8px !important;
+    }
+
+    .equipo {
+      min-height: 78px !important;
+      grid-template-columns: 39px minmax(0, 1fr) !important;
+      gap: 6px !important;
+      padding: 7px !important;
+    }
+
+    .escudo {
+      width: 39px !important;
+      height: 39px !important;
+    }
+
+    .escudo img {
+      width: 36px !important;
+      height: 36px !important;
+      max-width: 36px !important;
+      max-height: 36px !important;
+    }
+
+    .nombre-equipo {
+      font-size: 10.5px !important;
+    }
+  }
+
+
+  /* V4 — escudos visualmente uniformes también en escritorio */
+  @media (min-width: 701px) {
+    .equipo .escudo {
+      width: 48px !important;
+      height: 48px !important;
+      flex: 0 0 48px !important;
+      display: grid !important;
+      place-items: center !important;
+      overflow: hidden !important;
+    }
+
+    .equipo .escudo img {
+      width: 42px !important;
+      height: 42px !important;
+      max-width: 42px !important;
+      max-height: 42px !important;
+      display: block !important;
+      object-fit: contain !important;
+      object-position: center !important;
+      margin: auto !important;
+    }
+
+    .mini-escudo {
+      width: 30px !important;
+      height: 30px !important;
+      display: grid !important;
+      place-items: center !important;
+      overflow: hidden !important;
+    }
+
+    .mini-escudo img {
+      width: 25px !important;
+      height: 25px !important;
+      max-width: 25px !important;
+      max-height: 25px !important;
+      object-fit: contain !important;
+      object-position: center !important;
+    }
+  }
+
 </style>

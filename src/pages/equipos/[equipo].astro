@@ -1112,13 +1112,76 @@ const datosEstructurados = {
         );
       };
 
+
+      const esSelectorMovil = () =>
+        window.matchMedia("(max-width: 700px)").matches;
+
+      const origenPaneles = new Map<HTMLElement, {
+        padre: Node;
+        siguiente: Node | null;
+      }>();
+
+      [desplegableInicio, desplegableLiga].forEach((panel) => {
+        if (panel?.parentNode) {
+          origenPaneles.set(panel, {
+            padre: panel.parentNode,
+            siguiente: panel.nextSibling
+          });
+        }
+      });
+
+      const prepararCierreSelectorMovil = (panel: HTMLElement | null) => {
+        if (!panel) return;
+
+        let boton = panel.querySelector<HTMLButtonElement>(".cerrar-selector-movil");
+        if (!boton) {
+          boton = document.createElement("button");
+          boton.type = "button";
+          boton.className = "cerrar-selector-movil";
+          boton.setAttribute("aria-label", "Volver");
+          boton.innerHTML = `
+            <span aria-hidden="true">‹</span>
+            <strong>Volver</strong>
+            <span class="cerrar-selector-x" aria-hidden="true">×</span>
+          `;
+          panel.prepend(boton);
+
+          boton.addEventListener("click", () => {
+            if (panel === desplegableInicio) cerrarInicio();
+            if (panel === desplegableLiga) cerrarLiga();
+          });
+        }
+      };
+
+      const moverPanelAlBody = (panel: HTMLElement | null) => {
+        if (!panel || !esSelectorMovil()) return;
+        prepararCierreSelectorMovil(panel);
+        if (panel.parentElement !== document.body) {
+          document.body.appendChild(panel);
+        }
+        panel.classList.add("selector-movil-abierto");
+      };
+
+      const devolverPanelAOrigen = (panel: HTMLElement | null) => {
+        if (!panel) return;
+        panel.classList.remove("selector-movil-abierto");
+        const origen = origenPaneles.get(panel);
+        if (!origen || panel.parentNode === origen.padre) return;
+        origen.padre.insertBefore(panel, origen.siguiente);
+      };
+
       const cambiarEstadoMenu = (
         contenedor: HTMLElement | null,
         boton: HTMLButtonElement | null,
         panel: HTMLElement | null,
         abierto: boolean
       ) => {
-        if (abierto) posicionarPanel(boton, panel);
+        if (abierto) {
+          posicionarPanel(boton, panel);
+          moverPanelAlBody(panel);
+        } else {
+          panel?.classList.remove("selector-movil-abierto");
+        }
 
         contenedor?.classList.toggle("abierto", abierto);
         boton?.setAttribute("aria-expanded", String(abierto));
@@ -1210,7 +1273,13 @@ const datosEstructurados = {
         }
       };
 
-      window.addEventListener("resize", reposicionarMenuAbierto);
+      window.addEventListener("resize", () => {
+        reposicionarMenuAbierto();
+        if (!esSelectorMovil()) {
+          devolverPanelAOrigen(desplegableInicio);
+          devolverPanelAOrigen(desplegableLiga);
+        }
+      });
       window.addEventListener("scroll", reposicionarMenuAbierto, {
         passive: true
       });
@@ -1218,11 +1287,19 @@ const datosEstructurados = {
       document.addEventListener("click", (evento) => {
         if (!(evento.target instanceof Node)) return;
 
-        if (menuInicio && !menuInicio.contains(evento.target)) {
+        if (
+          menuInicio &&
+          !menuInicio.contains(evento.target) &&
+          !desplegableInicio?.contains(evento.target)
+        ) {
           cerrarInicio();
         }
 
-        if (menuLiga && !menuLiga.contains(evento.target)) {
+        if (
+          menuLiga &&
+          !menuLiga.contains(evento.target) &&
+          !desplegableLiga?.contains(evento.target)
+        ) {
           cerrarLiga();
         }
       });
@@ -1608,8 +1685,16 @@ const datosEstructurados = {
       const actualizarNavegacionVisor = () => {
         const visibles = tarjetasVisibles();
         const hayVarias = visibles.length > 1;
-        if (botonAnterior) botonAnterior.hidden = !hayVarias;
-        if (botonSiguiente) botonSiguiente.hidden = !hayVarias;
+        if (botonAnterior) {
+          botonAnterior.hidden = !hayVarias;
+          botonAnterior.classList.toggle("sin-navegacion", !hayVarias);
+          if (hayVarias) botonAnterior.removeAttribute("hidden");
+        }
+        if (botonSiguiente) {
+          botonSiguiente.hidden = !hayVarias;
+          botonSiguiente.classList.toggle("sin-navegacion", !hayVarias);
+          if (hayVarias) botonSiguiente.removeAttribute("hidden");
+        }
         if (visorContador) visorContador.textContent = `${indiceActual + 1} / ${Math.max(1, visibles.length)}`;
         requestAnimationFrame(() => visorMiniaturas?.querySelector<HTMLElement>(".visor-miniatura.activa")?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" }));
       };
@@ -5869,4 +5954,3190 @@ const datosEstructurados = {
     }
   }
 
+
+
+  /* MÓVIL V4 — MENÚS Y ESCUDOS */
+  @media (max-width: 700px) {
+    .migas { position:relative!important; z-index:1700!important; overflow:visible!important; gap:5px!important; padding:10px!important; border-radius:13px!important; }
+    .menu-inicio,.menu-liga { position:static!important; }
+    .enlace-inicio,.enlace-liga { min-height:34px!important; padding:6px 7px!important; white-space:nowrap!important; }
+    .fondo-menus { position:fixed!important; inset:0!important; z-index:9998!important; width:100vw!important; height:100dvh!important; margin:0!important; padding:0!important; border:0!important; border-radius:0!important; background:rgba(4,8,6,.54)!important; backdrop-filter:blur(5px)!important; -webkit-backdrop-filter:blur(5px)!important; touch-action:none!important; }
+    .fondo-menus[hidden] { display:none!important; }
+    .desplegable-inicio,.desplegable-liga { position:fixed!important; z-index:9999!important; top:auto!important; left:0!important; right:0!important; bottom:0!important; width:100%!important; max-width:none!important; height:min(78dvh,720px)!important; max-height:calc(100dvh - 58px)!important; min-height:0!important; margin:0!important; padding:0 0 env(safe-area-inset-bottom,0px)!important; display:flex!important; flex-direction:column!important; overflow:hidden!important; border:1px solid rgba(20,35,26,.10)!important; border-bottom:0!important; border-radius:24px 24px 0 0!important; background:#fff!important; box-shadow:0 -18px 60px rgba(0,0,0,.28)!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; opacity:0!important; visibility:hidden!important; pointer-events:none!important; transform:translate3d(0,105%,0)!important; transform-origin:bottom center!important; transition:transform 220ms cubic-bezier(.22,.8,.25,1),opacity 160ms ease,visibility 220ms step-end!important; overscroll-behavior:contain!important; -webkit-overflow-scrolling:touch!important; }
+    .menu-inicio.abierto .desplegable-inicio,.menu-liga.abierto .desplegable-liga { opacity:1!important; visibility:visible!important; pointer-events:auto!important; transform:translate3d(0,0,0)!important; transition:transform 220ms cubic-bezier(.22,.8,.25,1),opacity 160ms ease,visibility 0s step-start!important; }
+    .desplegable-inicio::before,.desplegable-liga::before { content:""!important; display:block!important; flex:0 0 auto!important; width:44px!important; height:5px!important; margin:9px auto 3px!important; border-radius:999px!important; background:#cbd4ce!important; }
+    .titulo-desplegable { position:relative!important; top:auto!important; flex:0 0 auto!important; padding:9px 16px 11px!important; border-bottom:1px solid #edf0ee!important; text-align:center!important; font-size:11px!important; background:#fff!important; backdrop-filter:none!important; }
+    .busqueda-menu { position:relative!important; top:auto!important; flex:0 0 auto!important; padding:10px 12px 11px!important; background:#fff!important; backdrop-filter:none!important; }
+    .busqueda-menu input { height:46px!important; font-size:16px!important; border-radius:13px!important; }
+    .lista-categorias,.lista-equipos { flex:1 1 0!important; min-height:0!important; height:auto!important; max-height:none!important; overflow-x:hidden!important; overflow-y:auto!important; padding-bottom:14px!important; overscroll-behavior-y:contain!important; touch-action:pan-y!important; -webkit-overflow-scrolling:touch!important; scrollbar-width:thin!important; }
+    .enlace-equipo-menu,.enlace-equipo-inicio { min-height:58px!important; display:grid!important; grid-template-columns:46px minmax(0,1fr) 24px!important; align-items:center!important; column-gap:10px!important; }
+    .enlace-equipo-menu>img,.enlace-equipo-inicio>img { width:42px!important; height:42px!important; max-width:42px!important; max-height:42px!important; margin:0 auto!important; display:block!important; object-fit:contain!important; object-position:center!important; flex:none!important; }
+    .nombre-equipo-menu { min-width:0!important; line-height:1.18!important; overflow-wrap:anywhere!important; }
+    .marca-activo { justify-self:center!important; }
+    .logo-categoria { width:42px!important; height:42px!important; flex:0 0 42px!important; display:grid!important; place-items:center!important; }
+    .logo-categoria img { width:38px!important; height:38px!important; max-width:38px!important; max-height:38px!important; object-fit:contain!important; object-position:center!important; }
+    .categoria-resumen { min-height:60px!important; }
+    .escudo-grande { display:grid!important; place-items:center!important; overflow:hidden!important; }
+    .escudo-grande img { width:56px!important; height:56px!important; max-width:82%!important; max-height:82%!important; object-fit:contain!important; object-position:center!important; }
+    .nav-escudo { display:grid!important; place-items:center!important; overflow:hidden!important; }
+    .nav-escudo img { width:26px!important; height:26px!important; max-width:86%!important; max-height:86%!important; object-fit:contain!important; object-position:center!important; }
+    body.menu-superpuesto-abierto { overflow:hidden!important; touch-action:none!important; }
+    body.menu-superpuesto-abierto .desplegable-inicio,body.menu-superpuesto-abierto .desplegable-liga { touch-action:pan-y!important; }
+  }
+  @media (max-width:430px) {
+    .migas { font-size:10px!important; }
+    .migas>strong { max-width:100%!important; overflow:hidden!important; text-overflow:ellipsis!important; white-space:nowrap!important; }
+    .desplegable-inicio,.desplegable-liga { height:min(80dvh,680px)!important; max-height:calc(100dvh - 46px)!important; }
+    .enlace-equipo-menu,.enlace-equipo-inicio { grid-template-columns:42px minmax(0,1fr) 22px!important; column-gap:8px!important; }
+    .enlace-equipo-menu>img,.enlace-equipo-inicio>img { width:38px!important; height:38px!important; max-width:38px!important; max-height:38px!important; }
+  }
+
+
+
+  /* MÓVIL V5 — MENÚS VISIBLES + VISOR LIMPIO */
+  @media (max-width: 700px) {
+    .fondo-menus { z-index:1650!important; }
+    .migas { z-index:1700!important; }
+    .desplegable-inicio,.desplegable-liga { z-index:1800!important; background:#fff!important; opacity:0!important; visibility:hidden!important; pointer-events:none!important; }
+    .menu-inicio.abierto .desplegable-inicio,.menu-liga.abierto .desplegable-liga { opacity:1!important; visibility:visible!important; pointer-events:auto!important; }
+
+    .visor { padding:max(12px,env(safe-area-inset-top)) 0 max(12px,env(safe-area-inset-bottom))!important; background:#000!important; }
+    .visor-fondo { background:#000!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
+    .visor-contenido { position:relative!important; width:100%!important; height:100%!important; min-height:100dvh!important; display:flex!important; align-items:center!important; justify-content:center!important; padding:max(18px,env(safe-area-inset-top)) 32px max(18px,env(safe-area-inset-bottom)) 32px!important; }
+    .visor figure { width:100%!important; height:100%!important; max-height:none!important; margin:0!important; display:flex!important; align-items:center!important; justify-content:center!important; }
+    .visor-imagen-contenedor { width:100%!important; max-width:620px!important; height:auto!important; max-height:calc(100dvh - 54px)!important; display:flex!important; align-items:center!important; justify-content:center!important; overflow:hidden!important; border-radius:14px!important; background:#000!important; box-shadow:none!important; touch-action:pan-y!important; }
+    .visor figure img,#visor-imagen { width:100%!important; height:auto!important; max-width:100%!important; max-height:calc(100dvh - 54px)!important; margin:auto!important; border-radius:14px!important; object-fit:contain!important; object-position:center!important; }
+    .visor-pie,.visor-miniaturas,#visor-miniaturas,.visor-anterior,.visor-siguiente { display:none!important; }
+    .visor-cerrar { position:fixed!important; top:max(14px,env(safe-area-inset-top))!important; right:max(10px,env(safe-area-inset-right))!important; z-index:2200!important; width:44px!important; height:44px!important; padding:0!important; display:grid!important; place-items:center!important; border-radius:50%!important; background:rgba(18,18,18,.88)!important; border:1px solid rgba(255,255,255,.20)!important; backdrop-filter:blur(8px)!important; -webkit-backdrop-filter:blur(8px)!important; }
+    .visor-cerrar .icono-control-visor { width:22px!important; height:22px!important; display:block!important; margin:0!important; transform:none!important; }
+  }
+  @media (max-width:430px) {
+    .visor-contenido { padding-left:26px!important; padding-right:26px!important; }
+    .visor-imagen-contenedor,.visor figure img,#visor-imagen { max-height:calc(100dvh - 44px)!important; }
+  }
+
+
+  /* ==============================================================
+     MÓVIL V6 — PANEL COMPLETO + FLECHAS EN VISOR
+     ============================================================== */
+  @media (max-width: 700px) {
+    /* Menús: ya no nacen fuera de la pantalla. */
+    .desplegable-inicio,
+    .desplegable-liga {
+      top: max(76px, calc(env(safe-area-inset-top) + 54px)) !important;
+      bottom: max(12px, env(safe-area-inset-bottom)) !important;
+      left: 12px !important;
+      right: 12px !important;
+      width: auto !important;
+      height: auto !important;
+      max-height: none !important;
+      border-radius: 20px !important;
+      border: 1px solid rgba(20,35,26,.10) !important;
+      transform: translate3d(0, 18px, 0) !important;
+      box-shadow: 0 18px 60px rgba(0,0,0,.30) !important;
+    }
+
+    .menu-inicio.abierto .desplegable-inicio,
+    .menu-liga.abierto .desplegable-liga {
+      transform: translate3d(0,0,0) !important;
+    }
+
+    .desplegable-inicio::before,
+    .desplegable-liga::before {
+      margin-top: 8px !important;
+    }
+
+    .lista-categorias,
+    .lista-equipos {
+      min-height: 0 !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* Visor: una sola camiseta, pero recuperamos navegación lateral. */
+    .visor-anterior,
+    .visor-siguiente {
+      display: grid !important;
+      position: fixed !important;
+      top: 50% !important;
+      z-index: 2250 !important;
+      width: 46px !important;
+      height: 46px !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      place-items: center !important;
+      border-radius: 50% !important;
+      border: 1px solid rgba(255,255,255,.20) !important;
+      background: rgba(18,18,18,.78) !important;
+      color: #fff !important;
+      transform: translateY(-50%) !important;
+      backdrop-filter: blur(7px) !important;
+      -webkit-backdrop-filter: blur(7px) !important;
+      box-shadow: 0 4px 18px rgba(0,0,0,.25) !important;
+    }
+
+    .visor-anterior { left: max(8px, env(safe-area-inset-left)) !important; }
+    .visor-siguiente { right: max(8px, env(safe-area-inset-right)) !important; }
+
+    .visor-anterior .icono-control-visor,
+    .visor-siguiente .icono-control-visor {
+      width: 24px !important;
+      height: 24px !important;
+      display: block !important;
+      margin: 0 !important;
+    }
+
+    /* Dejamos margen para que las flechas no tapen la camiseta. */
+    .visor-contenido {
+      padding-left: 54px !important;
+      padding-right: 54px !important;
+    }
+
+    .visor-imagen-contenedor {
+      max-width: 650px !important;
+    }
+  }
+
+  @media (max-width: 430px) {
+    .desplegable-inicio,
+    .desplegable-liga {
+      top: max(70px, calc(env(safe-area-inset-top) + 48px)) !important;
+      left: 8px !important;
+      right: 8px !important;
+      bottom: max(8px, env(safe-area-inset-bottom)) !important;
+      border-radius: 18px !important;
+    }
+
+    .visor-anterior,
+    .visor-siguiente {
+      width: 42px !important;
+      height: 42px !important;
+    }
+
+    .visor-anterior { left: 5px !important; }
+    .visor-siguiente { right: 5px !important; }
+
+    .visor-contenido {
+      padding-left: 48px !important;
+      padding-right: 48px !important;
+    }
+  }
+
+
+  /* ==============================================================
+     MÓVIL V7 — PANEL VISIBLE REAL + FLECHAS GARANTIZADAS
+     ============================================================== */
+  @media (max-width: 700px) {
+    /*
+      Usamos un bottom-sheet con svh. Así Safari no esconde la parte
+      superior del menú detrás de su barra del navegador.
+    */
+    .desplegable-inicio,
+    .desplegable-liga {
+      top: auto !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      width: 100% !important;
+      height: 72svh !important;
+      max-height: 72svh !important;
+      margin: 0 !important;
+      padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+      border-radius: 24px 24px 0 0 !important;
+      border-bottom: 0 !important;
+      transform: translate3d(0, 105%, 0) !important;
+    }
+
+    .menu-inicio.abierto .desplegable-inicio,
+    .menu-liga.abierto .desplegable-liga {
+      transform: translate3d(0, 0, 0) !important;
+    }
+
+    .titulo-desplegable {
+      display: block !important;
+      flex: 0 0 auto !important;
+      min-height: 42px !important;
+      padding: 12px 16px !important;
+      background: #fff !important;
+      z-index: 3 !important;
+    }
+
+    .busqueda-menu {
+      display: block !important;
+      flex: 0 0 auto !important;
+      background: #fff !important;
+      z-index: 3 !important;
+    }
+
+    .lista-categorias,
+    .lista-equipos {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow-y: auto !important;
+    }
+
+    /*
+      Flechas del visor: las colocamos sobre los laterales de la foto.
+      Si solo existe una camiseta, JS añade .sin-navegacion y se ocultan.
+    */
+    .visor-anterior,
+    .visor-siguiente,
+    .visor-anterior:not([hidden]),
+    .visor-siguiente:not([hidden]) {
+      display: grid !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      position: fixed !important;
+      top: 50dvh !important;
+      z-index: 99999 !important;
+      width: 46px !important;
+      height: 46px !important;
+      min-width: 46px !important;
+      min-height: 46px !important;
+      padding: 0 !important;
+      place-items: center !important;
+      border-radius: 999px !important;
+      border: 1px solid rgba(255,255,255,.28) !important;
+      background: rgba(12,12,12,.82) !important;
+      color: #fff !important;
+      transform: translateY(-50%) !important;
+      box-shadow: 0 5px 20px rgba(0,0,0,.35) !important;
+    }
+
+    .visor-anterior {
+      left: 8px !important;
+      right: auto !important;
+    }
+
+    .visor-siguiente {
+      right: 8px !important;
+      left: auto !important;
+    }
+
+    .visor-anterior.sin-navegacion,
+    .visor-siguiente.sin-navegacion {
+      display: none !important;
+    }
+
+    .visor-anterior svg,
+    .visor-siguiente svg {
+      display: block !important;
+      width: 25px !important;
+      height: 25px !important;
+      stroke: currentColor !important;
+      stroke-width: 2.2 !important;
+      fill: none !important;
+    }
+
+    .visor-contenido {
+      padding-left: 42px !important;
+      padding-right: 42px !important;
+    }
+  }
+
+  @media (max-width: 430px) {
+    .desplegable-inicio,
+    .desplegable-liga {
+      height: 70svh !important;
+      max-height: 70svh !important;
+    }
+
+    .visor-anterior,
+    .visor-siguiente,
+    .visor-anterior:not([hidden]),
+    .visor-siguiente:not([hidden]) {
+      width: 42px !important;
+      height: 42px !important;
+      min-width: 42px !important;
+      min-height: 42px !important;
+    }
+
+    .visor-anterior { left: 4px !important; }
+    .visor-siguiente { right: 4px !important; }
+  }
+
+
+  /* ==============================================================
+     V8 — SELECTOR MÓVIL INDEPENDIENTE + VISOR LIMPIO EN PC/MÓVIL
+     ============================================================== */
+
+  /* PC: visor limpio. Solo fotografía, cerrar y flechas. */
+  @media (min-width: 701px) {
+    .visor-pie,
+    .visor-miniaturas,
+    #visor-miniaturas {
+      display: none !important;
+    }
+
+    .visor figure,
+    .visor-imagen-contenedor,
+    .visor figure img,
+    #visor-imagen {
+      max-height: 88vh !important;
+    }
+
+    .visor-imagen-contenedor {
+      overflow: hidden !important;
+    }
+  }
+
+  @media (max-width: 700px) {
+    /*
+      El selector móvil se mueve físicamente a <body>.
+      Ya no depende de las migas ni de sus contextos de apilado.
+    */
+    body > .desplegable-inicio.selector-movil-abierto,
+    body > .desplegable-liga.selector-movil-abierto {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 2147483000 !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      max-width: none !important;
+      max-height: none !important;
+      margin: 0 !important;
+      padding:
+        max(12px, env(safe-area-inset-top))
+        0
+        max(12px, env(safe-area-inset-bottom)) !important;
+      display: flex !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: #fff !important;
+      box-shadow: none !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+      transform: none !important;
+      transition: none !important;
+      color: #172019 !important;
+    }
+
+    body > .selector-movil-abierto .titulo-desplegable {
+      position: static !important;
+      flex: 0 0 auto !important;
+      min-height: 50px !important;
+      display: flex !important;
+      align-items: center !important;
+      padding: 12px 18px !important;
+      color: #172019 !important;
+      font-size: 14px !important;
+      font-weight: 850 !important;
+      text-align: left !important;
+      background: #fff !important;
+      border-bottom: 1px solid #e8ece9 !important;
+    }
+
+    body > .selector-movil-abierto .busqueda-menu {
+      position: static !important;
+      flex: 0 0 auto !important;
+      padding: 12px 14px !important;
+      background: #fff !important;
+    }
+
+    body > .selector-movil-abierto .busqueda-menu input {
+      height: 48px !important;
+      font-size: 16px !important;
+      border-radius: 14px !important;
+    }
+
+    body > .selector-movil-abierto .lista-categorias,
+    body > .selector-movil-abierto .lista-equipos {
+      flex: 1 1 0 !important;
+      min-height: 0 !important;
+      height: auto !important;
+      max-height: none !important;
+      padding: 8px 12px 24px !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      background: #fff !important;
+      -webkit-overflow-scrolling: touch !important;
+      overscroll-behavior: contain !important;
+    }
+
+    body > .selector-movil-abierto .categoria-menu {
+      margin-bottom: 8px !important;
+      border: 1px solid #e3e8e5 !important;
+      border-radius: 14px !important;
+      overflow: hidden !important;
+      background: #fff !important;
+    }
+
+    body > .selector-movil-abierto .enlace-equipo-menu,
+    body > .selector-movil-abierto .enlace-equipo-inicio {
+      min-height: 62px !important;
+      display: grid !important;
+      grid-template-columns: 48px minmax(0,1fr) 24px !important;
+      align-items: center !important;
+      gap: 10px !important;
+      padding: 8px 10px !important;
+      color: #202723 !important;
+      background: #fff !important;
+    }
+
+    body > .selector-movil-abierto .enlace-equipo-menu > img,
+    body > .selector-movil-abierto .enlace-equipo-inicio > img {
+      width: 42px !important;
+      height: 42px !important;
+      max-width: 42px !important;
+      max-height: 42px !important;
+      object-fit: contain !important;
+      object-position: center !important;
+      justify-self: center !important;
+    }
+
+    /* El fondo antiguo ya no es necesario: el selector cubre todo. */
+    body:has(> .selector-movil-abierto) .fondo-menus {
+      display: none !important;
+    }
+
+    /* Visor móvil: negro real hasta el último píxel del viewport. */
+    .visor,
+    .visor.abierto {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      min-height: 100dvh !important;
+      max-height: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      background: #000 !important;
+      z-index: 2147482000 !important;
+    }
+
+    .visor-fondo {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      background: #000 !important;
+    }
+
+    .visor-contenido {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      min-height: 100dvh !important;
+      padding:
+        max(14px, env(safe-area-inset-top))
+        46px
+        max(14px, env(safe-area-inset-bottom)) !important;
+      background: #000 !important;
+    }
+
+    .visor-pie,
+    .visor-miniaturas,
+    #visor-miniaturas {
+      display: none !important;
+    }
+  }
+
+
+  /* ==============================================================
+     V9 — SALIDA CLARA DEL SELECTOR MÓVIL
+     ============================================================== */
+  .cerrar-selector-movil {
+    display: none;
+  }
+
+  @media (max-width: 700px) {
+    body > .selector-movil-abierto .cerrar-selector-movil {
+      position: relative !important;
+      flex: 0 0 auto !important;
+      width: 100% !important;
+      min-height: 54px !important;
+      display: grid !important;
+      grid-template-columns: 28px 1fr 34px !important;
+      align-items: center !important;
+      gap: 6px !important;
+      padding: 4px 16px 8px !important;
+      border: 0 !important;
+      border-bottom: 1px solid #e8ece9 !important;
+      background: #fff !important;
+      color: #18211b !important;
+      cursor: pointer !important;
+      font: inherit !important;
+      text-align: left !important;
+      z-index: 20 !important;
+    }
+
+    body > .selector-movil-abierto .cerrar-selector-movil > span:first-child {
+      font-size: 34px !important;
+      font-weight: 400 !important;
+      line-height: 1 !important;
+      transform: translateY(-1px) !important;
+    }
+
+    body > .selector-movil-abierto .cerrar-selector-movil strong {
+      font-size: 15px !important;
+      font-weight: 800 !important;
+      letter-spacing: .01em !important;
+    }
+
+    body > .selector-movil-abierto .cerrar-selector-x {
+      width: 34px !important;
+      height: 34px !important;
+      display: grid !important;
+      place-items: center !important;
+      justify-self: end !important;
+      border: 1px solid #dce3df !important;
+      border-radius: 50% !important;
+      background: #f7f9f8 !important;
+      font-size: 25px !important;
+      font-weight: 400 !important;
+      line-height: 1 !important;
+    }
+
+    /* El tirador continúa visible encima de Volver. */
+    body > .desplegable-inicio.selector-movil-abierto::before,
+    body > .desplegable-liga.selector-movil-abierto::before {
+      content: "" !important;
+      display: block !important;
+      flex: 0 0 auto !important;
+      width: 46px !important;
+      height: 5px !important;
+      margin: 4px auto 3px !important;
+      border-radius: 999px !important;
+      background: #cbd4ce !important;
+    }
+  }
+
+
+  /* ==============================================================
+     V10 — TAMAÑO ESTABLE DEL VISOR EN PC Y MÓVIL
+     Evita cambios de escala al pasar el ratón o cambiar de camiseta.
+     ============================================================== */
+
+  /* El visor ya no utiliza zoom visual: la fotografía mantiene siempre
+     exactamente la misma escala y posición. */
+  #visor-imagen,
+  #visor-imagen:hover,
+  #visor-imagen:focus,
+  #visor-imagen:active,
+  #visor-imagen.ampliada,
+  #visor-imagen.arrastrando {
+    transform: none !important;
+    transition: opacity 120ms ease !important;
+    animation: none !important;
+  }
+
+  .visor-imagen-contenedor,
+  .visor-imagen-contenedor:hover,
+  .visor-imagen-contenedor:focus-within {
+    transform: none !important;
+    transition: none !important;
+  }
+
+  /* ESCRITORIO: escenario de tamaño fijo.
+     Todas las camisetas ocupan la misma zona independientemente
+     de las dimensiones originales del archivo. */
+  @media (min-width: 701px) {
+    .visor-contenido > figure {
+      width: min(92vw, 1500px) !important;
+      height: min(88vh, 940px) !important;
+      max-width: min(92vw, 1500px) !important;
+      max-height: 88vh !important;
+      margin: auto !important;
+    }
+
+    .visor-imagen-contenedor,
+    .visor-imagen-contenedor:hover {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      min-height: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background: #000 !important;
+    }
+
+    #visor-imagen,
+    #visor-imagen:hover,
+    #visor-imagen:focus,
+    #visor-imagen:active {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      object-fit: contain !important;
+      object-position: center center !important;
+      cursor: default !important;
+    }
+  }
+
+  /* MÓVIL: el hueco disponible para la fotografía es siempre idéntico.
+     Al pulsar las flechas ya no cambia el tamaño aparente. */
+  @media (max-width: 700px) {
+    .visor-contenido > figure {
+      position: absolute !important;
+      inset:
+        max(72px, calc(env(safe-area-inset-top) + 54px))
+        46px
+        max(38px, env(safe-area-inset-bottom))
+        46px !important;
+      width: auto !important;
+      height: auto !important;
+      max-width: none !important;
+      max-height: none !important;
+      margin: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    .visor-imagen-contenedor,
+    .visor-imagen-contenedor:hover {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      overflow: hidden !important;
+      background: #000 !important;
+      border-radius: 0 !important;
+    }
+
+    #visor-imagen,
+    #visor-imagen:hover,
+    #visor-imagen:focus,
+    #visor-imagen:active {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      margin: 0 !important;
+      object-fit: contain !important;
+      object-position: center center !important;
+      border-radius: 0 !important;
+      touch-action: pan-y !important;
+    }
+
+    .visor-anterior,
+    .visor-siguiente,
+    .visor-anterior:not([hidden]),
+    .visor-siguiente:not([hidden]) {
+      top: 50% !important;
+    }
+  }
+
+  @media (max-width: 430px) {
+    .visor-contenido > figure {
+      inset:
+        max(68px, calc(env(safe-area-inset-top) + 50px))
+        44px
+        max(30px, env(safe-area-inset-bottom))
+        44px !important;
+    }
+  }
+
+
+  /* ==============================================================
+     V11 — VISOR TOTALMENTE ESTABLE
+     No hover, no zoom, no cambio de fondo ni de geometría.
+     ============================================================== */
+
+  .visor,
+  .visor *,
+  .visor *::before,
+  .visor *::after {
+    box-sizing: border-box !important;
+  }
+
+  .visor,
+  .visor:hover,
+  .visor-fondo,
+  .visor-fondo:hover,
+  .visor-contenido,
+  .visor-contenido:hover,
+  .visor figure,
+  .visor figure:hover,
+  .visor-imagen-contenedor,
+  .visor-imagen-contenedor:hover {
+    background: #000 !important;
+  }
+
+  .visor-imagen-contenedor,
+  .visor-imagen-contenedor:hover,
+  .visor-imagen-contenedor:focus,
+  .visor-imagen-contenedor:focus-within,
+  .visor-imagen-contenedor:active {
+    transform: none !important;
+    scale: 1 !important;
+    transition: none !important;
+    animation: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  #visor-imagen,
+  #visor-imagen:hover,
+  #visor-imagen:focus,
+  #visor-imagen:active {
+    transform: none !important;
+    scale: 1 !important;
+    transition: none !important;
+    animation: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+    background: #000 !important;
+    cursor: default !important;
+  }
+
+  @media (min-width: 701px) {
+    .visor {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      overflow: hidden !important;
+      background: #000 !important;
+    }
+
+    .visor-contenido {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      padding: 34px 90px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background: #000 !important;
+    }
+
+    .visor-contenido > figure,
+    .visor-contenido > figure:hover {
+      position: static !important;
+      width: calc(100vw - 180px) !important;
+      height: calc(100vh - 68px) !important;
+      max-width: none !important;
+      max-height: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #000 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    .visor-imagen-contenedor,
+    .visor-imagen-contenedor:hover {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      max-height: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      overflow: hidden !important;
+      background: #000 !important;
+      border-radius: 0 !important;
+    }
+
+    #visor-imagen,
+    #visor-imagen:hover {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      max-height: none !important;
+      object-fit: contain !important;
+      object-position: 50% 50% !important;
+      border-radius: 0 !important;
+    }
+
+    .visor-pie,
+    .visor-miniaturas,
+    #visor-miniaturas {
+      display: none !important;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .visor,
+    .visor.abierto,
+    .visor-fondo,
+    .visor-contenido {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      min-height: 100dvh !important;
+      max-height: 100dvh !important;
+      margin: 0 !important;
+      background: #000 !important;
+    }
+
+    .visor,
+    .visor.abierto {
+      overflow: hidden !important;
+    }
+
+    .visor-contenido {
+      padding: 0 !important;
+      display: block !important;
+    }
+
+    .visor-contenido > figure,
+    .visor-contenido > figure:hover {
+      position: absolute !important;
+      top: max(66px, calc(env(safe-area-inset-top) + 46px)) !important;
+      right: 46px !important;
+      bottom: max(18px, env(safe-area-inset-bottom)) !important;
+      left: 46px !important;
+      width: auto !important;
+      height: auto !important;
+      max-width: none !important;
+      max-height: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background: #000 !important;
+    }
+
+    .visor-imagen-contenedor,
+    .visor-imagen-contenedor:hover {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      max-height: none !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      overflow: hidden !important;
+      background: #000 !important;
+      border-radius: 0 !important;
+    }
+
+    #visor-imagen,
+    #visor-imagen:hover,
+    #visor-imagen:active {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      max-height: none !important;
+      object-fit: contain !important;
+      object-position: 50% 50% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+    }
+
+    .visor-pie,
+    .visor-miniaturas,
+    #visor-miniaturas {
+      display: none !important;
+    }
+  }
+
+</style>
+<!-- =========================================================
+     ELITE JERSEYS · VISOR V11
+     Visor independiente. Este bloque debe permanecer al FINAL.
+     ========================================================= -->
+<div id="ej-v11" class="ej-v11" aria-hidden="true">
+  <button id="ej-v11-close" class="ej-v11-close" type="button" aria-label="Cerrar">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5 5 19"/></svg>
+  </button>
+
+  <button id="ej-v11-prev" class="ej-v11-arrow ej-v11-prev" type="button" aria-label="Anterior">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4 7 12l8 8"/></svg>
+  </button>
+
+  <div class="ej-v11-stage">
+    <img id="ej-v11-img" alt="" />
+  </div>
+
+  <button id="ej-v11-next" class="ej-v11-arrow ej-v11-next" type="button" aria-label="Siguiente">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4 8 8-8 8"/></svg>
+  </button>
+</div>
+
+<script>
+  (() => {
+    const visor = document.getElementById("ej-v11");
+    const imagen = document.getElementById("ej-v11-img");
+    const anterior = document.getElementById("ej-v11-prev");
+    const siguiente = document.getElementById("ej-v11-next");
+    const cerrar = document.getElementById("ej-v11-close");
+    if (!visor || !imagen || !anterior || !siguiente || !cerrar) return;
+
+    let tarjetas = [];
+    let indice = 0;
+    let inicioX = 0;
+
+    const tarjetasVisibles = () =>
+      Array.from(document.querySelectorAll(".foto")).filter((el) => {
+        const estilo = getComputedStyle(el);
+        return estilo.display !== "none" && estilo.visibility !== "hidden";
+      });
+
+    const srcDe = (tarjeta) => {
+      const img = tarjeta?.querySelector?.(".foto-imagen img") || tarjeta?.querySelector?.("img");
+      return (
+        tarjeta?.dataset?.fullSrc ||
+        tarjeta?.dataset?.src ||
+        img?.currentSrc ||
+        img?.src ||
+        ""
+      );
+    };
+
+    const tituloDe = (tarjeta) =>
+      tarjeta?.dataset?.titulo ||
+      tarjeta?.querySelector?.("img")?.alt ||
+      "Camiseta";
+
+    const pintar = () => {
+      if (!tarjetas.length) return;
+      indice = (indice + tarjetas.length) % tarjetas.length;
+      const tarjeta = tarjetas[indice];
+      imagen.src = srcDe(tarjeta);
+      imagen.alt = tituloDe(tarjeta);
+
+      const hayVarias = tarjetas.length > 1;
+      anterior.hidden = !hayVarias;
+      siguiente.hidden = !hayVarias;
+    };
+
+    const abrir = (tarjeta) => {
+      tarjetas = tarjetasVisibles();
+      indice = Math.max(0, tarjetas.indexOf(tarjeta));
+      pintar();
+
+      // Neutraliza por completo el visor antiguo.
+      const viejo = document.getElementById("visor");
+      if (viejo) {
+        viejo.classList.remove("abierto");
+        viejo.setAttribute("aria-hidden", "true");
+      }
+
+      visor.classList.add("ej-v11-open");
+      visor.setAttribute("aria-hidden", "false");
+      document.documentElement.classList.add("ej-v11-lock");
+      document.body.classList.add("ej-v11-lock");
+    };
+
+    const salir = () => {
+      visor.classList.remove("ej-v11-open");
+      visor.setAttribute("aria-hidden", "true");
+      imagen.removeAttribute("src");
+      document.documentElement.classList.remove("ej-v11-lock");
+      document.body.classList.remove("ej-v11-lock", "sin-scroll");
+    };
+
+    // Captura el clic ANTES que el visor anterior.
+    document.addEventListener("click", (e) => {
+      const tarjeta = e.target.closest?.(".foto");
+      if (!tarjeta) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      abrir(tarjeta);
+    }, true);
+
+    anterior.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      indice -= 1;
+      pintar();
+    });
+
+    siguiente.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      indice += 1;
+      pintar();
+    });
+
+    cerrar.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      salir();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (!visor.classList.contains("ej-v11-open")) return;
+      if (e.key === "Escape") salir();
+      if (e.key === "ArrowLeft" && tarjetas.length > 1) {
+        indice -= 1; pintar();
+      }
+      if (e.key === "ArrowRight" && tarjetas.length > 1) {
+        indice += 1; pintar();
+      }
+    });
+
+    visor.addEventListener("touchstart", (e) => {
+      inicioX = e.changedTouches[0]?.clientX || 0;
+    }, { passive: true });
+
+    visor.addEventListener("touchend", (e) => {
+      if (tarjetas.length < 2) return;
+      const finX = e.changedTouches[0]?.clientX || 0;
+      const distancia = finX - inicioX;
+      if (Math.abs(distancia) < 45) return;
+      indice += distancia < 0 ? 1 : -1;
+      pintar();
+    }, { passive: true });
+  })();
+</script>
+
+<style>
+  /* El visor anterior queda completamente fuera de juego. */
+  #visor {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  :global(html.ej-v11-lock),
+  :global(body.ej-v11-lock) {
+    overflow: hidden !important;
+    height: 100% !important;
+  }
+
+  .ej-v11,
+  .ej-v11:hover,
+  .ej-v11:focus,
+  .ej-v11:active {
+    display: none;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483640 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #000 !important;
+    background-color: #000 !important;
+    background-image: none !important;
+    color: #fff !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    filter: none !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .ej-v11.ej-v11-open {
+    display: block !important;
+  }
+
+  .ej-v11-stage,
+  .ej-v11-stage:hover,
+  .ej-v11-stage:focus,
+  .ej-v11-stage:active {
+    position: absolute !important;
+    inset: 20px 84px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #000 !important;
+    background-color: #000 !important;
+    background-image: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    filter: none !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  #ej-v11-img,
+  #ej-v11-img:hover,
+  #ej-v11-img:focus,
+  #ej-v11-img:active {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    object-fit: contain !important;
+    object-position: center center !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none !important;
+    scale: 1 !important;
+    transition: none !important;
+    animation: none !important;
+    cursor: default !important;
+  }
+
+  .ej-v11-close,
+  .ej-v11-arrow,
+  .ej-v11-close:hover,
+  .ej-v11-arrow:hover,
+  .ej-v11-close:focus,
+  .ej-v11-arrow:focus,
+  .ej-v11-close:active,
+  .ej-v11-arrow:active {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    position: absolute !important;
+    z-index: 5 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 50px !important;
+    height: 50px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #151515 !important;
+    background-color: #151515 !important;
+    background-image: none !important;
+    color: #fff !important;
+    border: 1px solid #4a4a4a !important;
+    border-radius: 50% !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none !important;
+    scale: 1 !important;
+    transition: none !important;
+    cursor: pointer !important;
+  }
+
+  .ej-v11-close svg,
+  .ej-v11-arrow svg {
+    display: block !important;
+    width: 24px !important;
+    height: 24px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    fill: none !important;
+    stroke: #fff !important;
+    stroke-width: 2.3 !important;
+    stroke-linecap: round !important;
+    stroke-linejoin: round !important;
+    pointer-events: none !important;
+  }
+
+  .ej-v11-close {
+    top: 18px !important;
+    right: 22px !important;
+  }
+
+  .ej-v11-arrow {
+    top: 50% !important;
+    margin-top: -25px !important;
+  }
+
+  .ej-v11-prev {
+    left: 18px !important;
+  }
+
+  .ej-v11-next {
+    right: 18px !important;
+  }
+
+  .ej-v11-arrow[hidden] {
+    display: none !important;
+  }
+
+  @media (max-width: 700px) {
+    .ej-v11-stage,
+    .ej-v11-stage:hover,
+    .ej-v11-stage:focus,
+    .ej-v11-stage:active {
+      top: max(76px, calc(env(safe-area-inset-top) + 56px)) !important;
+      right: 56px !important;
+      bottom: max(28px, env(safe-area-inset-bottom)) !important;
+      left: 56px !important;
+    }
+
+    .ej-v11-close {
+      top: max(16px, env(safe-area-inset-top)) !important;
+      right: 14px !important;
+      width: 46px !important;
+      height: 46px !important;
+    }
+
+    .ej-v11-arrow {
+      width: 46px !important;
+      height: 46px !important;
+      margin-top: -23px !important;
+    }
+
+    .ej-v11-prev {
+      left: 5px !important;
+    }
+
+    .ej-v11-next {
+      right: 5px !important;
+    }
+
+    .ej-v11-arrow svg {
+      width: 22px !important;
+      height: 22px !important;
+    }
+  }
+</style>
+
+
+<!-- V13 · corrección real de flechas del visor V11 -->
+<style>
+/* Se usan los IDs REALES del visor: #ej-v11-prev y #ej-v11-next.
+   Esto anula cualquier hover/transform heredado del resto de la página. */
+
+#ej-v11-prev,
+#ej-v11-prev:hover,
+#ej-v11-prev:focus,
+#ej-v11-prev:focus-visible,
+#ej-v11-prev:active,
+#ej-v11-next,
+#ej-v11-next:hover,
+#ej-v11-next:focus,
+#ej-v11-next:focus-visible,
+#ej-v11-next:active {
+  position: fixed !important;
+  top: 50% !important;
+  bottom: auto !important;
+  width: 50px !important;
+  height: 50px !important;
+  min-width: 50px !important;
+  min-height: 50px !important;
+  max-width: 50px !important;
+  max-height: 50px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  border: 1px solid #4a4a4a !important;
+  border-radius: 999px !important;
+  background: #151515 !important;
+  background-color: #151515 !important;
+  background-image: none !important;
+  color: #fff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  scale: 1 !important;
+  rotate: 0deg !important;
+  translate: none !important;
+  transform: translate3d(0,-50%,0) !important;
+  transition: none !important;
+  animation: none !important;
+  line-height: 0 !important;
+  text-indent: 0 !important;
+  font-size: 0 !important;
+  display: block !important;
+  z-index: 2147483646 !important;
+  overflow: hidden !important;
+  cursor: pointer !important;
+}
+
+#ej-v11-prev,
+#ej-v11-prev:hover,
+#ej-v11-prev:focus,
+#ej-v11-prev:focus-visible,
+#ej-v11-prev:active {
+  left: 18px !important;
+  right: auto !important;
+}
+
+#ej-v11-next,
+#ej-v11-next:hover,
+#ej-v11-next:focus,
+#ej-v11-next:focus-visible,
+#ej-v11-next:active {
+  right: 18px !important;
+  left: auto !important;
+}
+
+#ej-v11-prev::before,
+#ej-v11-prev::after,
+#ej-v11-next::before,
+#ej-v11-next::after {
+  content: none !important;
+  display: none !important;
+  transform: none !important;
+}
+
+#ej-v11-prev > svg,
+#ej-v11-prev:hover > svg,
+#ej-v11-prev:focus > svg,
+#ej-v11-prev:focus-visible > svg,
+#ej-v11-prev:active > svg,
+#ej-v11-next > svg,
+#ej-v11-next:hover > svg,
+#ej-v11-next:focus > svg,
+#ej-v11-next:focus-visible > svg,
+#ej-v11-next:active > svg {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  display: block !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  fill: none !important;
+  stroke: #fff !important;
+  stroke-width: 2.3 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  opacity: 1 !important;
+  filter: none !important;
+  scale: 1 !important;
+  rotate: 0deg !important;
+  translate: none !important;
+  transform: translate3d(-50%,-50%,0) !important;
+  transition: none !important;
+  animation: none !important;
+  pointer-events: none !important;
+}
+
+#ej-v11-prev[hidden],
+#ej-v11-next[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 700px) {
+  #ej-v11-prev,
+  #ej-v11-prev:hover,
+  #ej-v11-prev:focus,
+  #ej-v11-prev:focus-visible,
+  #ej-v11-prev:active,
+  #ej-v11-next,
+  #ej-v11-next:hover,
+  #ej-v11-next:focus,
+  #ej-v11-next:focus-visible,
+  #ej-v11-next:active {
+    width: 46px !important;
+    height: 46px !important;
+    min-width: 46px !important;
+    min-height: 46px !important;
+    max-width: 46px !important;
+    max-height: 46px !important;
+    top: 50% !important;
+    margin: 0 !important;
+    transform: translate3d(0,-50%,0) !important;
+  }
+
+  #ej-v11-prev,
+  #ej-v11-prev:hover,
+  #ej-v11-prev:focus,
+  #ej-v11-prev:focus-visible,
+  #ej-v11-prev:active {
+    left: 5px !important;
+  }
+
+  #ej-v11-next,
+  #ej-v11-next:hover,
+  #ej-v11-next:focus,
+  #ej-v11-next:focus-visible,
+  #ej-v11-next:active {
+    right: 5px !important;
+  }
+
+  #ej-v11-prev > svg,
+  #ej-v11-prev:hover > svg,
+  #ej-v11-prev:focus > svg,
+  #ej-v11-prev:focus-visible > svg,
+  #ej-v11-prev:active > svg,
+  #ej-v11-next > svg,
+  #ej-v11-next:hover > svg,
+  #ej-v11-next:focus > svg,
+  #ej-v11-next:focus-visible > svg,
+  #ej-v11-next:active > svg {
+    width: 22px !important;
+    height: 22px !important;
+    min-width: 22px !important;
+    min-height: 22px !important;
+    transform: translate3d(-50%,-50%,0) !important;
+  }
+}
+</style>
+
+
+<!-- V14 · lupa del buscador móvil perfectamente alineada -->
+<style>
+@media (max-width: 700px) {
+  .busqueda-menu {
+    position: relative !important;
+    display: block !important;
+    box-sizing: border-box !important;
+  }
+
+  .busqueda-menu input {
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding-left: 46px !important;
+    padding-right: 44px !important;
+  }
+
+  /* Ocultamos el carácter ⌕ y dibujamos una lupa estable con CSS */
+  .busqueda-menu-icono {
+    position: absolute !important;
+    top: 50% !important;
+    left: 28px !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 17px !important;
+    height: 17px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 5 !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    border: 2px solid #7c8880 !important;
+    border-radius: 50% !important;
+    color: transparent !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    background: transparent !important;
+    transform: translateY(-50%) !important;
+    pointer-events: none !important;
+  }
+
+  .busqueda-menu-icono::after {
+    content: "" !important;
+    position: absolute !important;
+    width: 7px !important;
+    height: 2px !important;
+    right: -5px !important;
+    bottom: -2px !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background: #7c8880 !important;
+    transform: rotate(45deg) !important;
+    transform-origin: center !important;
+  }
+
+  .limpiar-busqueda-menu {
+    top: 50% !important;
+    right: 24px !important;
+    margin: 0 !important;
+    transform: translateY(-50%) !important;
+  }
+}
+</style>
+
+
+<!-- V15 · corrección exclusiva de la lupa del buscador móvil -->
+<style>
+@media (max-width: 700px) {
+  .busqueda-menu {
+    position: relative !important;
+  }
+
+  .busqueda-menu input {
+    padding-left: 58px !important;
+  }
+
+  .busqueda-menu::before {
+    content: "" !important;
+    position: absolute !important;
+    left: 27px !important;
+    top: 50% !important;
+    width: 17px !important;
+    height: 17px !important;
+    border: 2px solid #7b857f !important;
+    border-radius: 50% !important;
+    box-sizing: border-box !important;
+    transform: translateY(-58%) !important;
+    z-index: 50 !important;
+    pointer-events: none !important;
+    display: block !important;
+    opacity: 1 !important;
+  }
+
+  .busqueda-menu::after {
+    content: "" !important;
+    position: absolute !important;
+    left: 42px !important;
+    top: calc(50% + 7px) !important;
+    width: 8px !important;
+    height: 2px !important;
+    border-radius: 999px !important;
+    background: #7b857f !important;
+    transform: rotate(45deg) !important;
+    transform-origin: left center !important;
+    z-index: 51 !important;
+    pointer-events: none !important;
+    display: block !important;
+    opacity: 1 !important;
+  }
+
+  /* anulamos el icono antiguo para que no pueda aparecer duplicado */
+  .busqueda-menu-icono {
+    display: none !important;
+  }
+}
+</style>
+
+
+<!-- V16 · lupa integrada directamente en el input móvil -->
+<style>
+@media (max-width: 700px) {
+  /* Eliminamos por completo las lupas anteriores */
+  .busqueda-menu::before,
+  .busqueda-menu::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  .busqueda-menu-icono {
+    display: none !important;
+  }
+
+  /* La lupa pasa a formar parte del propio campo de búsqueda.
+     Así no puede desplazarse al hacer scroll ni aparecer junto a los equipos. */
+  .busqueda-menu input {
+    padding-left: 58px !important;
+    background-color: #fff !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%237b857f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-4-4'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: 25px 50% !important;
+    background-size: 22px 22px !important;
+  }
+}
+</style>
+
+
+<!-- =========================================================
+     ELITE JERSEYS · PEDIDOS PC · PRUEBA V1
+     Se añade de forma independiente al [equipo].astro V16.
+     ========================================================= -->
+<style>
+@media (min-width: 701px) {
+  #ej-order-fab{
+    position:fixed; right:28px; bottom:28px; z-index:2147483000;
+    border:0; border-radius:999px; padding:14px 20px;
+    background:#111; color:#fff; font:700 14px/1 system-ui,-apple-system,sans-serif;
+    box-shadow:0 10px 30px #0003; cursor:pointer;
+  }
+  #ej-order-fab span{
+    display:inline-grid; place-items:center; min-width:22px; height:22px;
+    margin-left:8px; padding:0 6px; border-radius:999px; background:#fff; color:#111;
+  }
+  .ej-order-add{
+    display:block; width:calc(100% - 24px); margin:0 12px 14px; padding:11px 14px;
+    border:1px solid #161616; border-radius:12px; background:#111; color:#fff;
+    font:700 13px/1.1 system-ui,-apple-system,sans-serif; cursor:pointer;
+  }
+  #ej-order-overlay{
+    position:fixed; inset:0; z-index:2147483200; display:none;
+    background:rgba(0,0,0,.58); backdrop-filter:blur(5px);
+  }
+  #ej-order-overlay.is-open{display:block}
+  #ej-order-panel{
+    position:absolute; top:0; right:0; width:min(480px,100%); height:100%;
+    background:#fff; color:#151a17; box-shadow:-20px 0 60px #0004;
+    overflow:auto; font-family:system-ui,-apple-system,sans-serif;
+  }
+  .ej-order-head{
+    position:sticky; top:0; z-index:3; display:flex; align-items:center;
+    justify-content:space-between; padding:22px 24px; background:#fff;
+    border-bottom:1px solid #e6e9e7;
+  }
+  .ej-order-head h2{margin:0;font-size:22px}
+  .ej-order-x{border:0;background:#f0f2f1;width:38px;height:38px;border-radius:50%;font-size:24px;cursor:pointer}
+  .ej-order-body{padding:22px 24px 36px}
+  .ej-order-product{
+    display:flex; gap:14px; align-items:center; padding:12px;
+    border:1px solid #e2e6e3; border-radius:16px; margin-bottom:18px;
+  }
+  .ej-order-product img{width:72px;height:82px;object-fit:contain;border-radius:10px;background:#111}
+  .ej-order-product strong{display:block;font-size:16px}
+  .ej-order-product small{display:block;color:#6d746f;margin-top:4px}
+  .ej-order-field{margin:15px 0}
+  .ej-order-field>label{display:block;font-size:13px;font-weight:800;margin:0 0 7px}
+  .ej-order-field select,.ej-order-field input{
+    width:100%; height:46px; box-sizing:border-box; border:1px solid #cfd6d1;
+    border-radius:11px; padding:0 12px; background:#fff; color:#171b18; font-size:15px;
+  }
+  .ej-order-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .ej-order-check{
+    display:flex; align-items:center; gap:10px; padding:12px; margin:10px 0;
+    border:1px solid #e0e5e1; border-radius:12px; cursor:pointer;
+  }
+  .ej-order-check input{width:18px;height:18px}
+  .ej-order-hidden{display:none!important}
+  .ej-order-pricebox{
+    margin:20px 0 14px; padding:15px; border-radius:14px; background:#f2f6f3;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .ej-order-pricebox b{font-size:21px}
+  .ej-order-primary{
+    width:100%; border:0; border-radius:13px; padding:14px 16px;
+    background:#23865a; color:#fff; font-size:15px; font-weight:800; cursor:pointer;
+  }
+  .ej-order-secondary{
+    width:100%; margin-top:10px; border:1px solid #23865a; border-radius:13px;
+    padding:13px 16px; background:#fff; color:#17643f; font-size:14px;
+    font-weight:800; cursor:pointer;
+  }
+  .ej-order-status{
+    display:none; margin-top:14px; padding:12px 14px; border-radius:12px;
+    font-size:14px; line-height:1.45;
+  }
+  .ej-order-status.ok{display:block;background:#eaf7ef;color:#155d38;border:1px solid #bfe5ce}
+  .ej-order-status.error{display:block;background:#fff0f0;color:#8b2424;border:1px solid #efc5c5}
+  .ej-order-primary:disabled{opacity:.65;cursor:not-allowed}
+  .ej-order-new{
+    width:100%; margin-top:10px; border:0; border-radius:13px; padding:14px 16px;
+    background:#111; color:#fff; font-size:15px; font-weight:800; cursor:pointer;
+  }
+  .ej-order-privacy{margin:2px 0 10px;font-size:12px;line-height:1.45;color:#68736d}
+  .ej-order-hp{
+    position:absolute !important;
+    width:1px !important; height:1px !important;
+    overflow:hidden !important;
+    clip:rect(0 0 0 0) !important;
+    clip-path:inset(50%) !important;
+    white-space:nowrap !important;
+  }
+
+  .ej-cart-item{padding:14px 0;border-bottom:1px solid #e8ebe9}
+  .ej-cart-top{display:flex;justify-content:space-between;gap:15px}
+  .ej-cart-item p{margin:5px 0;color:#59615c;font-size:13px;line-height:1.45}
+  .ej-cart-remove{border:0;background:none;color:#a32d2d;cursor:pointer;padding:0}
+  .ej-cart-total{display:flex;justify-content:space-between;font-size:20px;font-weight:900;padding:20px 0}
+  .ej-cart-empty{text-align:center;color:#707873;padding:55px 10px}
+  #ej-config-view,#ej-cart-view{display:none}
+  #ej-config-view.is-active,#ej-cart-view.is-active{display:block}
+}
+@media (max-width:700px){
+  #ej-order-fab,#ej-order-overlay,.ej-order-add{display:none!important}
+}
+</style>
+
+<button id="ej-order-fab" type="button">Mi pedido <span id="ej-order-count">0</span></button>
+
+<div id="ej-order-overlay" aria-hidden="true">
+  <aside id="ej-order-panel" role="dialog" aria-modal="true" aria-label="Pedido Elite Jerseys" data-category={categoria}>
+    <div class="ej-order-head">
+      <h2 id="ej-order-title">Mi pedido</h2>
+      <button class="ej-order-x" id="ej-order-close" type="button" aria-label="Cerrar">×</button>
+    </div>
+    <div class="ej-order-body">
+      <section id="ej-config-view">
+        <div class="ej-order-product">
+          <img id="ej-order-img" alt="">
+          <div><strong id="ej-order-name"></strong><small id="ej-order-detail"></small></div>
+        </div>
+
+        <div class="ej-order-field">
+          <label>Producto</label>
+          <select id="ej-product-type">
+            <option value="adulto">Camiseta adulto</option>
+            <option value="nino">Conjunto niño</option>
+          </select>
+        </div>
+
+        <div class="ej-order-field" id="ej-version-wrap">
+          <label>Versión</label>
+          <select id="ej-version">
+            <option value="aficionado">Aficionado · 9 €</option>
+            <option value="jugador">Jugador · 12 €</option>
+          </select>
+        </div>
+
+        <div class="ej-order-row">
+          <div class="ej-order-field">
+            <label>Talla</label>
+            <select id="ej-size"></select>
+          </div>
+          <div class="ej-order-field">
+            <label>Cantidad</label>
+            <div class="ej-qty-control">
+              <button id="ej-qty-minus" type="button" aria-label="Restar una unidad">−</button>
+              <input id="ej-qty" type="number" min="1" max="20" value="1" readonly>
+              <button id="ej-qty-plus" type="button" aria-label="Añadir una unidad">+</button>
+            </div>
+          </div>
+        </div>
+
+        <label class="ej-order-check">
+          <input id="ej-personalize" type="checkbox">
+          <span>Nombre + dorsal <b>(+3 €)</b></span>
+        </label>
+
+        <div id="ej-personal-fields" class="ej-order-row ej-order-hidden">
+          <div class="ej-order-field"><label>Nombre</label><input id="ej-player-name" maxlength="20" placeholder="Ej. SUAREZ"></div>
+          <div class="ej-order-field"><label>Dorsal</label><input id="ej-player-number" type="number" min="0" max="99" inputmode="numeric" placeholder="9"></div>
+        </div>
+
+        <label class="ej-order-check">
+          <input id="ej-patches" type="checkbox">
+          <span>Parches</span>
+        </label>
+
+        <div id="ej-patch-type-wrap" class="ej-order-field ej-order-hidden">
+          <label>Tipo de parche</label>
+          <select id="ej-patch-type">
+            <option value="LIGA">LIGA (+1 €)</option>
+            <option value="CHAMPIONS">CHAMPIONS (+1 €)</option>
+          </select>
+        </div>
+
+        <div class="ej-order-pricebox"><span>Total de este artículo</span><b id="ej-line-price">9 €</b></div>
+        <button id="ej-add-cart" class="ej-order-primary" type="button">Añadir al pedido</button>
+      </section>
+
+      <section id="ej-cart-view" class="is-active">
+        <div id="ej-cart-summary" class="ej-cart-summary ej-order-hidden"></div>
+        <div id="ej-cart-items"></div>
+        <div id="ej-cart-checkout" class="ej-order-hidden">
+          <div class="ej-cart-total ej-v31-total">
+            <div><span>TOTAL DEL PEDIDO</span><small>Importe total de todos los artículos</small></div>
+            <span id="ej-cart-total">0 €</span>
+          </div>
+          <div class="ej-order-field">
+            <label>Nombre del solicitante</label>
+            <input id="ej-customer-name" type="text" autocomplete="name" minlength="2" maxlength="60" placeholder="Nombre y apellidos">
+          </div>
+          <div class="ej-order-field">
+            <label>Teléfono del solicitante</label>
+            <input id="ej-customer-phone" type="tel" inputmode="tel" autocomplete="tel" minlength="9" maxlength="20" placeholder="Ej. 612 345 678">
+            <div class="ej-order-hp" aria-hidden="true">
+              <label for="ej-order-website">No rellenar este campo</label>
+              <input id="ej-order-website" type="text" tabindex="-1" autocomplete="off">
+            </div>
+          </div>
+          <p class="ej-order-privacy">Tus datos se utilizarán únicamente para gestionar este pedido.</p>
+          <button id="ej-send-order" class="ej-order-primary" type="button">Enviar pedido</button>
+          <button id="ej-whatsapp" class="ej-order-secondary ej-whatsapp-backup" type="button">¿Problemas con el envío? Usar WhatsApp</button>
+          <div id="ej-order-status" class="ej-order-status" role="status" aria-live="polite"></div>
+          <button id="ej-new-order" class="ej-order-new ej-order-hidden" type="button">Hacer otro pedido</button>
+        </div>
+      </section>
+    </div>
+  </aside>
+</div>
+
+
+<style>
+/* V25 · carrito visual corregido dentro del panel de pedido */
+  #ej-cart-items{
+    display:grid;
+    gap:12px;
+    padding-bottom:4px;
+  }
+
+  .ej-cart-item{
+    display:grid !important;
+    grid-template-columns:88px minmax(0,1fr);
+    gap:14px;
+    padding:13px !important;
+    margin:0 !important;
+    border:1px solid #e5e9e7 !important;
+    border-radius:16px !important;
+    background:#fff !important;
+    box-shadow:0 4px 18px rgba(15,23,20,.045);
+  }
+
+  .ej-cart-media{
+    width:88px;
+    height:104px;
+    border-radius:12px;
+    overflow:hidden;
+    background:#f3f5f4;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .ej-cart-thumb{
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+
+  .ej-cart-content{
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .ej-cart-top{
+    display:flex !important;
+    align-items:flex-start !important;
+    justify-content:space-between !important;
+    gap:12px !important;
+  }
+
+  .ej-cart-team{
+    display:block;
+    font-size:15px;
+    line-height:1.25;
+    color:#171b19;
+  }
+
+  .ej-cart-kind{
+    display:block;
+    margin-top:4px;
+    color:#69736e;
+    font-size:12px;
+    line-height:1.35;
+  }
+
+  .ej-cart-remove{
+    flex:0 0 auto;
+    border:0 !important;
+    border-radius:999px !important;
+    padding:7px 10px !important;
+    background:#fff1f1 !important;
+    color:#a52d2d !important;
+    font-size:11px !important;
+    font-weight:800 !important;
+    cursor:pointer;
+    transition:background .16s ease, transform .16s ease;
+  }
+
+  .ej-cart-remove:hover{
+    background:#ffe3e3 !important;
+    transform:none !important;
+  }
+
+  .ej-cart-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-top:10px;
+  }
+
+  .ej-cart-meta span{
+    display:inline-flex;
+    gap:4px;
+    align-items:center;
+    padding:5px 8px;
+    border-radius:999px;
+    background:#f3f6f4;
+    color:#4e5953;
+    font-size:11px;
+    line-height:1.2;
+  }
+
+  .ej-cart-meta b{
+    color:#202622;
+    font-weight:800;
+  }
+
+  .ej-cart-bottom{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:12px;
+    margin-top:auto;
+    padding-top:11px;
+  }
+
+  .ej-cart-bottom span{
+    color:#7a837e;
+    font-size:11px;
+  }
+
+  .ej-cart-bottom strong{
+    color:#111;
+    font-size:17px;
+    line-height:1;
+  }
+
+  .ej-cart-total{
+    margin-top:16px !important;
+    padding:16px 0 !important;
+    border-top:1px solid #e3e7e5;
+    border-bottom:1px solid #e3e7e5;
+  }
+
+  /* La miniatura nunca puede crecer al tamaño original de la camiseta */
+  #ej-cart-items .ej-cart-media{
+    min-width:88px !important;
+    max-width:88px !important;
+    min-height:104px !important;
+    max-height:104px !important;
+  }
+  #ej-cart-items .ej-cart-thumb{
+    width:88px !important;
+    height:104px !important;
+    max-width:88px !important;
+    max-height:104px !important;
+    object-fit:cover !important;
+  }
+  /* V26 · carrito compacto sin imágenes: evita cualquier conflicto con estilos globales */
+  #ej-cart-items .ej-cart-item{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    overflow:hidden !important;
+  }
+  #ej-cart-items .ej-cart-media,
+  #ej-cart-items .ej-cart-thumb{
+    display:none !important;
+    width:0 !important;
+    height:0 !important;
+  }
+  #ej-cart-items .ej-cart-content{
+    width:100% !important;
+    max-width:100% !important;
+  }
+</style>
+
+
+<style>
+/* V27 · Mi pedido profesional, detallado y separado */
+#ej-cart-items{
+  display:grid !important;
+  gap:14px !important;
+  width:100% !important;
+  overflow:visible !important;
+}
+
+#ej-cart-items .ej-v27-item{
+  display:block !important;
+  width:100% !important;
+  box-sizing:border-box !important;
+  margin:0 !important;
+  padding:16px !important;
+  border:1px solid #e1e7e3 !important;
+  border-radius:16px !important;
+  background:#fff !important;
+  box-shadow:0 3px 14px rgba(18,31,24,.045) !important;
+  overflow:hidden !important;
+}
+
+.ej-v27-head{
+  display:flex !important;
+  align-items:flex-start !important;
+  justify-content:space-between !important;
+  gap:12px !important;
+}
+
+.ej-v27-title{
+  min-width:0;
+}
+
+.ej-v27-title strong{
+  display:block;
+  margin:0 !important;
+  color:#171b19 !important;
+  font-size:16px !important;
+  font-weight:850 !important;
+  line-height:1.25 !important;
+}
+
+.ej-v27-title span{
+  display:block;
+  margin-top:4px;
+  color:#69736e;
+  font-size:12px;
+  line-height:1.35;
+}
+
+.ej-v27-remove{
+  flex:0 0 auto !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:4px !important;
+  margin:0 !important;
+  padding:7px 9px !important;
+  border:1px solid #f1cece !important;
+  border-radius:9px !important;
+  background:#fff7f7 !important;
+  color:#a53737 !important;
+  font:inherit !important;
+  font-size:11px !important;
+  font-weight:800 !important;
+  line-height:1 !important;
+  cursor:pointer !important;
+  appearance:none !important;
+}
+
+.ej-v27-remove span{
+  font-size:16px;
+  line-height:.7;
+  font-weight:500;
+}
+
+.ej-v27-remove:hover{
+  background:#ffeded !important;
+  transform:none !important;
+}
+
+.ej-v27-data{
+  display:grid !important;
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:7px !important;
+  margin-top:14px !important;
+}
+
+.ej-v27-data-cell{
+  min-width:0;
+  padding:9px 8px !important;
+  border-radius:10px !important;
+  background:#f5f7f6 !important;
+  text-align:center !important;
+}
+
+.ej-v27-data-cell span{
+  display:block !important;
+  color:#7a847e !important;
+  font-size:10px !important;
+  font-weight:650 !important;
+  line-height:1.2 !important;
+}
+
+.ej-v27-data-cell strong{
+  display:block !important;
+  margin-top:3px !important;
+  color:#1b211e !important;
+  font-size:13px !important;
+  font-weight:850 !important;
+  line-height:1.2 !important;
+}
+
+.ej-v27-extra{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:12px !important;
+  margin-top:8px !important;
+  padding:10px 11px !important;
+  border:1px solid #e7ebe9 !important;
+  border-radius:10px !important;
+}
+
+.ej-v27-extra span{
+  color:#6f7973 !important;
+  font-size:11px !important;
+}
+
+.ej-v27-extra strong{
+  color:#202622 !important;
+  font-size:12px !important;
+  font-weight:850 !important;
+  text-align:right !important;
+}
+
+.ej-v27-price{
+  display:flex !important;
+  align-items:flex-end !important;
+  justify-content:space-between !important;
+  gap:12px !important;
+  margin-top:13px !important;
+  padding-top:12px !important;
+  border-top:1px solid #e7ebe9 !important;
+}
+
+.ej-v27-price span{
+  color:#6f7973 !important;
+  font-size:11px !important;
+}
+
+.ej-v27-price strong{
+  color:#111 !important;
+  font-size:18px !important;
+  font-weight:900 !important;
+  line-height:1 !important;
+}
+
+#ej-cart-checkout .ej-cart-total{
+  margin-top:18px !important;
+  padding:17px 2px !important;
+  border-top:1px solid #dde4e0 !important;
+  border-bottom:1px solid #dde4e0 !important;
+}
+
+/* Sigue sin haber imágenes en Mi pedido. La miniatura se conserva solo en Configurar camiseta. */
+#ej-cart-items img{
+  display:none !important;
+}
+</style>
+
+
+<style>
+/* V28 · tarjeta final de pedido */
+#ej-cart-items .ej-v27-item{
+  padding:18px !important;
+  border:1px solid #dfe6e2 !important;
+  border-radius:18px !important;
+  background:#ffffff !important;
+  box-shadow:0 6px 22px rgba(16,32,23,.06) !important;
+}
+
+#ej-cart-items .ej-v27-head{
+  display:block !important;
+  padding-bottom:13px !important;
+  margin-bottom:13px !important;
+  border-bottom:1px solid #edf0ee !important;
+}
+
+#ej-cart-items .ej-v27-title strong{
+  font-size:16px !important;
+  font-weight:900 !important;
+  letter-spacing:-.2px !important;
+}
+
+#ej-cart-items .ej-v27-title span{
+  margin-top:5px !important;
+  color:#6d7771 !important;
+  font-size:12px !important;
+}
+
+#ej-cart-items .ej-v27-data{
+  display:grid !important;
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:8px !important;
+  margin:0 !important;
+}
+
+#ej-cart-items .ej-v27-data-cell{
+  display:flex !important;
+  min-height:54px !important;
+  padding:8px 5px !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  border:1px solid #e8ecea !important;
+  border-radius:11px !important;
+  background:#f7f9f8 !important;
+}
+
+#ej-cart-items .ej-v27-data-cell span{
+  margin:0 0 4px !important;
+  color:#7a847e !important;
+  font-size:10px !important;
+  font-weight:700 !important;
+  text-transform:uppercase !important;
+  letter-spacing:.35px !important;
+}
+
+#ej-cart-items .ej-v27-data-cell strong{
+  margin:0 !important;
+  color:#18201c !important;
+  font-size:13px !important;
+  font-weight:900 !important;
+}
+
+#ej-cart-items .ej-v27-extra{
+  margin-top:9px !important;
+  padding:11px 12px !important;
+  border:1px solid #e5eae7 !important;
+  border-radius:11px !important;
+  background:#fff !important;
+}
+
+#ej-cart-items .ej-v27-price{
+  margin-top:14px !important;
+  padding:13px 0 0 !important;
+  border-top:1px solid #e9edeb !important;
+}
+
+#ej-cart-items .ej-v27-price span{
+  color:#6d7771 !important;
+  font-size:12px !important;
+  font-weight:650 !important;
+}
+
+#ej-cart-items .ej-v27-price strong{
+  font-size:19px !important;
+  font-weight:950 !important;
+}
+
+#ej-cart-items .ej-v28-remove-bottom{
+  display:flex !important;
+  width:100% !important;
+  height:38px !important;
+  margin:13px 0 0 !important;
+  padding:0 12px !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:5px !important;
+  border:1px solid #efd2d2 !important;
+  border-radius:10px !important;
+  background:#fff8f8 !important;
+  color:#a23b3b !important;
+  font-family:inherit !important;
+  font-size:12px !important;
+  font-weight:850 !important;
+  line-height:1 !important;
+  cursor:pointer !important;
+  appearance:none !important;
+}
+
+#ej-cart-items .ej-v28-remove-bottom:hover{
+  background:#ffeded !important;
+  border-color:#e9bebe !important;
+  transform:none !important;
+}
+
+#ej-cart-items .ej-v28-remove-bottom span{
+  font-size:17px !important;
+  font-weight:500 !important;
+  line-height:1 !important;
+}
+
+#ej-cart-checkout .ej-cart-total{
+  margin-top:20px !important;
+  padding:18px 2px !important;
+  border-top:1px solid #dfe5e2 !important;
+  border-bottom:1px solid #dfe5e2 !important;
+}
+</style>
+
+
+<style>
+/* V29 · resumen vertical exacto solicitado */
+#ej-cart-items{
+  display:grid !important;
+  gap:14px !important;
+}
+
+#ej-cart-items .ej-v29-item{
+  display:block !important;
+  width:100% !important;
+  box-sizing:border-box !important;
+  margin:0 !important;
+  padding:16px !important;
+  border:1px solid #dfe6e2 !important;
+  border-radius:16px !important;
+  background:#fff !important;
+  box-shadow:0 4px 16px rgba(17,31,23,.05) !important;
+}
+
+#ej-cart-items .ej-v29-row{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:18px !important;
+  min-height:36px !important;
+  padding:7px 0 !important;
+  border-bottom:1px solid #edf0ee !important;
+}
+
+#ej-cart-items .ej-v29-row > span{
+  flex:0 0 auto !important;
+  color:#737d77 !important;
+  font-size:12px !important;
+  font-weight:650 !important;
+  line-height:1.3 !important;
+}
+
+#ej-cart-items .ej-v29-row > strong{
+  min-width:0 !important;
+  color:#1a201d !important;
+  font-size:13px !important;
+  font-weight:850 !important;
+  line-height:1.3 !important;
+  text-align:right !important;
+  overflow-wrap:anywhere !important;
+}
+
+#ej-cart-items .ej-v29-team{
+  min-height:42px !important;
+  padding-top:0 !important;
+}
+
+#ej-cart-items .ej-v29-team > strong{
+  font-size:15px !important;
+  font-weight:900 !important;
+}
+
+#ej-cart-items .ej-v29-price{
+  padding-top:11px !important;
+  padding-bottom:11px !important;
+  border-bottom:0 !important;
+}
+
+#ej-cart-items .ej-v29-price > span{
+  color:#525d57 !important;
+  font-weight:750 !important;
+}
+
+#ej-cart-items .ej-v29-price > strong{
+  color:#111 !important;
+  font-size:18px !important;
+  font-weight:950 !important;
+}
+
+#ej-cart-items .ej-v29-remove{
+  display:flex !important;
+  width:100% !important;
+  height:39px !important;
+  box-sizing:border-box !important;
+  margin:4px 0 0 !important;
+  padding:0 12px !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:5px !important;
+  border:1px solid #efd0d0 !important;
+  border-radius:10px !important;
+  background:#fff7f7 !important;
+  color:#a23838 !important;
+  font-family:inherit !important;
+  font-size:12px !important;
+  font-weight:850 !important;
+  line-height:1 !important;
+  cursor:pointer !important;
+  appearance:none !important;
+}
+
+#ej-cart-items .ej-v29-remove:hover{
+  background:#ffeded !important;
+  border-color:#e9baba !important;
+  transform:none !important;
+}
+
+#ej-cart-items .ej-v29-remove > span{
+  font-size:17px !important;
+  font-weight:500 !important;
+  line-height:1 !important;
+}
+
+#ej-cart-items img{
+  display:none !important;
+}
+</style>
+
+
+<style is:global>
+/* V32 · diseño profesional global para elementos dinámicos de Mi pedido */
+#ej-cart-items{
+  display:grid !important;
+  grid-template-columns:1fr !important;
+  gap:16px !important;
+  width:100% !important;
+  padding:0 !important;
+  margin:0 !important;
+}
+
+#ej-cart-items .ej-v31-item{
+  display:block !important;
+  width:100% !important;
+  max-width:none !important;
+  box-sizing:border-box !important;
+  margin:0 !important;
+  padding:0 16px 15px !important;
+  overflow:hidden !important;
+  border:1px solid #dfe5e1 !important;
+  border-radius:17px !important;
+  background:#fff !important;
+  box-shadow:0 7px 24px rgba(18,34,25,.065) !important;
+}
+
+#ej-cart-items .ej-v31-article-head{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:12px !important;
+  margin:0 -16px 5px !important;
+  padding:14px 16px !important;
+  border-bottom:1px solid #e7ece9 !important;
+  background:#f7f9f8 !important;
+}
+
+#ej-cart-items .ej-v31-article-head > div{
+  min-width:0 !important;
+}
+
+#ej-cart-items .ej-v31-kicker{
+  display:block !important;
+  margin:0 0 3px !important;
+  color:#248b61 !important;
+  font-size:9px !important;
+  font-weight:900 !important;
+  line-height:1 !important;
+  letter-spacing:.9px !important;
+}
+
+#ej-cart-items .ej-v31-article-head strong{
+  display:block !important;
+  margin:0 !important;
+  color:#18201c !important;
+  font-size:14px !important;
+  font-weight:900 !important;
+  line-height:1.25 !important;
+}
+
+#ej-cart-items .ej-v31-badge{
+  flex:0 0 auto !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  min-width:50px !important;
+  height:30px !important;
+  padding:0 9px !important;
+  border-radius:999px !important;
+  background:#eaf6f0 !important;
+  color:#176b49 !important;
+  font-size:13px !important;
+  font-weight:900 !important;
+}
+
+#ej-cart-items .ej-v31-item .ej-v29-row{
+  display:grid !important;
+  grid-template-columns:minmax(120px,.85fr) minmax(0,1.15fr) !important;
+  align-items:center !important;
+  gap:14px !important;
+  min-height:0 !important;
+  margin:0 !important;
+  padding:9px 0 !important;
+  border-bottom:1px solid #edf0ee !important;
+  background:transparent !important;
+}
+
+#ej-cart-items .ej-v31-item .ej-v29-row > span{
+  display:block !important;
+  margin:0 !important;
+  color:#77817b !important;
+  font-size:11px !important;
+  font-weight:700 !important;
+  line-height:1.3 !important;
+}
+
+#ej-cart-items .ej-v31-item .ej-v29-row > strong{
+  display:block !important;
+  margin:0 !important;
+  color:#1a201d !important;
+  font-size:12px !important;
+  font-weight:850 !important;
+  line-height:1.35 !important;
+  text-align:right !important;
+  overflow-wrap:anywhere !important;
+}
+
+#ej-cart-items .ej-v31-item .ej-v29-team{
+  padding-top:11px !important;
+}
+
+#ej-cart-items .ej-v31-item .ej-v29-team > strong{
+  font-size:14px !important;
+  font-weight:950 !important;
+}
+
+#ej-cart-items .ej-v31-item .ej-v29-price{
+  margin:0 !important;
+  padding:12px 0 !important;
+  border-bottom:0 !important;
+}
+
+#ej-cart-items .ej-v31-item .ej-v29-price > span{
+  color:#4f5953 !important;
+  font-size:11px !important;
+  font-weight:800 !important;
+}
+
+#ej-cart-items .ej-v31-item .ej-v29-price > strong{
+  color:#111 !important;
+  font-size:18px !important;
+  font-weight:950 !important;
+}
+
+#ej-cart-items .ej-v31-item .ej-v29-remove{
+  display:flex !important;
+  width:100% !important;
+  height:39px !important;
+  box-sizing:border-box !important;
+  margin:1px 0 0 !important;
+  padding:0 12px !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:5px !important;
+  border:1px solid #edd0d0 !important;
+  border-radius:10px !important;
+  background:#fff8f8 !important;
+  color:#9d3939 !important;
+  font-family:inherit !important;
+  font-size:11px !important;
+  font-weight:850 !important;
+  line-height:1 !important;
+  cursor:pointer !important;
+  appearance:none !important;
+  transition:background .15s ease,border-color .15s ease !important;
+}
+
+#ej-cart-items .ej-v31-item .ej-v29-remove:hover{
+  background:#ffeded !important;
+  border-color:#e7bcbc !important;
+  transform:none !important;
+}
+
+#ej-cart-checkout .ej-v31-total{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:18px !important;
+  margin:20px 0 16px !important;
+  padding:17px 2px !important;
+  border-top:1px solid #dfe5e2 !important;
+  border-bottom:1px solid #dfe5e2 !important;
+}
+
+#ej-cart-checkout .ej-v31-total > div{
+  min-width:0 !important;
+}
+
+#ej-cart-checkout .ej-v31-total > div > span{
+  display:block !important;
+  font-size:15px !important;
+  font-weight:950 !important;
+  line-height:1.2 !important;
+}
+
+#ej-cart-checkout .ej-v31-total small{
+  display:block !important;
+  margin-top:4px !important;
+  color:#7a847e !important;
+  font-size:10px !important;
+  font-weight:500 !important;
+  line-height:1.25 !important;
+}
+
+#ej-cart-checkout .ej-v31-total > #ej-cart-total{
+  flex:0 0 auto !important;
+  color:#111 !important;
+  font-size:22px !important;
+  font-weight:950 !important;
+  line-height:1 !important;
+}
+
+/* Nunca se muestran imágenes dentro de Mi pedido. */
+#ej-cart-items img{display:none !important;}
+</style>
+
+<script is:inline>
+(() => {
+  const RECEIVER = "34689733097";
+  const FORMSPREE_ENDPOINT = "https://formspree.io/f/xvkzkkao";
+  const STORE = "eliteJerseysPedidoV1";
+  const ORDER_ID_STORE = "eliteJerseysPendingOrderIdV1";
+  const $ = s => document.querySelector(s);
+  const TEAM_CATEGORY = $("#ej-order-panel")?.dataset.category || "";
+  const IS_NATIONAL_LEAGUE = TEAM_CATEGORY !== "Selecciones";
+  const $$ = s => [...document.querySelectorAll(s)];
+  let current = null;
+  let cart = [];
+  try { cart = JSON.parse(localStorage.getItem(STORE) || "[]"); } catch {}
+
+  const adultSizes = ["S","M","L","XL","2XL","3XL"];
+  const childSizes = ["16","18","20","22","24","26","28"];
+
+  const overlay=$("#ej-order-overlay"), config=$("#ej-config-view"), cartView=$("#ej-cart-view");
+  const productType=$("#ej-product-type"), version=$("#ej-version"), size=$("#ej-size"), qty=$("#ej-qty");
+  const qtyMinus=$("#ej-qty-minus"), qtyPlus=$("#ej-qty-plus");
+  const personalize=$("#ej-personalize"), patches=$("#ej-patches");
+  const patchType=$("#ej-patch-type"), patchTypeWrap=$("#ej-patch-type-wrap");
+
+  function money(n){ return `${n.toFixed(2).replace(".00","")} €`; }
+  function save(){ localStorage.setItem(STORE, JSON.stringify(cart)); renderCart(); }
+  function show(view){
+    overlay.classList.add("is-open"); overlay.setAttribute("aria-hidden","false");
+    config.classList.toggle("is-active",view==="config");
+    cartView.classList.toggle("is-active",view==="cart");
+    $("#ej-order-title").textContent=view==="config"?"Configurar camiseta":"Mi pedido";
+    document.documentElement.style.overflow="hidden";
+  }
+  function close(){overlay.classList.remove("is-open");overlay.setAttribute("aria-hidden","true");document.documentElement.style.overflow="";}
+  function fillSizes(){
+    const arr=productType.value==="nino"?childSizes:adultSizes;
+    size.innerHTML=arr.map(x=>`<option>${x}</option>`).join("");
+    $("#ej-version-wrap").classList.toggle("ej-order-hidden",productType.value==="nino");
+    calc();
+  }
+  function unitPrice(){
+    let p=productType.value==="nino"?12:(version.value==="jugador"?12:9);
+    if(personalize.checked)p+=3;
+    if(patches.checked)p+=1;
+    return p;
+  }
+  function calc(){
+    const q=Math.min(20,Math.max(1,parseInt(qty.value)||1));
+    qty.value=String(q);
+    $("#ej-line-price").textContent=money(unitPrice()*q);
+  }
+  if(qtyMinus) qtyMinus.onclick=()=>{
+    qty.value=String(Math.max(1,(parseInt(qty.value,10)||1)-1));
+    calc();
+  };
+  if(qtyPlus) qtyPlus.onclick=()=>{
+    qty.value=String(Math.min(20,(parseInt(qty.value,10)||1)+1));
+    calc();
+  };
+
+  function detectCard(btn){
+    const card=btn.closest("article, .camiseta-card, .card, li, div");
+    const img=card?.querySelector("img");
+    const text=(card?.innerText||"").replace(/Añadir al pedido/gi,"").trim();
+    return {card,img,text};
+  }
+  function addButtons(){
+    const imgs=$$("img").filter(img=>{
+      const src=img.getAttribute("src")||"";
+      return /\/camisetas\//i.test(src) && !img.closest("#ej-order-overlay");
+    });
+    imgs.forEach(img=>{
+      const card=img.closest("article, .camiseta-card, .card") || img.parentElement?.parentElement;
+      if(!card || card.querySelector(".ej-order-add")) return;
+      const b=document.createElement("button");
+      b.type="button"; b.className="ej-order-add"; b.textContent="Añadir al pedido";
+      b.setAttribute("aria-label","Añadir esta camiseta al pedido");
+      b.dataset.image=img.currentSrc||img.src;
+      card.appendChild(b);
+    });
+  }
+  function openConfig(btn){
+    const send=$("#ej-send-order");
+    const status=$("#ej-order-status");
+    if(send && send.textContent.includes("Pedido enviado")){
+      cart=[];
+      localStorage.removeItem(STORE);
+      send.disabled=false;
+      send.textContent="Enviar pedido";
+      if(status){status.className="ej-order-status";status.textContent="";}
+      $("#ej-new-order")?.classList.add("ej-order-hidden");
+      renderCart();
+    }
+    const {card,img,text}=detectCard(btn);
+    current={
+      image:btn.dataset.image || img?.currentSrc || img?.src || "",
+      name:(document.querySelector("h1")?.textContent||document.title.split("|")[0]||"Camiseta").trim(),
+      detail:text || "Camiseta"
+    };
+    $("#ej-order-img").src=current.image;
+    $("#ej-order-name").textContent=current.name;
+    $("#ej-order-detail").textContent=current.detail.slice(0,120);
+    productType.value="adulto"; version.value="aficionado"; qty.value="1";
+    personalize.checked=false; patches.checked=false;
+    if(patchType) patchType.value="LIGA";
+    patchTypeWrap?.classList.add("ej-order-hidden");
+    $("#ej-player-name").value=""; $("#ej-player-number").value="";
+    $("#ej-personal-fields").classList.add("ej-order-hidden");
+    fillSizes(); show("config");
+  }
+  function renderCart(){
+    $("#ej-order-count").textContent=cart.reduce((a,x)=>a+x.qty,0);
+    const box=$("#ej-cart-items"), checkout=$("#ej-cart-checkout");
+    const summary=$("#ej-cart-summary");
+    if(!cart.length){
+      box.innerHTML='<div class="ej-cart-empty"><b>Tu pedido está vacío</b><br><br>Añade una camiseta desde el catálogo.</div>';
+      if(summary){ summary.textContent=""; summary.classList.add("ej-order-hidden"); }
+      checkout.classList.add("ej-order-hidden"); return;
+    }
+    if(summary){
+      const units=cart.reduce((a,x)=>a+safeQty(x.qty),0);
+      summary.innerHTML=`<strong>${units}</strong> ${units===1?"artículo":"artículos"} en tu pedido`;
+      summary.classList.remove("ej-order-hidden");
+    }
+    checkout.classList.remove("ej-order-hidden");
+    box.innerHTML=cart.map((x,i)=>{
+      const isChild=x.product==="Conjunto niño";
+      const productText=isChild?"Conjunto niño":"Camiseta adulto";
+      const versionText=isChild?"Única":(/Jugador/i.test(x.product||"")?"Jugador":"Aficionado");
+      const personalization=x.personalize?`${x.playerName || "—"} ${x.playerNumber || ""}`:"No";
+      return `
+      <article class="ej-v29-item ej-v31-item">
+        <div class="ej-v31-article-head">
+          <div>
+            <span class="ej-v31-kicker">ARTÍCULO ${i+1}</span>
+            <strong>Detalle de la camiseta</strong>
+          </div>
+        </div>
+        <div class="ej-v29-row ej-v29-team">
+          <span>Equipo</span>
+          <strong>${x.name}</strong>
+        </div>
+        <div class="ej-v29-row">
+          <span>Producto</span>
+          <strong>${productText}</strong>
+        </div>
+        <div class="ej-v29-row">
+          <span>Versión</span>
+          <strong>${versionText}</strong>
+        </div>
+        <div class="ej-v29-row">
+          <span>Talla</span>
+          <strong>${x.size}</strong>
+        </div>
+        <div class="ej-v29-row">
+          <span>Cantidad</span>
+          <strong>${x.qty}</strong>
+        </div>
+        <div class="ej-v29-row">
+          <span>Nombre + dorsal</span>
+          <strong>${personalization}</strong>
+        </div>
+        <div class="ej-v29-row">
+          <span>Parches</span>
+          <strong>${x.patches?(x.patchType || "Sí"):"No"}</strong>
+        </div>
+        <div class="ej-v29-row ej-v29-price">
+          <span>Importe del artículo</span>
+          <strong>${money(x.total)}</strong>
+        </div>
+        <button class="ej-v29-remove" data-remove="${i}" type="button" aria-label="Eliminar ${x.name} del pedido">
+          <span aria-hidden="true">×</span> Eliminar artículo
+        </button>
+      </article>`;
+    }).join("");
+    $("#ej-cart-total").textContent=money(cart.reduce((a,x)=>a+x.total,0));
+  }
+
+  document.addEventListener("click",e=>{
+    const add=e.target.closest(".ej-order-add");
+    if(add){
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+      openConfig(add);
+      return;
+    }
+    const rem=e.target.closest("[data-remove]");
+    if(rem){cart.splice(+rem.dataset.remove,1);save();}
+  }, true);
+  $("#ej-order-fab").onclick=()=>show("cart");
+  $("#ej-order-close").onclick=close;
+  overlay.addEventListener("click",e=>{if(e.target===overlay)close();});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&overlay.classList.contains("is-open"))close();});
+  productType.onchange=fillSizes; version.onchange=calc; qty.oninput=calc;
+  personalize.onchange=()=>{$("#ej-personal-fields").classList.toggle("ej-order-hidden",!personalize.checked);calc();};
+  patches.onchange=()=>{
+    patchTypeWrap?.classList.toggle("ej-order-hidden", !(patches.checked && IS_NATIONAL_LEAGUE));
+    calc();
+  };
+  if(patchType) patchType.onchange=calc;
+
+  $("#ej-add-cart").onclick=()=>{
+    if(!current)return;
+    if(personalize.checked){
+      const pName=$("#ej-player-name").value.trim();
+      const pNumber=$("#ej-player-number").value.trim();
+      if(!pName || pName.length>20 || !/^\d{1,2}$/.test(pNumber) || Number(pNumber)<0 || Number(pNumber)>99){
+        alert("Indica un nombre de hasta 20 caracteres y un dorsal entre 0 y 99."); return;
+      }
+    }
+    const q=Math.min(20,Math.max(1,parseInt(qty.value)||1));
+    qty.value=String(q);
+    const prod=productType.value==="nino"?"Conjunto niño":`Camiseta adulto · ${version.value==="jugador"?"Jugador":"Aficionado"}`;
+    cart.push({...current,product:prod,size:size.value,qty:q,personalize:personalize.checked,
+      playerName:$("#ej-player-name").value.trim(),playerNumber:$("#ej-player-number").value.trim(),
+      patches:patches.checked,
+      patchType:(patches.checked && IS_NATIONAL_LEAGUE ? (patchType?.value || "LIGA") : ""),
+      total:unitPrice()*q});
+    save(); show("cart");
+  };
+
+  function generateOrderId(){
+    const d=new Date();
+    const pad=n=>String(n).padStart(2,"0");
+    return `EJ-${pad(d.getDate())}${pad(d.getMonth()+1)}${String(d.getFullYear()).slice(-2)}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  }
+
+  function getPendingOrderId(){
+    let id=sessionStorage.getItem(ORDER_ID_STORE);
+    if(!id){
+      id=generateOrderId();
+      sessionStorage.setItem(ORDER_ID_STORE,id);
+    }
+    return id;
+  }
+
+  function customerData(){
+    return {
+      name: ($("#ej-customer-name")?.value||"").trim(),
+      phone: ($("#ej-customer-phone")?.value||"").trim()
+    };
+  }
+
+  function cleanPhone(value){
+    return String(value||"").replace(/[^\d+]/g,"");
+  }
+
+  function safeQty(value){
+    return Math.min(20,Math.max(1,parseInt(value,10)||1));
+  }
+
+  function recalcItem(x){
+    const q=safeQty(x.qty);
+    const isChild=x.product==="Conjunto niño";
+    const isPlayer=!isChild && /Jugador/i.test(x.product||"");
+    let unit=isChild?12:(isPlayer?12:9);
+    if(x.personalize) unit+=3;
+    if(x.patches) unit+=1;
+    return {...x,qty:q,total:unit*q};
+  }
+
+  function normalizedCart(){
+    return cart.map(recalcItem);
+  }
+
+  function buildOrderText(){
+    const safeCart=normalizedCart();
+    const total=safeCart.reduce((a,x)=>a+x.total,0);
+    let msg="";
+
+    safeCart.forEach((x,i)=>{
+      const isChild=x.product==="Conjunto niño";
+      const versionText=isChild?"Única":(/Jugador/i.test(x.product||"")?"Jugador":"Aficionado");
+
+      msg+=`CAMISETA ${i+1}\n`;
+      msg+=`Equipo: ${x.name}\n`;
+      msg+=`Producto: ${isChild?"Conjunto niño":"Camiseta adulto"}\n`;
+      msg+=`Versión: ${versionText}\n`;
+      msg+=`Talla: ${x.size}\n`;
+      msg+=`Cantidad: ${x.qty}\n`;
+      msg+=`Nombre + dorsal: ${x.personalize?`${x.playerName} ${x.playerNumber}`:"No"}\n`;
+      msg+=`Parches: ${x.patches?(x.patchType || "Sí"):"No"}\n`;
+      msg+=`Importe: ${money(x.total)}\n`;
+
+      if(i<safeCart.length-1) msg+="\n------------------------------\n\n";
+    });
+
+    return { text: msg.trim(), total, safeCart };
+  }
+
+  function validationError(message,selector){
+    const status=$("#ej-order-status");
+    if(status){
+      status.className="ej-order-status error";
+      status.innerHTML=`<b>Revisa el pedido.</b><br>${message}`;
+    }
+    if(selector) $(selector)?.focus();
+    return null;
+  }
+
+  function validateCustomer(){
+    if(!cart.length) return validationError("Añade al menos una camiseta al pedido.");
+
+    // Honeypot: una persona no puede rellenar este campo invisible.
+    if(($("#ej-order-website")?.value||"").trim()){
+      return validationError("No se ha podido validar el envío. Recarga la página e inténtalo de nuevo.");
+    }
+
+    const c=customerData();
+    if(c.name.length<2 || c.name.length>60){
+      return validationError("Indica un nombre válido (entre 2 y 60 caracteres).","#ej-customer-name");
+    }
+
+    const phone=cleanPhone(c.phone);
+    const digits=phone.replace(/\D/g,"");
+    if(digits.length<9 || digits.length>15){
+      return validationError("Indica un teléfono válido de entre 9 y 15 dígitos.","#ej-customer-phone");
+    }
+
+    // Validamos también los artículos almacenados antes de enviarlos.
+    const allowedAdult=["S","M","L","XL","2XL","3XL"];
+    const allowedChild=["16","18","20","22","24","26","28"];
+    for(const x of cart){
+      const isChild=x.product==="Conjunto niño";
+      const allowedSizes=isChild?allowedChild:allowedAdult;
+      if(!allowedSizes.includes(String(x.size||""))){
+        return validationError("Hay una talla no válida en el pedido. Elimina ese artículo y vuelve a añadirlo.");
+      }
+      if(!Number.isFinite(Number(x.qty)) || Number(x.qty)<1 || Number(x.qty)>20){
+        return validationError("La cantidad por artículo debe estar entre 1 y 20.");
+      }
+      if(x.personalize){
+        const pn=String(x.playerName||"").trim();
+        const num=String(x.playerNumber||"").trim();
+        if(!pn || pn.length>20 || !/^\d{1,2}$/.test(num) || Number(num)<0 || Number(num)>99){
+          return validationError("Revisa la personalización: nombre de hasta 20 caracteres y dorsal entre 0 y 99.");
+        }
+      }
+    }
+
+    return {...c,phone};
+  }
+
+  let orderSending=false;
+
+  $("#ej-send-order").onclick=async()=>{
+    if(orderSending) return;
+
+    const c=validateCustomer();
+    if(!c) return;
+
+    const {text:orderText,total,safeCart}=buildOrderText();
+    const orderId=getPendingOrderId();
+    const btn=$("#ej-send-order");
+    const status=$("#ej-order-status");
+
+    // Sustituimos cualquier total guardado por el calculado desde las opciones reales.
+    cart=safeCart;
+    localStorage.setItem(STORE,JSON.stringify(cart));
+    renderCart();
+
+    orderSending=true;
+    btn.disabled=true;
+    btn.textContent="Enviando pedido…";
+    status.className="ej-order-status";
+    status.textContent="";
+
+    const payload=new FormData();
+    payload.append("Número de pedido",orderId);
+    payload.append("Nombre del solicitante",c.name);
+    payload.append("Teléfono",c.phone);
+    payload.append("Detalle del pedido",orderText);
+    payload.append("TOTAL DEL PEDIDO",money(total));
+    payload.append("_subject",`Nuevo pedido ${orderId} · ${c.name} · ${money(total)}`);
+
+    try{
+      const response=await fetch(FORMSPREE_ENDPOINT,{
+        method:"POST",
+        body:payload,
+        headers:{"Accept":"application/json"}
+      });
+
+      let result=null;
+      try{ result=await response.json(); }catch{}
+      if(!response.ok || (result && result.ok===false)){
+        throw new Error("El servicio de pedidos no confirmó el envío");
+      }
+
+      status.className="ej-order-status ok";
+      status.innerHTML=`<b>✓ Pedido enviado correctamente.</b><br>N.º de pedido: <strong>${orderId}</strong><br>Hemos recibido tu solicitud.`;
+      btn.textContent="Pedido enviado ✓";
+      btn.disabled=true;
+      $("#ej-new-order").classList.remove("ej-order-hidden");
+
+      // Evita que el mismo pedido reaparezca al recargar después de enviarlo.
+      localStorage.removeItem(STORE);
+      sessionStorage.removeItem(ORDER_ID_STORE);
+    }catch(err){
+      status.className="ej-order-status error";
+      status.innerHTML="<b>No se ha podido enviar el pedido.</b><br>No se ha confirmado la recepción. Inténtalo de nuevo o utiliza WhatsApp.";
+      btn.disabled=false;
+      btn.textContent="Reintentar envío";
+    }finally{
+      orderSending=false;
+    }
+  };
+
+  $("#ej-new-order").onclick=()=>{
+    cart=[];
+    localStorage.removeItem(STORE);
+    sessionStorage.removeItem(ORDER_ID_STORE);
+
+    const name=$("#ej-customer-name");
+    const phone=$("#ej-customer-phone");
+    const status=$("#ej-order-status");
+    const send=$("#ej-send-order");
+
+    if(name) name.value="";
+    if(phone) phone.value="";
+    const hp=$("#ej-order-website");
+    if(hp) hp.value="";
+    status.className="ej-order-status";
+    status.textContent="";
+    $("#ej-new-order").classList.add("ej-order-hidden");
+
+    send.disabled=false;
+    send.textContent="Enviar pedido";
+
+    renderCart();
+    close();
+  };
+
+  $("#ej-whatsapp").onclick=()=>{
+    const c=validateCustomer();
+    if(!c) return;
+
+    const {text:orderText,total}=buildOrderText();
+    const orderId=getPendingOrderId();
+    let msg="*PEDIDO ELITE JERSEYS*\n";
+    msg+=`*N.º de pedido:* ${orderId}\n\n`;
+    msg+=`*Solicitante:* ${c.name}\n`;
+    msg+=`*Teléfono:* ${c.phone}\n\n`;
+    msg+=orderText;
+
+    const encoded=encodeURIComponent(msg);
+    const mobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if(mobile){
+      window.location.href=`whatsapp://send?phone=${RECEIVER}&text=${encoded}`;
+      setTimeout(()=>{ window.location.href=`https://wa.me/${RECEIVER}?text=${encoded}`; },1200);
+    }else{
+      window.open(`https://web.whatsapp.com/send?phone=${RECEIVER}&text=${encoded}`,"_blank","noopener");
+    }
+  };
+
+  fillSizes(); renderCart(); addButtons();
+  new MutationObserver(addButtons).observe(document.body,{childList:true,subtree:true});
+})();
+</script>
+
+
+<style is:global>
+/* V34 · botón Añadir al pedido + selector de parche */
+.ej-order-add{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:8px !important;
+  width:calc(100% - 28px) !important;
+  min-height:43px !important;
+  margin:12px 14px 15px !important;
+  padding:10px 14px !important;
+  border:1px solid #1f8d61 !important;
+  border-radius:11px !important;
+  background:#238f64 !important;
+  color:#fff !important;
+  font-family:inherit !important;
+  font-size:13px !important;
+  font-weight:850 !important;
+  line-height:1.1 !important;
+  cursor:pointer !important;
+  appearance:none !important;
+  box-shadow:0 5px 14px rgba(35,143,100,.16) !important;
+  transition:transform .15s ease,background .15s ease,box-shadow .15s ease !important;
+}
+.ej-order-add::before{
+  content:"+" !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:19px !important;
+  height:19px !important;
+  border-radius:50% !important;
+  background:rgba(255,255,255,.17) !important;
+  color:#fff !important;
+  font-size:16px !important;
+  font-weight:700 !important;
+  line-height:1 !important;
+}
+.ej-order-add:hover{
+  background:#1c7f58 !important;
+  box-shadow:0 7px 18px rgba(35,143,100,.22) !important;
+  transform:translateY(-1px) !important;
+}
+.ej-order-add:active{
+  transform:translateY(0) !important;
+}
+#ej-patch-type-wrap{
+  margin-top:-4px !important;
+  padding:12px 14px !important;
+  border:1px solid #e2e8e4 !important;
+  border-radius:12px !important;
+  background:#f8faf9 !important;
+}
+#ej-patch-type-wrap label{
+  margin-bottom:7px !important;
+}
+#ej-patch-type{
+  background:#fff !important;
+}
+</style>
+
+<style is:global>
+/* V33 · importe únicamente en la fila final del artículo */
+#ej-cart-items .ej-v31-article-head{
+  justify-content:flex-start !important;
+}
+#ej-cart-items .ej-v31-badge{
+  display:none !important;
+}
+</style>
+
+
+<style is:global>
+/* V36 · mejoras finales PC del flujo de pedido */
+.ej-qty-control{
+  display:grid !important;
+  grid-template-columns:44px minmax(54px,1fr) 44px !important;
+  align-items:stretch !important;
+  width:100% !important;
+  overflow:hidden !important;
+  border:1px solid #cfd8d3 !important;
+  border-radius:12px !important;
+  background:#fff !important;
+}
+.ej-qty-control button{
+  border:0 !important;
+  background:#f4f7f5 !important;
+  color:#1c2922 !important;
+  font:inherit !important;
+  font-size:20px !important;
+  font-weight:800 !important;
+  cursor:pointer !important;
+}
+.ej-qty-control button:hover{background:#eaf2ee !important;}
+.ej-qty-control input{
+  width:100% !important;
+  min-width:0 !important;
+  height:44px !important;
+  padding:0 !important;
+  border:0 !important;
+  border-left:1px solid #e2e8e4 !important;
+  border-right:1px solid #e2e8e4 !important;
+  border-radius:0 !important;
+  background:#fff !important;
+  text-align:center !important;
+  font-weight:850 !important;
+  appearance:textfield !important;
+}
+.ej-qty-control input::-webkit-outer-spin-button,
+.ej-qty-control input::-webkit-inner-spin-button{-webkit-appearance:none !important;margin:0 !important;}
+
+#ej-cart-summary.ej-cart-summary{
+  margin:0 0 13px !important;
+  padding:11px 13px !important;
+  border:1px solid #dce8e1 !important;
+  border-radius:11px !important;
+  background:#f4faf7 !important;
+  color:#496057 !important;
+  font-size:12px !important;
+}
+#ej-cart-summary.ej-cart-summary strong{
+  color:#176b49 !important;
+  font-size:14px !important;
+  font-weight:950 !important;
+}
+
+#ej-cart-checkout .ej-whatsapp-backup{
+  width:auto !important;
+  min-height:0 !important;
+  margin:11px auto 0 !important;
+  padding:5px 8px !important;
+  border:0 !important;
+  background:transparent !important;
+  color:#5f7168 !important;
+  font-size:11px !important;
+  font-weight:700 !important;
+  text-decoration:underline !important;
+  box-shadow:none !important;
+}
+#ej-cart-checkout .ej-whatsapp-backup:hover{
+  color:#176b49 !important;
+  background:transparent !important;
+  transform:none !important;
+}
 </style>
