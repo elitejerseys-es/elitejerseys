@@ -406,16 +406,16 @@ const colorNavegador = primarioMuyClaro
 
 const escudoUrlAbsoluta = new URL(
   obtenerEscudo(equipo),
-  Astro.url.origin
+  Astro.site
 ).href;
 
 const imagenSocial = camisetas[0]
-  ? new URL(camisetas[0].fullSrc, Astro.url.origin).href
+  ? new URL(camisetas[0].fullSrc, Astro.site).href
   : escudoUrlAbsoluta;
 
-const urlCanonica = new URL(Astro.url.pathname, Astro.url.origin).href;
-const urlEquipoAnterior = new URL(`/equipos/${crearSlug(equipoAnterior)}`, Astro.url.origin).href;
-const urlEquipoSiguiente = new URL(`/equipos/${crearSlug(equipoSiguiente)}`, Astro.url.origin).href;
+const urlCanonica = new URL(Astro.url.pathname, Astro.site).href;
+const urlEquipoAnterior = new URL(`/equipos/${crearSlug(equipoAnterior)}`, Astro.site).href;
+const urlEquipoSiguiente = new URL(`/equipos/${crearSlug(equipoSiguiente)}`, Astro.site).href;
 
 const datosEstructurados = {
   "@context": "https://schema.org",
@@ -427,7 +427,7 @@ const datosEstructurados = {
   isPartOf: {
     "@type": "WebSite",
     name: "Elite Jerseys",
-    url: Astro.url.origin
+    url: Astro.site.href
   },
   about: {
     "@type": "SportsTeam",
@@ -438,7 +438,7 @@ const datosEstructurados = {
   breadcrumb: {
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Inicio", item: new URL("/", Astro.url.origin).href },
+      { "@type": "ListItem", position: 1, name: "Inicio", item: new URL("/", Astro.site).href },
       { "@type": "ListItem", position: 2, name: categoria, item: urlCanonica },
       { "@type": "ListItem", position: 3, name: equipo, item: urlCanonica }
     ]
@@ -453,7 +453,7 @@ const datosEstructurados = {
       url: `${urlCanonica}#${camiseta.temporada.replace("/", "-")}-${camiseta.tipoSlug}`,
       image: {
         "@type": "ImageObject",
-        contentUrl: new URL(camiseta.fullSrc, Astro.url.origin).href,
+        contentUrl: new URL(camiseta.fullSrc, Astro.site).href,
         caption: `${equipo} ${camiseta.temporada} ${camiseta.tipo}`
       }
     }))
@@ -478,7 +478,7 @@ const datosEstructurados = {
     />
 
     <meta name="theme-color" content={colorNavegador} />
-    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
     <link rel="canonical" href={urlCanonica} />
 
     {
@@ -7694,12 +7694,12 @@ const datosEstructurados = {
 }
 </style>
 
-<button id="ej-order-fab" type="button">Mi pedido <span id="ej-order-count">0</span></button>
+<button id="ej-order-fab" type="button">Mi presupuesto <span id="ej-order-count">0</span></button>
 
 <div id="ej-order-overlay" aria-hidden="true">
-  <aside id="ej-order-panel" role="dialog" aria-modal="true" aria-label="Pedido Elite Jerseys" data-category={categoria}>
+  <aside id="ej-order-panel" role="dialog" aria-modal="true" aria-label="Presupuesto Elite Jerseys" data-category={categoria}>
     <div class="ej-order-head">
-      <h2 id="ej-order-title">Mi pedido</h2>
+      <h2 id="ej-order-title">Mi presupuesto</h2>
       <button class="ej-order-x" id="ej-order-close" type="button" aria-label="Cerrar">×</button>
     </div>
     <div class="ej-order-body">
@@ -7764,7 +7764,7 @@ const datosEstructurados = {
         </div>
 
         <div class="ej-order-pricebox"><span>Total de este artículo</span><b id="ej-line-price">9 €</b></div>
-        <button id="ej-add-cart" class="ej-order-primary" type="button">Añadir al pedido</button>
+        <button id="ej-add-cart" class="ej-order-primary" type="button">Añadir al presupuesto</button>
       </section>
 
       <section id="ej-cart-view" class="is-active">
@@ -7772,26 +7772,13 @@ const datosEstructurados = {
         <div id="ej-cart-items"></div>
         <div id="ej-cart-checkout" class="ej-order-hidden">
           <div class="ej-cart-total ej-v31-total">
-            <div><span>TOTAL DEL PEDIDO</span><small>Importe total de todos los artículos</small></div>
+            <div><span>TOTAL DEL PRESUPUESTO</span><small>Importe total de todos los artículos</small></div>
             <span id="ej-cart-total">0 €</span>
           </div>
-          <div class="ej-order-field">
-            <label>Nombre del solicitante</label>
-            <input id="ej-customer-name" type="text" autocomplete="name" minlength="2" maxlength="60" placeholder="Nombre y apellidos">
-          </div>
-          <div class="ej-order-field">
-            <label>Teléfono del solicitante</label>
-            <input id="ej-customer-phone" type="tel" inputmode="tel" autocomplete="tel" minlength="9" maxlength="20" placeholder="Ej. 612 345 678">
-            <div class="ej-order-hp" aria-hidden="true">
-              <label for="ej-order-website">No rellenar este campo</label>
-              <input id="ej-order-website" type="text" tabindex="-1" autocomplete="off">
-            </div>
-          </div>
-          <p class="ej-order-privacy">Tus datos se utilizarán únicamente para gestionar este pedido.</p>
-          <button id="ej-send-order" class="ej-order-primary" type="button">Enviar pedido</button>
-          <button id="ej-whatsapp" class="ej-order-secondary ej-whatsapp-backup" type="button">¿Problemas con el envío? Usar WhatsApp</button>
+          <p class="ej-order-privacy">El presupuesto se genera en tu dispositivo, sin solicitar datos personales ni enviarlo a una base de datos.</p>
+          <button id="ej-send-order" class="ej-order-primary" type="button">Descargar presupuesto PDF</button>
           <div id="ej-order-status" class="ej-order-status" role="status" aria-live="polite"></div>
-          <button id="ej-new-order" class="ej-order-new ej-order-hidden" type="button">Hacer otro pedido</button>
+
         </div>
       </section>
     </div>
@@ -7969,7 +7956,7 @@ const datosEstructurados = {
 
 
 <style>
-/* V27 · Mi pedido profesional, detallado y separado */
+/* V27 · Mi presupuesto profesional, detallado y separado */
 #ej-cart-items{
   display:grid !important;
   gap:14px !important;
@@ -8132,7 +8119,7 @@ const datosEstructurados = {
   border-bottom:1px solid #dde4e0 !important;
 }
 
-/* Sigue sin haber imágenes en Mi pedido. La miniatura se conserva solo en Configurar camiseta. */
+/* Sigue sin haber imágenes en Mi presupuesto. La miniatura se conserva solo en Configurar camiseta. */
 #ej-cart-items img{
   display:none !important;
 }
@@ -8385,7 +8372,7 @@ const datosEstructurados = {
 
 
 <style is:global>
-/* V32 · diseño profesional global para elementos dinámicos de Mi pedido */
+/* V32 · diseño profesional global para elementos dinámicos de Mi presupuesto */
 #ej-cart-items{
   display:grid !important;
   grid-template-columns:1fr !important;
@@ -8585,25 +8572,20 @@ const datosEstructurados = {
   line-height:1 !important;
 }
 
-/* Nunca se muestran imágenes dentro de Mi pedido. */
-#ej-cart-items img{display:none !important;}
+/* V2: miniaturas en las tarjetas del presupuesto */
+#ej-cart-items .ej-budget-thumb{display:block !important;width:82px;height:104px;object-fit:contain;border-radius:7px;background:#111;flex-shrink:0}
+#ej-cart-items .ej-budget-preview{display:flex;gap:13px;align-items:center;padding:12px 15px;border-bottom:1px solid #e6eae7}
+#ej-cart-items .ej-budget-preview-info{min-width:0;flex:1}
+#ej-cart-items .ej-budget-preview-info strong{display:block;font-size:14px;color:#173b2b;overflow-wrap:anywhere}
+#ej-cart-items .ej-budget-preview-info small{display:block;color:#68776e;margin-top:5px}
+@media(max-width:430px){#ej-cart-items .ej-budget-thumb{width:68px;height:88px}}
 </style>
 
 <script>
-import { createClient } from "@supabase/supabase-js";
+import { jsPDF } from "jspdf";
 
 (() => {
-  const RECEIVER = "34689733097";
-  const FORMSPREE_ENDPOINT = "https://formspree.io/f/xvkzkkao";
-  const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
-  const SUPABASE_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-  const supabase = SUPABASE_URL && SUPABASE_KEY
-    ? createClient(SUPABASE_URL, SUPABASE_KEY)
-    : null;
-
-  const STORE = "eliteJerseysPedidoV1";
-  const ORDER_ID_STORE = "eliteJerseysPendingOrderIdV1";
-  const DB_SAVED_STORE = "eliteJerseysSupabaseSavedOrderV1";
+  const STORE = "eliteJerseysPresupuestoV1";
   const $ = s => document.querySelector(s);
   const TEAM_CATEGORY = $("#ej-order-panel")?.dataset.category || "";
   const IS_NATIONAL_LEAGUE = TEAM_CATEGORY !== "Selecciones";
@@ -8622,12 +8604,12 @@ import { createClient } from "@supabase/supabase-js";
   const patchType=$("#ej-patch-type"), patchTypeWrap=$("#ej-patch-type-wrap");
 
   function money(n){ return `${n.toFixed(2).replace(".00","")} €`; }
-  function save(){ localStorage.setItem(STORE, JSON.stringify(cart)); renderCart(); }
+  function save(){ try { localStorage.setItem(STORE, JSON.stringify(cart)); } catch {} renderCart(); }
   function show(view){
     overlay.classList.add("is-open"); overlay.setAttribute("aria-hidden","false");
     config.classList.toggle("is-active",view==="config");
     cartView.classList.toggle("is-active",view==="cart");
-    $("#ej-order-title").textContent=view==="config"?"Configurar camiseta":"Mi pedido";
+    $("#ej-order-title").textContent=view==="config"?"Configurar camiseta":"Mi presupuesto";
     document.documentElement.style.overflow="hidden";
   }
   function close(){overlay.classList.remove("is-open");overlay.setAttribute("aria-hidden","true");document.documentElement.style.overflow="";}
@@ -8660,7 +8642,7 @@ import { createClient } from "@supabase/supabase-js";
   function detectCard(btn){
     const card=btn.closest("article, .camiseta-card, .card, li, div");
     const img=card?.querySelector("img");
-    const text=(card?.innerText||"").replace(/Añadir al pedido/gi,"").trim();
+    const text=(card?.innerText||"").replace(/Añadir al presupuesto/gi,"").trim();
     return {card,img,text};
   }
   function addButtons(){
@@ -8672,7 +8654,7 @@ import { createClient } from "@supabase/supabase-js";
       const card=img.closest("article, .camiseta-card, .card") || img.parentElement?.parentElement;
       if(!card || card.querySelector(".ej-order-add")) return;
       const b=document.createElement("button");
-      b.type="button"; b.className="ej-order-add"; b.textContent="Añadir al pedido";
+      b.type="button"; b.className="ej-order-add"; b.textContent="Añadir al presupuesto";
       b.setAttribute("aria-label","Añadir esta camiseta al pedido");
       b.dataset.image=card.dataset?.fullSrc || img.currentSrc || img.src;
       b.dataset.temporada=card.dataset?.temporada || "";
@@ -8681,17 +8663,6 @@ import { createClient } from "@supabase/supabase-js";
     });
   }
   function openConfig(btn){
-    const send=$("#ej-send-order");
-    const status=$("#ej-order-status");
-    if(send && send.textContent.includes("Pedido enviado")){
-      cart=[];
-      localStorage.removeItem(STORE);
-      send.disabled=false;
-      send.textContent="Enviar pedido";
-      if(status){status.className="ej-order-status";status.textContent="";}
-      $("#ej-new-order")?.classList.add("ej-order-hidden");
-      renderCart();
-    }
     const {card,img,text}=detectCard(btn);
     current={
       image:btn.dataset.image || card?.dataset?.fullSrc || img?.currentSrc || img?.src || "",
@@ -8711,18 +8682,19 @@ import { createClient } from "@supabase/supabase-js";
     $("#ej-personal-fields").classList.add("ej-order-hidden");
     fillSizes(); show("config");
   }
+  const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   function renderCart(){
     $("#ej-order-count").textContent=cart.reduce((a,x)=>a+x.qty,0);
     const box=$("#ej-cart-items"), checkout=$("#ej-cart-checkout");
     const summary=$("#ej-cart-summary");
     if(!cart.length){
-      box.innerHTML='<div class="ej-cart-empty"><b>Tu pedido está vacío</b><br><br>Añade una camiseta desde el catálogo.</div>';
+      box.innerHTML='<div class="ej-cart-empty"><b>Tu presupuesto está vacío</b><br><br>Añade una camiseta desde el catálogo.</div>';
       if(summary){ summary.textContent=""; summary.classList.add("ej-order-hidden"); }
       checkout.classList.add("ej-order-hidden"); return;
     }
     if(summary){
       const units=cart.reduce((a,x)=>a+safeQty(x.qty),0);
-      summary.innerHTML=`<strong>${units}</strong> ${units===1?"artículo":"artículos"} en tu pedido`;
+      summary.innerHTML=`<strong>${units}</strong> ${units===1?"artículo":"artículos"} en tu presupuesto`;
       summary.classList.remove("ej-order-hidden");
     }
     checkout.classList.remove("ej-order-hidden");
@@ -8739,9 +8711,13 @@ import { createClient } from "@supabase/supabase-js";
             <strong>Detalle de la camiseta</strong>
           </div>
         </div>
+        <div class="ej-budget-preview">
+          <img class="ej-budget-thumb" src="${esc(safeImageUrl(x.image)||"")}" alt="Camiseta ${esc(x.name)}" loading="lazy" />
+          <div class="ej-budget-preview-info"><strong>${esc(x.name)}</strong><small>${esc(x.temporada||"")} · ${esc(x.tipo||"Equipación")}</small></div>
+        </div>
         <div class="ej-v29-row ej-v29-team">
           <span>Equipo</span>
-          <strong>${x.name}</strong>
+          <strong>${esc(x.name)}</strong>
         </div>
         <div class="ej-v29-row">
           <span>Producto</span>
@@ -8753,7 +8729,7 @@ import { createClient } from "@supabase/supabase-js";
         </div>
         <div class="ej-v29-row">
           <span>Talla</span>
-          <strong>${x.size}</strong>
+          <strong>${esc(x.size)}</strong>
         </div>
         <div class="ej-v29-row">
           <span>Cantidad</span>
@@ -8761,17 +8737,17 @@ import { createClient } from "@supabase/supabase-js";
         </div>
         <div class="ej-v29-row">
           <span>Nombre + dorsal</span>
-          <strong>${personalization}</strong>
+          <strong>${esc(personalization)}</strong>
         </div>
         <div class="ej-v29-row">
           <span>Parches</span>
-          <strong>${x.patches?(x.patchType || "Sí"):"No"}</strong>
+          <strong>${x.patches?esc(x.patchType || "Sí"):"No"}</strong>
         </div>
         <div class="ej-v29-row ej-v29-price">
           <span>Importe del artículo</span>
           <strong>${money(x.total)}</strong>
         </div>
-        <button class="ej-v29-remove" data-remove="${i}" type="button" aria-label="Eliminar ${x.name} del pedido">
+        <button class="ej-v29-remove" data-remove="${i}" type="button" aria-label="Eliminar ${esc(x.name)} del presupuesto">
           <span aria-hidden="true">×</span> Eliminar artículo
         </button>
       </article>`;
@@ -8823,338 +8799,202 @@ import { createClient } from "@supabase/supabase-js";
     save(); show("cart");
   };
 
-  function generateOrderId(){
-    const d=new Date();
-    const pad=n=>String(n).padStart(2,"0");
-    return `EJ-${pad(d.getDate())}${pad(d.getMonth()+1)}${String(d.getFullYear()).slice(-2)}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-  }
-
-  function getPendingOrderId(){
-    let id=sessionStorage.getItem(ORDER_ID_STORE);
-    if(!id){
-      id=generateOrderId();
-      sessionStorage.setItem(ORDER_ID_STORE,id);
-    }
-    return id;
-  }
-
-  function customerData(){
-    return {
-      name: ($("#ej-customer-name")?.value||"").trim(),
-      phone: ($("#ej-customer-phone")?.value||"").trim()
-    };
-  }
-
-  function cleanPhone(value){
-    return String(value||"").replace(/[^\d+]/g,"");
-  }
-
-  function safeQty(value){
-    return Math.min(20,Math.max(1,parseInt(value,10)||1));
-  }
-
+  function safeQty(value){ return Math.min(20,Math.max(1,parseInt(value,10)||1)); }
   function recalcItem(x){
     const q=safeQty(x.qty);
-    const isChild=x.product==="Conjunto niño";
-    const isPlayer=!isChild && /Jugador/i.test(x.product||"");
-    let unit=isChild?12:(isPlayer?12:9);
+    const child=x.product==="Conjunto niño";
+    let unit=child?12:(/Jugador/i.test(x.product||"")?12:9);
     if(x.personalize) unit+=3;
     if(x.patches) unit+=1;
     return {...x,qty:q,total:unit*q};
   }
-
-  function normalizedCart(){
-    return cart.map(recalcItem);
+  const pdfMoney = n => `${Number(n).toFixed(2).replace(".",",")} EUR`;
+  function safeImageUrl(raw){
+    try {
+      const u=new URL(String(raw||""),location.origin);
+      if(u.origin!==location.origin || !u.pathname.startsWith("/camisetas/")) return null;
+      return u.href;
+    } catch {return null;}
   }
-
-  function buildOrderText(){
-    const safeCart=normalizedCart();
-    const total=safeCart.reduce((a,x)=>a+x.total,0);
-    let msg="";
-
-    safeCart.forEach((x,i)=>{
-      const isChild=x.product==="Conjunto niño";
-      const versionText=isChild?"Única":(/Jugador/i.test(x.product||"")?"Jugador":"Aficionado");
-
-      msg+=`CAMISETA ${i+1}\n`;
-      msg+=`Equipo: ${x.name}\n`;
-      msg+=`Producto: ${isChild?"Conjunto niño":"Camiseta adulto"}\n`;
-      msg+=`Versión: ${versionText}\n`;
-      msg+=`Talla: ${x.size}\n`;
-      msg+=`Cantidad: ${x.qty}\n`;
-      msg+=`Nombre + dorsal: ${x.personalize?`${x.playerName} ${x.playerNumber}`:"No"}\n`;
-      msg+=`Parches: ${x.patches?(x.patchType || "Sí"):"No"}\n`;
-      msg+=`Importe: ${money(x.total)}\n`;
-
-      if(i<safeCart.length-1) msg+="\n------------------------------\n\n";
-    });
-
-    return { text: msg.trim(), total, safeCart };
+  async function loadImage(raw){
+    const url=safeImageUrl(raw);
+    if(!url) return null;
+    try {
+      const response=await fetch(url,{credentials:"omit"});
+      if(!response.ok) return null;
+      const blob=await response.blob();
+      const bitmap=await createImageBitmap(blob);
+      const canvas=document.createElement("canvas");
+      const scale=Math.min(1,900/Math.max(bitmap.width,bitmap.height));
+      canvas.width=Math.max(1,Math.round(bitmap.width*scale));
+      canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+      const ctx=canvas.getContext("2d");
+      if(!ctx){bitmap.close();return null;}
+      ctx.fillStyle="#ffffff";ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+      bitmap.close();
+      return {data:canvas.toDataURL("image/jpeg",0.88),ratio:canvas.width/canvas.height};
+    } catch(e){console.warn("Imagen no disponible para PDF",e);return null;}
   }
-
-  function validationError(message,selector){
-    const status=$("#ej-order-status");
-    if(status){
-      status.className="ej-order-status error";
-      status.innerHTML=`<b>Revisa el pedido.</b><br>${message}`;
+  const docText = (doc,txt,x,y,maxWidth) => {
+    const lines=doc.splitTextToSize(String(txt??""),maxWidth);
+    doc.text(lines,x,y);
+    return y+lines.length*5;
+  };
+  async function createPdf(items){
+    const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
+    const W=210,H=297,left=17,right=193;
+    const date=new Date(),pad=n=>String(n).padStart(2,"0");
+    const ref=`PRES-${date.getFullYear()}${pad(date.getMonth()+1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+    const total=items.reduce((sum,x)=>sum+x.total,0);
+    // Diseño grande para 1-2, compacto vertical para 3, dos columnas para 4 o más.
+    const layout=items.length<=2?"large":items.length===3?"medium":"grid";
+    const maxPerPage=layout==="grid"?6:layout==="medium"?3:2;
+    let page=0;
+    function begin(){
+      if(page)doc.addPage();page++;
+      doc.setFillColor(15,38,30);doc.rect(0,0,W,43,"F");
+      doc.setTextColor(217,183,105);doc.setFont("helvetica","bold");doc.setFontSize(21);
+      doc.text("ELITE JERSEYS",left,20);
+      doc.setTextColor(255,255,255);doc.setFontSize(9);
+      doc.text("PRESUPUESTO PERSONALIZADO",left,30);
+      doc.setFont("helvetica","normal");doc.setFontSize(8);
+      doc.text(ref,right,19,{align:"right"});
+      doc.text(`${pad(date.getDate())}/${pad(date.getMonth()+1)}/${date.getFullYear()}`,right,28,{align:"right"});
     }
-    if(selector) $(selector)?.focus();
-    return null;
-  }
-
-  function validateCustomer(){
-    if(!cart.length) return validationError("Añade al menos una camiseta al pedido.");
-
-    // Honeypot: una persona no puede rellenar este campo invisible.
-    if(($("#ej-order-website")?.value||"").trim()){
-      return validationError("No se ha podido validar el envío. Recarga la página e inténtalo de nuevo.");
+    function footer(){
+      doc.setDrawColor(222,227,223);doc.line(left,279,right,279);
+      doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(105,112,108);
+      doc.text("Documento informativo. No constituye un pedido, factura ni justificante de pago.",left,285);
+      doc.text(`Página ${page}`,right,291,{align:"right"});
     }
-
-    const c=customerData();
-    if(c.name.length<2 || c.name.length>60){
-      return validationError("Indica un nombre válido (entre 2 y 60 caracteres).","#ej-customer-name");
+    function totalBox(y){
+      doc.setFillColor(15,38,30);doc.roundedRect(left,y,right-left,24,3,3,"F");
+      doc.setFont("helvetica","bold");doc.setFontSize(11);doc.setTextColor(255,255,255);
+      doc.text("TOTAL DEL PRESUPUESTO",left+7,y+15);
+      doc.setTextColor(217,183,105);doc.setFontSize(16);
+      doc.text(pdfMoney(total),right-7,y+16,{align:"right"});
     }
-
-    const phone=cleanPhone(c.phone);
-    const digits=phone.replace(/\D/g,"");
-    if(digits.length<9 || digits.length>15){
-      return validationError("Indica un teléfono válido de entre 9 y 15 dígitos.","#ej-customer-phone");
-    }
-
-    // Validamos también los artículos almacenados antes de enviarlos.
-    const allowedAdult=["S","M","L","XL","2XL","3XL"];
-    const allowedChild=["16","18","20","22","24","26","28"];
-    for(const x of cart){
-      const isChild=x.product==="Conjunto niño";
-      const allowedSizes=isChild?allowedChild:allowedAdult;
-      if(!allowedSizes.includes(String(x.size||""))){
-        return validationError("Hay una talla no válida en el pedido. Elimina ese artículo y vuelve a añadirlo.");
+    async function card(x,i,cx,cy,cw,ch,mode){
+      doc.setFillColor(244,246,244);doc.roundedRect(cx,cy,cw,ch,3,3,"F");
+      const compact=mode==="grid";
+      doc.setTextColor(22,50,39);doc.setFont("helvetica","bold");doc.setFontSize(compact?7.8:9);
+      doc.text(`ARTÍCULO ${i+1}`,cx+4,cy+7);
+      const photo=await loadImage(x.image);
+      const imgW=compact?27:42,imgH=compact?39:52;
+      const ix=cx+4,iy=cy+(compact?10:12);
+      if(photo){
+        let iw=imgW,ih=iw/photo.ratio;
+        if(ih>imgH){ih=imgH;iw=ih*photo.ratio;}
+        doc.addImage(photo.data,"JPEG",ix+(imgW-iw)/2,iy+(imgH-ih)/2,iw,ih);
+      }else{
+        doc.setDrawColor(210,215,211);doc.rect(ix,iy,imgW,imgH);
+        doc.setFontSize(6);doc.setTextColor(115,120,116);doc.text("Sin imagen",ix+imgW/2,iy+imgH/2,{align:"center"});
       }
-      if(!Number.isFinite(Number(x.qty)) || Number(x.qty)<1 || Number(x.qty)>20){
-        return validationError("La cantidad por artículo debe estar entre 1 y 20.");
+      const tx=ix+imgW+(compact?3:6),tw=cx+cw-tx-4;
+      doc.setTextColor(20,42,33);doc.setFont("helvetica","bold");doc.setFontSize(compact?9.5:11);
+      const name=doc.splitTextToSize(String(x.name||"Camiseta"),tw);
+      const nameLines=name.slice(0,compact?2:2);
+      doc.text(nameLines,tx,cy+(compact?13:16));
+      doc.setFont("helvetica","normal");doc.setFontSize(compact?8:8.5);
+      let ly=cy+(compact?17:19)+nameLines.length*(compact?3.5:5);
+      const child=x.product==="Conjunto niño";
+      const lines=compact?[
+        `${x.temporada||""} · ${x.tipo||"Equipación"}`,
+        `${child?"Niño":/Jugador/i.test(x.product||"")?"Jugador":"Aficionado"} · Talla ${x.size}`,
+        `Cantidad: ${x.qty}`,
+        x.personalize?`Dorsal: ${x.playerName} ${x.playerNumber}`:"Nombre y dorsal: No",
+        `Parches: ${x.patches?(x.patchType||"Sí"):"No"}`
+      ]:[
+        `${x.temporada||"Temporada no indicada"} · ${x.tipo||"Equipación"}`,
+        `${child?"Conjunto niño":"Camiseta adulto"} · ${child?"Única":(/Jugador/i.test(x.product||"")?"Jugador":"Aficionado")}`,
+        `Talla: ${x.size}    Cantidad: ${x.qty}`,
+        `Nombre y dorsal: ${x.personalize?`${x.playerName} ${x.playerNumber}`:"No"}`,
+        `Parches: ${x.patches?(x.patchType||"Sí"):"No"}`
+      ];
+      const lineHeight=compact?3.8:5;
+      for(const line of lines){
+        const personalized=Boolean(x.personalize) && line.startsWith(compact?"Dorsal:":"Nombre y dorsal:");
+        doc.setFont("helvetica",personalized?"bold":"normal");
+        doc.setFontSize(compact?8:8.5);
+        const wrapped=doc.splitTextToSize(String(line),tw);
+        // Reservar espacio para el precio y evitar que el texto salga de la tarjeta.
+        for(const part of wrapped.slice(0,2)){
+          if(ly>cy+ch-(compact?9:7))break;
+          doc.text(part,tx,ly);ly+=lineHeight;
+        }
+        if(ly>cy+ch-(compact?9:7))break;
       }
-      if(x.personalize){
-        const pn=String(x.playerName||"").trim();
-        const num=String(x.playerNumber||"").trim();
-        if(!pn || pn.length>20 || !/^\d{1,2}$/.test(num) || Number(num)<0 || Number(num)>99){
-          return validationError("Revisa la personalización: nombre de hasta 20 caracteres y dorsal entre 0 y 99.");
+      doc.setFont("helvetica","bold");doc.setFontSize(compact?9:11);doc.setTextColor(18,55,39);
+      doc.text(pdfMoney(x.total),cx+cw-4,cy+ch-5,{align:"right"});
+    }
+    // Precargar las imágenes no es necesario: cada tarjeta carga solo su fotografía.
+    let index=0;
+    while(index<items.length){
+      begin();
+      const remaining=items.length-index;
+      const count=Math.min(maxPerPage,remaining);
+      if(layout==="grid"){
+        const cw=85,ch=55,gapX=6,gapY=5,startY=53;
+        for(let j=0;j<count;j++){
+          const row=Math.floor(j/2),col=j%2;
+          await card(items[index+j],index+j,left+col*(cw+gapX),startY+row*(ch+gapY),cw,ch,"grid");
+        }
+        index+=count;
+        if(index===items.length){
+          const rows=Math.ceil(count/2),totalY=startY+rows*(ch+gapY)+3;
+          if(totalY+24<=274)totalBox(totalY);
+          else{footer();begin();totalBox(56);}
+        }
+      }else{
+        const ch=layout==="large"?68:58;
+        const gap=layout==="large"?7:6;
+        for(let j=0;j<count;j++)await card(items[index+j],index+j,left,54+j*(ch+gap),right-left,ch,layout);
+        index+=count;
+        if(index===items.length){
+          const totalY=54+count*(ch+gap)+4;
+          if(totalY+24<=274)totalBox(totalY);
+          else{footer();begin();totalBox(56);}
         }
       }
+      footer();
     }
-
-    return {...c,phone};
+    doc.save(`${ref}.pdf`);
   }
-
-  async function saveOrderToSupabase({orderId, customer, total, safeCart}){
-    if(!supabase){
-      throw new Error("Supabase no está configurado.");
-    }
-
-    // Si Supabase ya confirmó este mismo número durante esta sesión,
-    // un reintento de Formspree no vuelve a duplicar el pedido.
-    if(sessionStorage.getItem(DB_SAVED_STORE) === orderId){
-      return;
-    }
-
-    // Generamos el UUID del pedido en el navegador. Así el visitante solo
-    // necesita permiso INSERT y no necesita SELECT sobre la tabla pedidos.
-    // Esto mantiene privados todos los pedidos para usuarios anónimos.
-    const pedidoId = crypto.randomUUID();
-
-    const { error: pedidoError } = await supabase
-      .from("pedidos")
-      .insert({
-        id: pedidoId,
-        numero_pedido: orderId,
-        nombre_cliente: customer.name,
-        telefono: customer.phone,
-        total,
-        estado: "Nuevo",
-        notas: null
-      });
-
-    if(pedidoError){
-      throw pedidoError;
-    }
-
-    const articulos = safeCart.map((x) => {
-      const isChild = x.product === "Conjunto niño";
-      const versionText = isChild ? "Única" : (/Jugador/i.test(x.product || "") ? "Jugador" : "Aficionado");
-      const productoText = isChild ? "Conjunto niño" : "Camiseta adulto";
-      const cantidad = safeQty(x.qty);
-      const importe = Number(x.total) || 0;
-      const precioUnitario = cantidad > 0 ? importe / cantidad : importe;
-      // Guardamos una ruta pública relativa, nunca localhost ni el dominio actual.
-      // Así la misma referencia funciona en desarrollo y en Netlify.
-      let imagenUrl = String(x.image || "").trim();
-      try {
-        const parsedImageUrl = new URL(imagenUrl, window.location.origin);
-        imagenUrl = `${parsedImageUrl.pathname}${parsedImageUrl.search}${parsedImageUrl.hash}`;
-      } catch {
-        if (imagenUrl && !imagenUrl.startsWith("/")) imagenUrl = `/${imagenUrl}`;
-      }
-
-      return {
-        pedido_id: pedidoId,
-        equipo: String(x.name || ""),
-        temporada: String(x.temporada || ""),
-        tipo_camiseta: String(x.tipo || ""),
-        producto: productoText,
-        version: versionText,
-        talla: String(x.size || ""),
-        cantidad,
-        nombre_dorsal: Boolean(x.personalize),
-        nombre_personalizado: x.personalize ? String(x.playerName || "") : null,
-        dorsal: x.personalize ? String(x.playerNumber || "") : null,
-        parches: Boolean(x.patches),
-        tipo_parche: x.patches ? (String(x.patchType || "") || null) : null,
-        precio_unitario: precioUnitario,
-        importe,
-        imagen_url: imagenUrl
-      };
-    });
-
-    const { error: articulosError } = await supabase
-      .from("articulos_pedido")
-      .insert(articulos);
-
-    if(articulosError){
-      // El usuario anónimo no tiene permiso DELETE (intencionadamente).
-      // Mostramos el error sin abrir permisos de lectura/borrado públicos.
-      throw articulosError;
-    }
-
-    sessionStorage.setItem(DB_SAVED_STORE, orderId);
-  }
-
-  let orderSending=false;
-
+  let generating=false;
   $("#ej-send-order").onclick=async()=>{
-    if(orderSending) return;
-
-    const c=validateCustomer();
-    if(!c) return;
-
-    const {text:orderText,total,safeCart}=buildOrderText();
-    const orderId=getPendingOrderId();
-    const btn=$("#ej-send-order");
-    const status=$("#ej-order-status");
-
-    // Sustituimos cualquier total guardado por el calculado desde las opciones reales.
-    cart=safeCart;
-    localStorage.setItem(STORE,JSON.stringify(cart));
-    renderCart();
-
-    orderSending=true;
-    btn.disabled=true;
-    btn.textContent="Enviando pedido…";
-    status.className="ej-order-status";
-    status.textContent="";
-
-    const payload=new FormData();
-    payload.append("Número de pedido",orderId);
-    payload.append("Nombre del solicitante",c.name);
-    payload.append("Teléfono",c.phone);
-    payload.append("Detalle del pedido",orderText);
-    payload.append("TOTAL DEL PEDIDO",money(total));
-    payload.append("_subject",`Nuevo pedido ${orderId} · ${c.name} · ${money(total)}`);
-
-    try{
-      await saveOrderToSupabase({
-        orderId,
-        customer:c,
-        total,
-        safeCart
-      });
-
-      const response=await fetch(FORMSPREE_ENDPOINT,{
-        method:"POST",
-        body:payload,
-        headers:{"Accept":"application/json"}
-      });
-
-      let result=null;
-      try{ result=await response.json(); }catch{}
-      if(!response.ok || (result && result.ok===false)){
-        throw new Error("El servicio de pedidos no confirmó el envío");
+    if(generating)return;
+    const status=$("#ej-order-status"),button=$("#ej-send-order");
+    if(!cart.length){status.textContent="Añade al menos una camiseta.";return;}
+    const allowedAdult=["S","M","L","XL","2XL","3XL"],allowedChild=["16","18","20","22","24","26","28"];
+    for(const x of cart){
+      if(!(x.product==="Conjunto niño"?allowedChild:allowedAdult).includes(String(x.size)) || Number(x.qty)<1 || Number(x.qty)>20){
+        status.textContent="Revisa las tallas y cantidades de tu presupuesto.";return;
       }
-
+      if(x.personalize && (!String(x.playerName||"").trim() || !/^\d{1,2}$/.test(String(x.playerNumber)) || Number(x.playerNumber)>99)){
+        status.textContent="Revisa el nombre y dorsal de la personalización.";return;
+      }
+    }
+    generating=true;button.disabled=true;button.textContent="Generando PDF…";
+    status.textContent="Preparando presupuesto…";status.className="ej-order-status";
+    try{
+      await createPdf(cart.map(recalcItem));
       status.className="ej-order-status ok";
-      status.innerHTML=`<b>✓ Pedido enviado correctamente.</b><br>N.º de pedido: <strong>${orderId}</strong><br>Hemos recibido tu solicitud.`;
-      btn.textContent="Pedido enviado ✓";
-      btn.disabled=true;
-      $("#ej-new-order").classList.remove("ej-order-hidden");
-
-      // Evita que el mismo pedido reaparezca al recargar después de enviarlo.
-      localStorage.removeItem(STORE);
-      sessionStorage.removeItem(ORDER_ID_STORE);
-      sessionStorage.removeItem(DB_SAVED_STORE);
+      status.textContent="Presupuesto descargado. Puedes volver a descargarlo o modificar los artículos.";
     }catch(err){
+      console.error("No se pudo generar el PDF",err);
       status.className="ej-order-status error";
-      console.error("[Elite Jerseys] Error al guardar/enviar pedido:", err);
-      status.innerHTML="<b>No se ha podido completar el pedido.</b><br>No se ha confirmado el guardado y envío. Inténtalo de nuevo o utiliza WhatsApp.";
-      btn.disabled=false;
-      btn.textContent="Reintentar envío";
-    }finally{
-      orderSending=false;
-    }
+      status.textContent="No se pudo generar el PDF. Inténtalo de nuevo.";
+    }finally{generating=false;button.disabled=false;button.textContent="Descargar presupuesto PDF";}
   };
-
-  $("#ej-new-order").onclick=()=>{
-    cart=[];
-    localStorage.removeItem(STORE);
-    sessionStorage.removeItem(ORDER_ID_STORE);
-
-    const name=$("#ej-customer-name");
-    const phone=$("#ej-customer-phone");
-    const status=$("#ej-order-status");
-    const send=$("#ej-send-order");
-
-    if(name) name.value="";
-    if(phone) phone.value="";
-    const hp=$("#ej-order-website");
-    if(hp) hp.value="";
-    status.className="ej-order-status";
-    status.textContent="";
-    $("#ej-new-order").classList.add("ej-order-hidden");
-
-    send.disabled=false;
-    send.textContent="Enviar pedido";
-
-    renderCart();
-    close();
-  };
-
-  $("#ej-whatsapp").onclick=()=>{
-    const c=validateCustomer();
-    if(!c) return;
-
-    const {text:orderText,total}=buildOrderText();
-    const orderId=getPendingOrderId();
-    let msg="*PEDIDO ELITE JERSEYS*\n";
-    msg+=`*N.º de pedido:* ${orderId}\n\n`;
-    msg+=`*Solicitante:* ${c.name}\n`;
-    msg+=`*Teléfono:* ${c.phone}\n\n`;
-    msg+=orderText;
-
-    const encoded=encodeURIComponent(msg);
-    const mobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if(mobile){
-      window.location.href=`whatsapp://send?phone=${RECEIVER}&text=${encoded}`;
-      setTimeout(()=>{ window.location.href=`https://wa.me/${RECEIVER}?text=${encoded}`; },1200);
-    }else{
-      window.open(`https://web.whatsapp.com/send?phone=${RECEIVER}&text=${encoded}`,"_blank","noopener");
-    }
-  };
-
-  fillSizes(); renderCart(); addButtons();
+  fillSizes();renderCart();addButtons();
   new MutationObserver(addButtons).observe(document.body,{childList:true,subtree:true});
 })();
 </script>
 
 
 <style is:global>
-/* V34 · botón Añadir al pedido + selector de parche */
+/* V34 · botón Añadir al presupuesto + selector de parche */
 .ej-order-add{
   display:flex !important;
   align-items:center !important;

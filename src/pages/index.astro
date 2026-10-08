@@ -120,10 +120,10 @@ const tituloPagina = "Elite Jerseys | Catálogo de camisetas de fútbol";
 const descripcionPagina =
   `Explora ${totalCamisetas} camisetas de ${totalEquipos} equipos, organizadas por liga, temporada y tipo de equipación.`;
 
-const canonicalUrl = new URL("/", Astro.url.origin).href;
+const canonicalUrl = new URL("/", Astro.site).href;
 const imagenSocial = new URL(
   "/images/logo-elite-jerseys.png",
-  Astro.url.origin
+  Astro.site
 ).href;
 
 const datosEstructurados = {
@@ -140,7 +140,7 @@ const datosEstructurados = {
       "@type": "ListItem",
       position: indice + 1,
       name: item.nombre,
-      url: new URL(item.href, Astro.url.origin).href
+      url: new URL(item.href, Astro.site).href
     }))
   }
 };
@@ -158,7 +158,7 @@ const datosEstructurados = {
     />
 
     <meta name="description" content={descripcionPagina} />
-    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
     <meta name="theme-color" content="#111713" />
 
     <link rel="canonical" href={canonicalUrl} />
@@ -214,14 +214,6 @@ const datosEstructurados = {
             <strong>Elite Jerseys</strong>
             <small>Catálogo de camisetas de fútbol</small>
           </span>
-        </a>
-
-        <a href="/admin" class="acceso-admin" aria-label="Acceder a Administración">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="5" y="10" width="14" height="10" rx="2"></rect>
-            <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
-          </svg>
-          <span>Administración</span>
         </a>
       </div>
     </header>
@@ -1096,48 +1088,6 @@ const datosEstructurados = {
     font-size: 11px;
   }
 
-  .acceso-admin {
-    min-height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 0 15px;
-    border: 1px solid rgba(223, 189, 104, 0.38);
-    border-radius: 11px;
-    color: #ffffff;
-    font-size: 12px;
-    font-weight: 800;
-    text-decoration: none;
-    background: #111713;
-    box-shadow: 0 5px 14px rgba(17, 23, 19, 0.10);
-    transition:
-      color 0.18s ease,
-      border-color 0.18s ease,
-      background 0.18s ease,
-      box-shadow 0.18s ease;
-  }
-
-  .acceso-admin svg {
-    width: 15px;
-    height: 15px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .acceso-admin:hover {
-    color: #ffffff;
-    border-color: rgba(223, 189, 104, 0.70);
-    background: #1b251f;
-    box-shadow: 0 6px 16px rgba(17, 23, 19, 0.15);
-  }
-
-  .acceso-admin svg {
-    color: #dfbd68;
-  }
 
   .hero {
     position: relative;
@@ -1917,20 +1867,6 @@ const datosEstructurados = {
 
     .marca-texto small {
       font-size: 10px;
-    }
-
-    .acceso-admin {
-      min-height: 38px;
-      padding: 0 11px;
-    }
-
-    .acceso-admin span {
-      display: none;
-    }
-
-    .acceso-admin svg {
-      width: 17px;
-      height: 17px;
     }
 
     .hero h1 {
