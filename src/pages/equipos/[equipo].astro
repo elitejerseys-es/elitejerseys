@@ -28,14 +28,11 @@ interface Props {
 }
 
 interface Camiseta {
+  id: string;
   src: string;
   fullSrc: string;
   thumbSrc: string;
-  temporada: string;
-  tipo: string;
-  tipoSlug: string;
-  ordenTemporada: number;
-  ordenTipo: number;
+  imagenes: string[];
 }
 
 const { equipo, categoria } = Astro.props;
@@ -78,149 +75,23 @@ const carpetaEquipo = path.join(
   equipoSlug
 );
 
-const ordenTipos: Record<string, number> = {
-  local: 1,
-  visitante: 2,
-  tercera: 3,
-  cuarta: 4,
-  portero: 5,
-  entrenamiento: 6
-};
-
-const convertirTipo = (tipo: string) =>
-  tipo
-    .split("-")
-    .map((parte) => parte.charAt(0).toUpperCase() + parte.slice(1))
-    .join(" ");
-
 const camisetas: Camiseta[] = [];
-
+const extensionesImagen = /\.webp$/i;
 if (fs.existsSync(carpetaEquipo)) {
-  const entradas = fs
-    .readdirSync(carpetaEquipo, { withFileTypes: true })
-    .filter((entrada) => entrada.isFile())
-    .map((entrada) => entrada.name);
-
-  const patronImagen = /^\d{4}-\d{4}-.+\.(jpg|jpeg|png|webp)$/i;
-  const extensionesPermitidas = /\.(jpg|jpeg|png|webp)$/i;
-
-  for (const archivo of entradas) {
-    if (
-      extensionesPermitidas.test(archivo) &&
-      !patronImagen.test(archivo)
-    ) {
-      console.warn(
-        `[Elite Jerseys] Nombre de camiseta no válido: ${equipoSlug}/${archivo}`
-      );
-    }
-  }
-
-  const prioridadExtension: Record<string, number> = {
-    webp: 1,
-    jpg: 2,
-    jpeg: 3,
-    png: 4
-  };
-
-  const originalesPorBase = new Map<string, string>();
-  const miniaturasPorBase = new Map<string, string>();
-
-  const elegirMejorFormato = (
-    mapa: Map<string, string>,
-    clave: string,
-    archivo: string
-  ) => {
-    const actual = mapa.get(clave);
-
-    if (!actual) {
-      mapa.set(clave, archivo);
-      return;
-    }
-
-    const extensionNueva = archivo.split(".").pop()?.toLowerCase() ?? "";
-    const extensionActual = actual.split(".").pop()?.toLowerCase() ?? "";
-
-    if (
-      (prioridadExtension[extensionNueva] ?? 99) <
-      (prioridadExtension[extensionActual] ?? 99)
-    ) {
-      mapa.set(clave, archivo);
-    }
-  };
-
-  for (const archivo of entradas.filter((nombre) => patronImagen.test(nombre))) {
-    const sinExtension = archivo.replace(extensionesPermitidas, "");
-    const esMiniatura = sinExtension.toLowerCase().endsWith("-thumb");
-    const nombreBase = esMiniatura
-      ? sinExtension.slice(0, -"-thumb".length)
-      : sinExtension;
-
-    const clave = nombreBase.toLowerCase();
-
-    elegirMejorFormato(
-      esMiniatura ? miniaturasPorBase : originalesPorBase,
-      clave,
-      archivo
-    );
-  }
-
-  for (const [clave, archivo] of originalesPorBase) {
-    const sinExtension = archivo.replace(extensionesPermitidas, "");
-    const partes = sinExtension.split("-");
-    const inicio = partes[0];
-    const fin = partes[1];
-    const tipoSlug = partes.slice(2).join("-").toLowerCase();
-
-    if (
-      !inicio ||
-      !fin ||
-      !tipoSlug ||
-      !/^\d{4}$/.test(inicio) ||
-      !/^\d{4}$/.test(fin)
-    ) {
-      console.warn(
-        `[Elite Jerseys] Archivo ignorado por formato incorrecto: ${equipoSlug}/${archivo}`
-      );
-      continue;
-    }
-
-    const miniatura = miniaturasPorBase.get(clave);
-    const fullSrc = `/camisetas/${equipoSlug}/${archivo}`;
-    const thumbSrc = miniatura
-      ? `/camisetas/${equipoSlug}/${miniatura}`
-      : fullSrc;
-
-    camisetas.push({
-      src: thumbSrc,
-      fullSrc,
-      thumbSrc,
-      temporada: `${inicio}/${fin}`,
-      tipo: convertirTipo(tipoSlug),
-      tipoSlug,
-      ordenTemporada: Number(inicio),
-      ordenTipo: ordenTipos[tipoSlug] ?? 99
-    });
+  const carpetas = fs.readdirSync(carpetaEquipo, { withFileTypes: true })
+    .filter((entrada) => entrada.isDirectory() && !entrada.name.startsWith('.'))
+    .sort((a, b) => a.name.localeCompare(b.name, 'es', { numeric: true }));
+  for (const carpeta of carpetas) {
+    const archivos = fs.readdirSync(path.join(carpetaEquipo, carpeta.name))
+      .filter((archivo) => extensionesImagen.test(archivo))
+      .sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+    const portada = archivos.find((archivo) => /^01\.webp$/i.test(archivo));
+    if (!portada) continue;
+    const imagenes = [portada, ...archivos.filter((archivo) => archivo !== portada)]
+      .map((archivo) => `/camisetas/${equipoSlug}/${encodeURIComponent(carpeta.name)}/${encodeURIComponent(archivo)}`);
+    camisetas.push({ id: carpeta.name, src: imagenes[0], fullSrc: imagenes[0], thumbSrc: imagenes[0], imagenes });
   }
 }
-
-camisetas.sort((a, b) => {
-  if (a.ordenTemporada !== b.ordenTemporada) {
-    return b.ordenTemporada - a.ordenTemporada;
-  }
-
-  if (a.ordenTipo !== b.ordenTipo) {
-    return a.ordenTipo - b.ordenTipo;
-  }
-
-  return a.tipoSlug.localeCompare(b.tipoSlug, "es", {
-    numeric: true,
-    sensitivity: "base"
-  });
-});
-
-const temporadas = [...new Set(camisetas.map((camiseta) => camiseta.temporada))];
-const tipos = [...new Set(camisetas.map((camiseta) => camiseta.tipoSlug))]
-  .sort((a, b) => (ordenTipos[a] ?? 99) - (ordenTipos[b] ?? 99));
 
 interface TemaEquipo {
   primario: string;
@@ -421,7 +292,7 @@ const datosEstructurados = {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
   name: `Camisetas de ${equipo}`,
-  description: `Colección de camisetas de ${equipo} organizada por temporada y tipo.`,
+  description: `Colección de camisetas de ${equipo} organizada por diseños.`,
   url: urlCanonica,
   primaryImageOfPage: imagenSocial,
   isPartOf: {
@@ -449,12 +320,12 @@ const datosEstructurados = {
     itemListElement: camisetas.map((camiseta, indice) => ({
       "@type": "ListItem",
       position: indice + 1,
-      name: `${equipo} ${camiseta.temporada} ${camiseta.tipo}`,
-      url: `${urlCanonica}#${camiseta.temporada.replace("/", "-")}-${camiseta.tipoSlug}`,
+      name: `${equipo} · ${camiseta.id}`,
+      url: `${urlCanonica}#${camiseta.id}`,
       image: {
         "@type": "ImageObject",
         contentUrl: new URL(camiseta.fullSrc, Astro.site).href,
-        caption: `${equipo} ${camiseta.temporada} ${camiseta.tipo}`
+        caption: `${equipo} · ${camiseta.id}`
       }
     }))
   }
@@ -509,7 +380,7 @@ const datosEstructurados = {
     <meta property="og:title" content={`${equipo} | Elite Jerseys`} />
     <meta
       property="og:description"
-      content={`Explora todas las camisetas de ${equipo} por temporada y tipo de equipación.`}
+      content={`Explora todos los diseños de camisetas de ${equipo}.`}
     />
     <meta property="og:image" content={imagenSocial} />
     <meta property="og:url" content={urlCanonica} />
@@ -856,96 +727,40 @@ const datosEstructurados = {
 
         camisetas.length > 0 ? (
           <>
-            <section class="barra-galeria">
-              <div>
-                <span class="etiqueta-seccion">COLECCIÓN</span>
-                <h2>Camisetas de {equipo}</h2>
-                <p>Explora todas las equipaciones disponibles del equipo.</p>
-              </div>
-
-              <div class="filtros">
-
-                <select id="filtro-temporada" aria-label="Filtrar por temporada">
-                  <option value="todas">Todas las temporadas</option>
-
-                  {
-                    temporadas.map((temporada) => (
-                      <option value={temporada}>{temporada}</option>
-                    ))
-                  }
-                </select>
-              </div>
-            </section>
-
-            <div class="filtros-rapidos" aria-label="Filtros rápidos">
-              <button class="filtro-rapido activo" type="button" data-filtro-tipo="todos">
-                Todas
-              </button>
-
-              {
-                tipos.map((tipoSlug) => (
-                  <button
-                    class:list={["filtro-rapido", `tipo-${tipoSlug}`]}
-                    type="button"
-                    data-filtro-tipo={tipoSlug}
-                  >
-                    {convertirTipo(tipoSlug)}
-                  </button>
-                ))
-              }
+            <div class="filtros-rapidos filtros-producto" role="group" aria-label="Filtrar productos por edad">
+              <button type="button" class="filtro-rapido activo" data-filtro-tipo="todos" aria-pressed="true">Todos</button>
+              <button type="button" class="filtro-rapido" data-filtro-tipo="adulto" aria-pressed="false">Adulto</button>
+              <button type="button" class="filtro-rapido" data-filtro-tipo="nino" aria-pressed="false">Niño</button>
             </div>
-
-            <p
-              id="contador-resultados"
-              class="contador-resultados"
-              aria-live="polite"
-            >
-              Mostrando {camisetas.length} camisetas
-            </p>
 
             <section class="galeria" aria-label={`Camisetas de ${equipo}`}>
               {
                 camisetas.map((camiseta, indice) => (
                   <button
-                    id={`${camiseta.temporada.replace("/", "-")}-${camiseta.tipoSlug}`}
+                    id={camiseta.id}
                     class="foto"
                     type="button"
                     data-indice={indice}
                     data-orden={indice}
-                    data-temporada={camiseta.temporada}
-                    data-tipo={camiseta.tipoSlug}
                     data-src={camiseta.thumbSrc}
                     data-full-src={camiseta.fullSrc}
-                    data-titulo={`${equipo} · ${camiseta.temporada} · ${camiseta.tipo}`}
-                    aria-label={`Abrir ${camiseta.tipo.toLowerCase()} de ${equipo}, temporada ${camiseta.temporada}`}
+                    data-imagenes={JSON.stringify(camiseta.imagenes)}
+                     data-producto={camiseta.id.startsWith("conjunto-nino-") ? "nino" : "adulto"}
+                    data-titulo={`${equipo} · ${camiseta.id}`}
+                    aria-label={`Ver fotografías de la camiseta ${indice + 1} de ${equipo}`}
                   >
                     <div class="foto-imagen">
                       <img
                         src={camiseta.thumbSrc}
-                        alt={`${equipo} ${camiseta.temporada} ${camiseta.tipo}`}
-                        width="800"
-                        height="1000"
+                        alt={`Camiseta ${indice + 1} de ${equipo}`}
+                        width="800" height="1000"
                         loading={indice === 0 ? "eager" : "lazy"}
                         decoding="async"
-                        fetchpriority={indice === 0 ? "high" : "auto"}
-                        sizes="(max-width: 520px) 50vw, (max-width: 900px) 33vw, 260px"
                         onload="this.classList.add('cargada')"
                         onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
                       />
-
-                      <span class="imagen-no-disponible">
-                        <span>Imagen no disponible</span>
-                      </span>
-
-                      <span class="ampliar">Ver imagen</span>
-                    </div>
-
-                    <div class="foto-texto">
-                      <span class:list={["badge-tipo", `tipo-${camiseta.tipoSlug}`]}>
-                        {camiseta.tipo}
-                      </span>
-
-                      <span class="temporada">{camiseta.temporada}</span>
+                      <span class="imagen-no-disponible"><span>Imagen no disponible</span></span>
+                      <span class="ampliar">Ver fotografías</span>
                     </div>
                   </button>
                 ))
@@ -956,8 +771,8 @@ const datosEstructurados = {
 
             <section id="sin-filtros" class="sin-filtros" hidden>
               <span>⚽</span>
-              <h3>No hay camisetas con esos filtros</h3>
-              <p>Prueba con otra temporada o tipo de equipación.</p>
+              <h3>No hay productos en esta categoría</h3>
+              <p>Prueba a seleccionar otro filtro.</p>
             </section>
           </>
         ) : (
@@ -965,7 +780,7 @@ const datosEstructurados = {
             <span>📷</span>
             <h2>Todavía no hay camisetas</h2>
             <p>
-              Añade fotografías directamente dentro de la carpeta del equipo.
+              Crea una carpeta para cada camiseta e incluye una fotografía llamada 01.webp.
             </p>
           </section>
         )
@@ -1431,41 +1246,24 @@ const datosEstructurados = {
         });
       });
 
-      const filtroTemporada =
-        $<HTMLSelectElement>("#filtro-temporada");
 
       const filtrosRapidos =
         $$<HTMLButtonElement>(".filtro-rapido");
 
       const tarjetas = $$<HTMLButtonElement>(".foto");
-      const contador = $<HTMLElement>("#contador-resultados");
+      
       const sinFiltros = $<HTMLElement>("#sin-filtros");
       const observadorCarga = $<HTMLElement>("#cargar-mas-observador");
       const TAMANO_LOTE = 18;
       let limiteRenderizado = TAMANO_LOTE;
       let totalCoincidenciasFiltro = tarjetas.length;
 
-      const parametrosIniciales = new URLSearchParams(location.search);
-      let tipoActivo = parametrosIniciales.get("tipo") ?? "todos";
-      const temporadaInicial =
-        parametrosIniciales.get("temporada") ?? "todas";
+      let tipoActivo = "todos";
 
       const sincronizarUrl = () => {
         const url = new URL(location.href);
-        const temporada = filtroTemporada?.value ?? "todas";
-
-        if (temporada === "todas") {
-          url.searchParams.delete("temporada");
-        } else {
-          url.searchParams.set("temporada", temporada);
-        }
-
-        if (tipoActivo === "todos") {
-          url.searchParams.delete("tipo");
-        } else {
-          url.searchParams.set("tipo", tipoActivo);
-        }
-
+        if (tipoActivo === "todos") url.searchParams.delete("tipo");
+        else url.searchParams.set("tipo", tipoActivo);
         history.replaceState(null, "", url);
       };
 
@@ -1477,18 +1275,14 @@ const datosEstructurados = {
           tarjeta.setAttribute("aria-hidden", String(fueraDelLote));
         });
         const mostradas = Math.min(limiteRenderizado, coincidentes.length);
-        if (contador) contador.textContent = coincidentes.length === 1 ? "Mostrando 1 camiseta" : mostradas < coincidentes.length ? `Mostrando ${mostradas} de ${coincidentes.length} camisetas` : `Mostrando ${coincidentes.length} camisetas`;
         if (observadorCarga) observadorCarga.hidden = mostradas >= coincidentes.length || coincidentes.length === 0;
       };
 
       const aplicarFiltros = (actualizarUrl = true) => {
-        const temporada = filtroTemporada?.value ?? "todas";
         totalCoincidenciasFiltro = 0;
         limiteRenderizado = TAMANO_LOTE;
         tarjetas.forEach((tarjeta) => {
-          const coincideTemporada = temporada === "todas" || tarjeta.dataset.temporada === temporada;
-          const coincideTipo = tipoActivo === "todos" || tarjeta.dataset.tipo === tipoActivo;
-          const coincide = coincideTemporada && coincideTipo;
+          const coincide = tipoActivo === "todos" || tarjeta.dataset.producto === tipoActivo;
           tarjeta.hidden = !coincide;
           tarjeta.dataset.coincideFiltro = String(coincide);
           if (coincide) totalCoincidenciasFiltro++;
@@ -1517,15 +1311,6 @@ const datosEstructurados = {
       }
 
       if (
-        filtroTemporada &&
-        Array.from(filtroTemporada.options).some(
-          (opcion) => opcion.value === temporadaInicial
-        )
-      ) {
-        filtroTemporada.value = temporadaInicial;
-      }
-
-      if (
         !filtrosRapidos.some(
           (boton) =>
             (boton.dataset.filtroTipo ?? "todos") === tipoActivo
@@ -1533,10 +1318,6 @@ const datosEstructurados = {
       ) {
         tipoActivo = "todos";
       }
-
-      filtroTemporada?.addEventListener("change", () =>
-        aplicarFiltros()
-      );
 
       filtrosRapidos.forEach((boton) => {
         boton.addEventListener("click", () => {
@@ -1613,128 +1394,74 @@ const datosEstructurados = {
         actualizarTransformacionImagen();
       };
 
-      const tarjetasVisibles = () =>
-        tarjetas.filter((tarjeta) => !tarjeta.hidden && tarjeta.dataset.coincideFiltro === "true");
+      let imagenesActuales: string[] = [];
+      let tituloActual = "";
+      const tarjetasVisibles = () => imagenesActuales;
 
       const renderizarMiniaturas = () => {
         if (!visorMiniaturas) return;
-
-        const visibles = tarjetasVisibles();
         visorMiniaturas.replaceChildren();
-
-        if (visibles.length <= 1) {
-          visorMiniaturas.hidden = true;
-          return;
-        }
-
-        const fragmento = document.createDocumentFragment();
-
-        visibles.forEach((tarjeta, indice) => {
+        visorMiniaturas.hidden = imagenesActuales.length <= 1;
+        imagenesActuales.forEach((src, indice) => {
           const boton = document.createElement("button");
           boton.type = "button";
           boton.className = "visor-miniatura";
           boton.classList.toggle("activa", indice === indiceActual);
-          boton.setAttribute(
-            "aria-label",
-            `Abrir ${tarjeta.dataset.titulo ?? "camiseta"}`
-          );
-
+          boton.setAttribute("aria-label", `Ver fotografía ${indice + 1}`);
           const imagen = document.createElement("img");
-          imagen.src =
-            tarjeta.querySelector<HTMLImageElement>(".foto-imagen img")
-              ?.currentSrc ||
-            tarjeta.dataset.src ||
-            tarjeta.dataset.fullSrc ||
-            "";
+          imagen.src = src;
           imagen.alt = "";
           imagen.width = 54;
           imagen.height = 68;
           imagen.loading = "lazy";
-          imagen.decoding = "async";
-
           boton.append(imagen);
-          boton.addEventListener("click", () => {
-            mostrarEnVisor(tarjeta, true);
-          });
-
-          fragmento.append(boton);
+          boton.addEventListener("click", () => mostrarImagen(indice));
+          visorMiniaturas.append(boton);
         });
-
-        visorMiniaturas.append(fragmento);
-        visorMiniaturas.hidden = false;
       };
 
       const precargarVecinas = () => {
-        const visibles = tarjetasVisibles();
-        if (visibles.length < 2) return;
-
+        if (imagenesActuales.length < 2) return;
         [-1, 1].forEach((direccion) => {
-          const indice =
-            (indiceActual + direccion + visibles.length) %
-            visibles.length;
-
-          const src = visibles[indice]?.dataset.fullSrc;
-          if (!src) return;
-
+          const indice = (indiceActual + direccion + imagenesActuales.length) % imagenesActuales.length;
           const imagen = new Image();
-          imagen.decoding = "async";
-          imagen.src = src;
+          imagen.src = imagenesActuales[indice];
         });
       };
 
       const actualizarNavegacionVisor = () => {
-        const visibles = tarjetasVisibles();
-        const hayVarias = visibles.length > 1;
-        if (botonAnterior) {
-          botonAnterior.hidden = !hayVarias;
-          botonAnterior.classList.toggle("sin-navegacion", !hayVarias);
-          if (hayVarias) botonAnterior.removeAttribute("hidden");
-        }
-        if (botonSiguiente) {
-          botonSiguiente.hidden = !hayVarias;
-          botonSiguiente.classList.toggle("sin-navegacion", !hayVarias);
-          if (hayVarias) botonSiguiente.removeAttribute("hidden");
-        }
-        if (visorContador) visorContador.textContent = `${indiceActual + 1} / ${Math.max(1, visibles.length)}`;
-        requestAnimationFrame(() => visorMiniaturas?.querySelector<HTMLElement>(".visor-miniatura.activa")?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" }));
+        const hayVarias = imagenesActuales.length > 1;
+        if (botonAnterior) botonAnterior.hidden = !hayVarias;
+        if (botonSiguiente) botonSiguiente.hidden = !hayVarias;
+        if (visorContador) visorContador.textContent = `${indiceActual + 1} / ${Math.max(1, imagenesActuales.length)}`;
       };
 
-      const mostrarEnVisor = (
-        tarjeta: HTMLButtonElement,
-        conservarDisparador = false
-      ) => {
-        if (!visor || !visorImagen || !visorTitulo) return;
-
-        const visibles = tarjetasVisibles();
-        const nuevoIndice = visibles.indexOf(tarjeta);
-        if (nuevoIndice < 0) return;
-
-        indiceActual = nuevoIndice;
-
-        if (!conservarDisparador) {
-          disparadorVisor = tarjeta;
-        }
-
+      const mostrarImagen = (indice: number) => {
+        if (!visorImagen || !visorTitulo || !imagenesActuales.length) return;
+        indiceActual = (indice + imagenesActuales.length) % imagenesActuales.length;
         visorImagen.style.opacity = "0";
-        visorImagen.src =
-          tarjeta.dataset.fullSrc ??
-          tarjeta.dataset.src ??
-          "";
-        visorImagen.alt = tarjeta.dataset.titulo ?? "";
-        visorTitulo.textContent = tarjeta.dataset.titulo ?? "";
-
+        visorImagen.src = imagenesActuales[indiceActual];
+        visorImagen.alt = `${tituloActual}, fotografía ${indiceActual + 1}`;
+        visorTitulo.textContent = tituloActual;
         restablecerZoom();
         actualizarNavegacionVisor();
         renderizarMiniaturas();
+        precargarVecinas();
+      };
+
+      const mostrarEnVisor = (tarjeta: HTMLButtonElement) => {
+        if (!visor) return;
+        try {
+          imagenesActuales = JSON.parse(tarjeta.dataset.imagenes ?? "[]");
+        } catch { imagenesActuales = []; }
+        if (!imagenesActuales.length) return;
+        tituloActual = tarjeta.dataset.titulo ?? "Camiseta";
+        disparadorVisor = tarjeta;
+        mostrarImagen(0);
         visor.classList.add("abierto");
         visor.setAttribute("aria-hidden", "false");
         document.body.classList.add("sin-scroll");
-
-        requestAnimationFrame(() => {
-          visor.focus({ preventScroll: true });
-        });
-
-        precargarVecinas();
+        requestAnimationFrame(() => visor.focus({ preventScroll: true }));
       };
 
       visorImagen?.addEventListener("load", () => {
@@ -1758,17 +1485,7 @@ const datosEstructurados = {
       };
 
       const cambiarImagen = (direccion: number) => {
-        const visibles = tarjetasVisibles();
-        if (visibles.length === 0) return;
-
-        indiceActual =
-          (indiceActual + direccion + visibles.length) %
-          visibles.length;
-
-        const tarjeta = visibles[indiceActual];
-        if (tarjeta) {
-          mostrarEnVisor(tarjeta, true);
-        }
+        if (imagenesActuales.length) mostrarImagen(indiceActual + direccion);
       };
 
       tarjetas.forEach((tarjeta) => {
@@ -1928,8 +1645,8 @@ const datosEstructurados = {
         }
 
         if (evento.key === "ArrowRight") { evento.preventDefault(); cambiarImagen(1); }
-        if (evento.key === "Home") { evento.preventDefault(); const primera = tarjetasVisibles()[0]; if (primera) mostrarEnVisor(primera, true); }
-        if (evento.key === "End") { evento.preventDefault(); const visibles = tarjetasVisibles(); const ultima = visibles[visibles.length - 1]; if (ultima) mostrarEnVisor(ultima, true); }
+        if (evento.key === "Home") { evento.preventDefault(); if (imagenesActuales.length) mostrarImagen(0); }
+        if (evento.key === "End") { evento.preventDefault(); if (imagenesActuales.length) mostrarImagen(imagenesActuales.length - 1); }
         if (evento.key.toLowerCase() === "f") { evento.preventDefault(); botonPantallaCompleta?.click(); }
 
         if (evento.key === "+" || evento.key === "=") {
@@ -2521,6 +2238,8 @@ const datosEstructurados = {
   }
 
   .barra-galeria h2 {
+    user-select: none;
+    -webkit-user-select: none;
     margin: 8px 0 5px;
     color: #111713;
     font-size: clamp(27px, 4vw, 38px);
@@ -6903,6 +6622,7 @@ const datosEstructurados = {
      Visor independiente. Este bloque debe permanecer al FINAL.
      ========================================================= -->
 <div id="ej-v11" class="ej-v11" aria-hidden="true">
+  <button id="ej-v11-budget" class="ej-order-add ej-v11-budget" type="button" aria-label="Añadir esta camiseta al presupuesto">Añadir al presupuesto</button>
   <button id="ej-v11-close" class="ej-v11-close" type="button" aria-label="Cerrar">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5 5 19"/></svg>
   </button>
@@ -6914,6 +6634,8 @@ const datosEstructurados = {
   <div class="ej-v11-stage">
     <img id="ej-v11-img" alt="" />
   </div>
+
+  <div id="ej-v11-thumbs" class="ej-v11-thumbs" aria-label="Fotografías de esta camiseta"></div>
 
   <button id="ej-v11-next" class="ej-v11-arrow ej-v11-next" type="button" aria-label="Siguiente">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4 8 8-8 8"/></svg>
@@ -6929,56 +6651,61 @@ const datosEstructurados = {
     const cerrar = document.getElementById("ej-v11-close");
     if (!visor || !imagen || !anterior || !siguiente || !cerrar) return;
 
-    let tarjetas = [];
+    const miniaturas = document.getElementById("ej-v11-thumbs");
+    let fotos = [];
     let indice = 0;
     let inicioX = 0;
 
-    const tarjetasVisibles = () =>
-      Array.from(document.querySelectorAll(".foto")).filter((el) => {
-        const estilo = getComputedStyle(el);
-        return estilo.display !== "none" && estilo.visibility !== "hidden";
-      });
-
-    const srcDe = (tarjeta) => {
-      const img = tarjeta?.querySelector?.(".foto-imagen img") || tarjeta?.querySelector?.("img");
-      return (
-        tarjeta?.dataset?.fullSrc ||
-        tarjeta?.dataset?.src ||
-        img?.currentSrc ||
-        img?.src ||
-        ""
-      );
-    };
-
-    const tituloDe = (tarjeta) =>
-      tarjeta?.dataset?.titulo ||
-      tarjeta?.querySelector?.("img")?.alt ||
-      "Camiseta";
-
     const pintar = () => {
-      if (!tarjetas.length) return;
-      indice = (indice + tarjetas.length) % tarjetas.length;
-      const tarjeta = tarjetas[indice];
-      imagen.src = srcDe(tarjeta);
-      imagen.alt = tituloDe(tarjeta);
-
-      const hayVarias = tarjetas.length > 1;
-      anterior.hidden = !hayVarias;
-      siguiente.hidden = !hayVarias;
+      if (!fotos.length) return;
+      indice = (indice + fotos.length) % fotos.length;
+      imagen.src = fotos[indice];
+      imagen.alt = `Fotografía ${indice + 1} de ${fotos.length}`;
+      anterior.hidden = fotos.length < 2;
+      siguiente.hidden = fotos.length < 2;
+      if (miniaturas) {
+        miniaturas.replaceChildren();
+        fotos.forEach((src, numero) => {
+          const boton = document.createElement("button");
+          boton.type = "button";
+          boton.className = "ej-v11-thumb";
+          boton.classList.toggle("activa", numero === indice);
+          boton.setAttribute("aria-label", `Ver fotografía ${numero + 1}`);
+          const img = document.createElement("img");
+          img.src = src;
+          img.alt = "";
+          img.loading = "lazy";
+          boton.append(img);
+          boton.addEventListener("click", () => { indice = numero; pintar(); });
+          miniaturas.append(boton);
+        });
+      }
     };
 
     const abrir = (tarjeta) => {
-      tarjetas = tarjetasVisibles();
-      indice = Math.max(0, tarjetas.indexOf(tarjeta));
+      try {
+        const valor = JSON.parse(tarjeta.dataset.imagenes || "[]");
+        fotos = Array.isArray(valor) ? valor : [];
+      } catch { fotos = []; }
+      if (!fotos.length) {
+        const src = tarjeta.dataset.fullSrc || tarjeta.querySelector("img")?.src;
+        fotos = src ? [src] : [];
+      }
+      if (!fotos.length) return;
+      indice = 0;
       pintar();
-
-      // Neutraliza por completo el visor antiguo.
+      const botonPresupuesto = document.getElementById("ej-v11-budget");
+      if (botonPresupuesto) {
+        botonPresupuesto.dataset.image = tarjeta.dataset.fullSrc || fotos[0];
+        botonPresupuesto.dataset.producto = tarjeta.dataset.producto || "adulto";
+        botonPresupuesto.dataset.temporada = "";
+        botonPresupuesto.dataset.tipo = "";
+      }
       const viejo = document.getElementById("visor");
       if (viejo) {
         viejo.classList.remove("abierto");
         viejo.setAttribute("aria-hidden", "true");
       }
-
       visor.classList.add("ej-v11-open");
       visor.setAttribute("aria-hidden", "false");
       document.documentElement.classList.add("ej-v11-lock");
@@ -7029,10 +6756,10 @@ const datosEstructurados = {
     document.addEventListener("keydown", (e) => {
       if (!visor.classList.contains("ej-v11-open")) return;
       if (e.key === "Escape") salir();
-      if (e.key === "ArrowLeft" && tarjetas.length > 1) {
+      if (e.key === "ArrowLeft" && fotos.length > 1) {
         indice -= 1; pintar();
       }
-      if (e.key === "ArrowRight" && tarjetas.length > 1) {
+      if (e.key === "ArrowRight" && fotos.length > 1) {
         indice += 1; pintar();
       }
     });
@@ -7042,7 +6769,7 @@ const datosEstructurados = {
     }, { passive: true });
 
     visor.addEventListener("touchend", (e) => {
-      if (tarjetas.length < 2) return;
+      if (fotos.length < 2) return;
       const finX = e.changedTouches[0]?.clientX || 0;
       const distancia = finX - inicioX;
       if (Math.abs(distancia) < 45) return;
@@ -7697,7 +7424,7 @@ const datosEstructurados = {
 <button id="ej-order-fab" type="button">Mi presupuesto <span id="ej-order-count">0</span></button>
 
 <div id="ej-order-overlay" aria-hidden="true">
-  <aside id="ej-order-panel" role="dialog" aria-modal="true" aria-label="Presupuesto Elite Jerseys" data-category={categoria}>
+  <aside id="ej-order-panel" role="dialog" aria-modal="true" aria-label="Presupuesto Elite Jerseys" data-category={categoria} data-team-slug={equipoSlug}>
     <div class="ej-order-head">
       <h2 id="ej-order-title">Mi presupuesto</h2>
       <button class="ej-order-x" id="ej-order-close" type="button" aria-label="Cerrar">×</button>
@@ -7714,14 +7441,14 @@ const datosEstructurados = {
           <select id="ej-product-type">
             <option value="adulto">Camiseta adulto</option>
             <option value="nino">Conjunto niño</option>
+            <option value="chandal">Chándal</option>
           </select>
         </div>
 
         <div class="ej-order-field" id="ej-version-wrap">
           <label>Versión</label>
-          <select id="ej-version">
-            <option value="aficionado">Aficionado · 9 €</option>
-            <option value="jugador">Jugador · 12 €</option>
+          <select id="ej-version" disabled aria-label="Versión fija: Aficionado" style="opacity:1; cursor:default; color:#17231c; -webkit-text-fill-color:#17231c;">
+            <option value="aficionado">Aficionado</option>
           </select>
         </div>
 
@@ -7740,7 +7467,7 @@ const datosEstructurados = {
           </div>
         </div>
 
-        <label class="ej-order-check">
+        <label class="ej-order-check" data-personalizacion-control>
           <input id="ej-personalize" type="checkbox">
           <span>Nombre + dorsal <b>(+3 €)</b></span>
         </label>
@@ -7750,17 +7477,35 @@ const datosEstructurados = {
           <div class="ej-order-field"><label>Dorsal</label><input id="ej-player-number" type="number" min="0" max="99" inputmode="numeric" placeholder="9"></div>
         </div>
 
-        <label class="ej-order-check">
+        <label class="ej-order-check" data-parches-control>
           <input id="ej-patches" type="checkbox">
           <span>Parches</span>
         </label>
 
+        <div id="ej-spain-patches" class="ej-order-field ej-order-hidden" style="padding:14px;border:1px solid #dce4df;border-radius:12px;">
+          <div style="font-weight:700;font-size:13px;margin-bottom:12px;">Selecciona los parches <span style="font-weight:400;color:#65716c;">(puedes elegir ambos)</span></div>
+          <label style="display:flex;align-items:center;gap:12px;padding:12px 10px;border:1px solid #e1e7e3;border-radius:10px;cursor:pointer;margin-bottom:10px;min-height:70px;">
+            <input type="checkbox" id="ej-spain-champion" style="appearance:auto;-webkit-appearance:checkbox;width:18px;height:18px;min-width:18px;min-height:18px;flex:0 0 18px;margin:0;accent-color:#27865f;cursor:pointer;">
+            <img src="/parches/campeon-mundo-2026.png" style="width:52px;height:50px;flex:0 0 52px;object-fit:contain;" alt="Campeón del Mundo 2026" loading="lazy">
+            <span style="flex:1;min-width:0;font-size:13px;line-height:1.35;font-weight:600;">Campeón del Mundo 2026</span>
+            <strong style="flex:0 0 auto;white-space:nowrap;font-size:13px;">+1 €</strong>
+          </label>
+          <label style="display:flex;align-items:center;gap:12px;padding:12px 10px;border:1px solid #e1e7e3;border-radius:10px;cursor:pointer;min-height:70px;">
+            <input type="checkbox" id="ej-spain-gold" style="appearance:auto;-webkit-appearance:checkbox;width:18px;height:18px;min-width:18px;min-height:18px;flex:0 0 18px;margin:0;accent-color:#27865f;cursor:pointer;">
+            <img src="/parches/mundial-dorado-2026.png" style="width:52px;height:50px;flex:0 0 52px;object-fit:contain;" alt="Mundial Dorado 2026" loading="lazy">
+            <span style="flex:1;min-width:0;font-size:13px;line-height:1.35;font-weight:600;">Mundial Dorado 2026 <small style="display:block;font-size:11px;font-weight:400;color:#65716c;">Dos mangas</small></span>
+            <strong style="flex:0 0 auto;white-space:nowrap;font-size:13px;">+2 €</strong>
+          </label>
+        </div>
         <div id="ej-patch-type-wrap" class="ej-order-field ej-order-hidden">
           <label>Tipo de parche</label>
-          <select id="ej-patch-type">
-            <option value="LIGA">LIGA (+1 €)</option>
-            <option value="CHAMPIONS">CHAMPIONS (+1 €)</option>
+          <select id="ej-patch-type" aria-label="Elegir parche disponible para este equipo">
+            <option value="LIGA">LaLiga (+1 €)</option>
           </select>
+          <div id="ej-patch-preview" style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+            <img id="ej-patch-image" src="/parches/laliga.png" alt="Parche de LaLiga" style="width:54px;height:54px;object-fit:contain;" loading="lazy" />
+            <span id="ej-patch-label" style="font-size:13px;">LaLiga</span>
+          </div>
         </div>
 
         <div class="ej-order-pricebox"><span>Total de este artículo</span><b id="ej-line-price">9 €</b></div>
@@ -7772,7 +7517,7 @@ const datosEstructurados = {
         <div id="ej-cart-items"></div>
         <div id="ej-cart-checkout" class="ej-order-hidden">
           <div class="ej-cart-total ej-v31-total">
-            <div><span>TOTAL DEL PRESUPUESTO</span><small>Importe total de todos los artículos</small></div>
+            <div><span>TOTAL PRESUPUESTO</span><small>Importe total de todos los artículos</small></div>
             <span id="ej-cart-total">0 €</span>
           </div>
           <p class="ej-order-privacy">El presupuesto se genera en tu dispositivo, sin solicitar datos personales ni enviarlo a una base de datos.</p>
@@ -8589,6 +8334,107 @@ import { jsPDF } from "jspdf";
   const $ = s => document.querySelector(s);
   const TEAM_CATEGORY = $("#ej-order-panel")?.dataset.category || "";
   const IS_NATIONAL_LEAGUE = TEAM_CATEGORY !== "Selecciones";
+  // Solo los 20 clubes indicados de Primera 2026/27 pueden personalizarse
+  // dentro de la categoria española. Otras ligas y selecciones no cambian.
+  const FIRST_DIVISION_ES = new Set([
+    "athletic-club", "atletico-de-madrid", "ca-osasuna", "celta",
+    "deportivo-alaves", "elche-cf", "fc-barcelona", "getafe-cf",
+    "levante-ud", "malaga-cf", "racing-de-santander", "rayo-vallecano",
+    "rc-deportivo", "rcd-espanyol", "real-betis", "real-madrid",
+    "real-sociedad", "sevilla-fc", "valencia-cf", "villarreal-cf"
+  ]);
+  // Lista explícita: no depende del nombre de la categoría en catalogo.ts.
+  const SPANISH_TEAMS = new Set([
+    ...FIRST_DIVISION_ES,
+    "cd-leganes", "girona-fc", "rcd-mallorca", "real-oviedo",
+    "real-valladolid-cf", "real-zaragoza", "ud-almeria"
+  ]);
+  // Parche nacional + competicion europea solo para los clubes indicados.
+  const SPANISH_EUROPEAN_PATCHES = {
+    "fc-barcelona": "CHAMPIONS", "real-betis": "CHAMPIONS",
+    "real-madrid": "CHAMPIONS", "villarreal-cf": "CHAMPIONS",
+    "atletico-de-madrid": "CHAMPIONS",
+    "real-sociedad": "EUROPA", "celta": "EUROPA",
+    "getafe-cf": "CONFERENCE"
+  };
+  // Todos los clubes de las categorias inglesas pueden elegir Premier League.
+  // Estos clubes tienen ademas la opcion europea indicada por el propietario.
+  const ENGLISH_EUROPEAN_PATCHES = {
+    "manchester-united": "CHAMPIONS",
+    "manchester-city": "CHAMPIONS",
+    "aston-villa": "CHAMPIONS",
+    "liverpool": "CHAMPIONS",
+    "arsenal": "CHAMPIONS",
+    "crystal-palace": "EUROPA"
+  };
+  const ENGLISH_TEAMS = new Set([
+    "arsenal", "aston-villa", "bournemouth", "brentford", "brighton-and-hove-albion",
+    "burnley", "chelsea", "crystal-palace", "coventry-city", "everton", "fulham",
+    "hull-city", "ipswich-town", "leeds-united", "leicester-city", "liverpool",
+    "manchester-city", "manchester-united", "newcastle-united", "nottingham-forest",
+    "sheffield-united", "southampton", "sunderland", "tottenham-hotspur",
+    "west-ham-united", "wolverhampton-wanderers"
+  ]);
+  // Serie A para todos los equipos italianos; opción europea según la selección del propietario.
+  const ITALIAN_EUROPEAN_PATCHES = {
+    "como": "CHAMPIONS", "roma": "CHAMPIONS",
+    "inter": "CHAMPIONS", "napoli": "CHAMPIONS",
+    "juventus": "EUROPA", "ac-milan": "EUROPA",
+    "atalanta": "CONFERENCE"
+  };
+  const ITALIAN_TEAMS = new Set([
+    "ac-milan", "atalanta", "bologna", "cagliari", "como", "fiorentina",
+    "frosinone", "genoa", "inter", "juventus", "lazio", "lecce",
+    "monza", "napoli", "parma", "roma", "sassuolo", "torino",
+    "udinese", "venezia"
+  ]);
+  // Bundesliga para todos los equipos alemanes del catálogo.
+  // Opciones europeas solicitadas: se excluye Salzburgo.
+  const GERMAN_EUROPEAN_PATCHES = {
+    "bayern-munich": "CHAMPIONS",
+    "vfb-stuttgart": "CHAMPIONS",
+    "borussia-dortmund": "CHAMPIONS",
+    "rb-leipzig": "CHAMPIONS",
+    "bayer-leverkusen": "EUROPA"
+  };
+  const GERMAN_TEAMS = new Set([
+    "bayer-leverkusen", "bayern-munich", "borussia-dortmund",
+    "borussia-monchengladbach", "eintracht-frankfurt", "fc-augsburg",
+    "fc-freiburg", "fc-koln", "hamburger-sv", "mainz-05",
+    "rb-leipzig", "schalke-04", "sv-elversberg", "sc-paderborn",
+    "tsg-hoffenheim", "union-berlin", "vfb-stuttgart", "werder-bremen"
+  ]);
+  // Ligue 1: todos los clubes franceses del catálogo, con opciones europeas solicitadas.
+  const FRENCH_EUROPEAN_PATCHES = {
+    "paris-saint-germain": "CHAMPIONS",
+    "olympique-lyonnais": "EUROPA",
+    "olympique-de-marseille": "EUROPA"
+  };
+  const FRENCH_TEAMS = new Set([
+    "aj-auxerre", "angers-sco", "as-monaco", "estac-troyes", "fc-lorient",
+    "le-havre-ac", "le-mans-fc", "losc-lille", "ogc-nice",
+    "olympique-de-marseille", "olympique-lyonnais", "paris-fc",
+    "paris-saint-germain", "rc-lens", "rc-strasbourg", "stade-brestois",
+    "stade-rennais", "toulouse-fc"
+  ]);
+  const PATCH_OPTIONS = {
+    PREMIER: {label:"Premier League", image:"/parches/premier-league.png"},
+    SERIE_A: {label:"Serie A", image:"/parches/serie-a.png"},
+    BUNDESLIGA: {label:"Bundesliga", image:"/parches/bundesliga.png"},
+    LIGUE_1: {label:"Ligue 1", image:"/parches/ligue-1.png"},
+    LIGA: {label:"LaLiga", image:"/parches/laliga.png"},
+    CHAMPIONS: {label:"Champions League", image:"/parches/champions-league.png"},
+    EUROPA: {label:"Europa League", image:"/parches/europa-league.png"},
+    CONFERENCE: {label:"Conference League", image:"/parches/conference-league.png"},
+    ANIVERSARIO_125: {label:"125 Aniversario", image:"/parches/125-aniversario.png"},
+    CAMPEON_MUNDO_2026: {label:"Campeón del Mundo 2026", image:"/parches/campeon-mundo-2026.png"},
+    MUNDIAL_DORADO_2026: {label:"Mundial Dorado 2026 (dos mangas)", image:"/parches/mundial-dorado-2026.png"}
+  };
+  const CURRENT_TEAM_SLUG = $("#ej-order-panel")?.dataset.teamSlug || "";
+  const CAN_CUSTOMIZE = FIRST_DIVISION_ES.has(CURRENT_TEAM_SLUG) ||
+    (!SPANISH_TEAMS.has(CURRENT_TEAM_SLUG) &&
+     !/(?:espa[nñ]ola|espa[nñ]a|laliga)/i.test(TEAM_CATEGORY));
+
   const $$ = s => [...document.querySelectorAll(s)];
   let current = null;
   let cart = [];
@@ -8602,6 +8448,86 @@ import { jsPDF } from "jspdf";
   const qtyMinus=$("#ej-qty-minus"), qtyPlus=$("#ej-qty-plus");
   const personalize=$("#ej-personalize"), patches=$("#ej-patches");
   const patchType=$("#ej-patch-type"), patchTypeWrap=$("#ej-patch-type-wrap");
+  const spainPatchWrap=$("#ej-spain-patches"), spainChampion=$("#ej-spain-champion"), spainGold=$("#ej-spain-gold");
+  const isSpanishTeam = SPANISH_TEAMS.has(CURRENT_TEAM_SLUG) ||
+    /(?:espa[nñ]ola|espa[nñ]a|laliga)/i.test(TEAM_CATEGORY);
+  const isEnglishTeam = ENGLISH_TEAMS.has(CURRENT_TEAM_SLUG) ||
+    /(?:premier|inglaterra|inglesa|english|championship|efl)/i.test(TEAM_CATEGORY);
+  const isItalianTeam = ITALIAN_TEAMS.has(CURRENT_TEAM_SLUG) ||
+    /(?:serie\s*a|italiana|italia)/i.test(TEAM_CATEGORY);
+  const isGermanTeam = GERMAN_TEAMS.has(CURRENT_TEAM_SLUG) ||
+    /(?:bundesliga|alemana|alemania|germany)/i.test(TEAM_CATEGORY);
+  const isFrenchTeam = FRENCH_TEAMS.has(CURRENT_TEAM_SLUG) ||
+    /(?:ligue\s*1|francesa|francia|france)/i.test(TEAM_CATEGORY);
+  const CAN_PATCHES = CAN_CUSTOMIZE || isSpanishTeam || isEnglishTeam || isItalianTeam || isGermanTeam || isFrenchTeam || CURRENT_TEAM_SLUG === "espana";
+  const patchImage = $("#ej-patch-image"), patchLabel = $("#ej-patch-label");
+  function updatePatchPreview(){
+    const data = PATCH_OPTIONS[patchType?.value] || PATCH_OPTIONS[isFrenchTeam ? "LIGUE_1" : isGermanTeam ? "BUNDESLIGA" : isItalianTeam ? "SERIE_A" : isEnglishTeam ? "PREMIER" : "LIGA"];
+    if(patchImage){patchImage.src=data.image;patchImage.alt=`Parche ${data.label}`;}
+    if(patchLabel)patchLabel.textContent=data.label;
+  }
+  function isSpainTracksuit(){
+    if(CURRENT_TEAM_SLUG !== "espana" || !current) return false;
+    try {
+      const parts=decodeURIComponent(new URL(current.image,location.origin).pathname).toLowerCase().split("/");
+      return parts.includes("espana") && parts.includes("camisetas-005");
+    } catch { return false; }
+  }
+  function is125AnniversaryShirt(){
+    if(CURRENT_TEAM_SLUG !== "real-madrid" || !current) return false;
+    try {
+      const pathname = new URL(current.image, location.origin).pathname;
+      return pathname.split("/").some(part => decodeURIComponent(part).toLowerCase() === "camisetas-005");
+    } catch { return false; }
+  }
+  // Parche exclusivo de las seis equipaciones indicadas de España.
+  const SPAIN_PATCH_FOLDERS = new Set([
+    "camisetas-001", "camisetas-002", "camisetas-003", "camisetas-004",
+    "conjunto-nino-001", "conjunto-nino-002"
+  ]);
+  function isSpainSelectedShirt(){
+    if(CURRENT_TEAM_SLUG !== "espana" || !current) return false;
+    try {
+      const pathname = decodeURIComponent(new URL(current.image, location.origin).pathname).toLowerCase();
+      const parts = pathname.split("/");
+      return parts.includes("espana") && parts.some(part => SPAIN_PATCH_FOLDERS.has(part));
+    } catch { return false; }
+  }
+  function setupPatchOptions(){
+    if(!patchType)return;
+    // Fuera de España se conservan las opciones originales del configurador.
+    const keys = is125AnniversaryShirt() ? ["ANIVERSARIO_125"] : isSpainSelectedShirt() ? ["CAMPEON_MUNDO_2026", "MUNDIAL_DORADO_2026"] : isSpanishTeam
+      ? ["LIGA", ...(SPANISH_EUROPEAN_PATCHES[CURRENT_TEAM_SLUG] ? [SPANISH_EUROPEAN_PATCHES[CURRENT_TEAM_SLUG]] : [])]
+      : isEnglishTeam
+      ? ["PREMIER", ...(ENGLISH_EUROPEAN_PATCHES[CURRENT_TEAM_SLUG] ? [ENGLISH_EUROPEAN_PATCHES[CURRENT_TEAM_SLUG]] : [])]
+      : isItalianTeam
+      ? ["SERIE_A", ...(ITALIAN_EUROPEAN_PATCHES[CURRENT_TEAM_SLUG] ? [ITALIAN_EUROPEAN_PATCHES[CURRENT_TEAM_SLUG]] : [])]
+      : isGermanTeam
+      ? ["BUNDESLIGA", ...(GERMAN_EUROPEAN_PATCHES[CURRENT_TEAM_SLUG] ? [GERMAN_EUROPEAN_PATCHES[CURRENT_TEAM_SLUG]] : [])]
+      : isFrenchTeam
+      ? ["LIGUE_1", ...(FRENCH_EUROPEAN_PATCHES[CURRENT_TEAM_SLUG] ? [FRENCH_EUROPEAN_PATCHES[CURRENT_TEAM_SLUG]] : [])]
+      : ["LIGA", "CHAMPIONS"];
+    patchType.replaceChildren(...keys.map(key=>{
+      const option=document.createElement("option");
+      option.value=key;
+      option.textContent=`${PATCH_OPTIONS[key].label} (+${key === "MUNDIAL_DORADO_2026" ? 2 : 1} €)`;
+      return option;
+    }));
+    updatePatchPreview();
+  }
+  setupPatchOptions();
+  // Personalización solo para los 20 equipos indicados; parche LaLiga para TODOS los equipos españoles.
+  if (!CAN_CUSTOMIZE) {
+    document.querySelector("[data-personalizacion-control]")?.classList.add("ej-order-hidden");
+    $("#ej-personal-fields")?.classList.add("ej-order-hidden");
+    personalize.disabled = true;
+  }
+  if (!CAN_PATCHES) {
+    document.querySelector("[data-parches-control]")?.classList.add("ej-order-hidden");
+    patchTypeWrap?.classList.add("ej-order-hidden");
+    patches.disabled = true;
+  }
+
 
   function money(n){ return `${n.toFixed(2).replace(".00","")} €`; }
   function save(){ try { localStorage.setItem(STORE, JSON.stringify(cart)); } catch {} renderCart(); }
@@ -8609,20 +8535,21 @@ import { jsPDF } from "jspdf";
     overlay.classList.add("is-open"); overlay.setAttribute("aria-hidden","false");
     config.classList.toggle("is-active",view==="config");
     cartView.classList.toggle("is-active",view==="cart");
-    $("#ej-order-title").textContent=view==="config"?"Configurar camiseta":"Mi presupuesto";
+    $("#ej-order-title").textContent=view==="config"?(isSpainTracksuit()?"Configurar chándal":productType.value==="nino"?"Configurar conjunto infantil":"Configurar camiseta"):"Mi presupuesto";
     document.documentElement.style.overflow="hidden";
   }
   function close(){overlay.classList.remove("is-open");overlay.setAttribute("aria-hidden","true");document.documentElement.style.overflow="";}
   function fillSizes(){
     const arr=productType.value==="nino"?childSizes:adultSizes;
     size.innerHTML=arr.map(x=>`<option>${x}</option>`).join("");
-    $("#ej-version-wrap").classList.toggle("ej-order-hidden",productType.value==="nino");
+    $("#ej-version-wrap").classList.toggle("ej-order-hidden",productType.value==="nino" || isSpainTracksuit());
     calc();
   }
   function unitPrice(){
+    if(isSpainTracksuit()) return 35;
     let p=productType.value==="nino"?12:(version.value==="jugador"?12:9);
-    if(personalize.checked)p+=3;
-    if(patches.checked)p+=1;
+    if(CAN_CUSTOMIZE && personalize.checked)p+=3;
+    if(CAN_PATCHES && patches.checked)p+=isSpainSelectedShirt() ? (Number(spainChampion.checked)+2*Number(spainGold.checked)) : (patchType?.value === "MUNDIAL_DORADO_2026" ? 2 : 1);
     return p;
   }
   function calc(){
@@ -8648,7 +8575,7 @@ import { jsPDF } from "jspdf";
   function addButtons(){
     const imgs=$$("img").filter(img=>{
       const src=img.getAttribute("src")||"";
-      return /\/camisetas\//i.test(src) && !img.closest("#ej-order-overlay");
+      return /\/camisetas\//i.test(src) && !img.closest("#ej-order-overlay, #ej-v11, #visor");
     });
     imgs.forEach(img=>{
       const card=img.closest("article, .camiseta-card, .card") || img.parentElement?.parentElement;
@@ -8657,6 +8584,7 @@ import { jsPDF } from "jspdf";
       b.type="button"; b.className="ej-order-add"; b.textContent="Añadir al presupuesto";
       b.setAttribute("aria-label","Añadir esta camiseta al pedido");
       b.dataset.image=card.dataset?.fullSrc || img.currentSrc || img.src;
+      b.dataset.producto=card.dataset?.producto || "adulto";
       b.dataset.temporada=card.dataset?.temporada || "";
       b.dataset.tipo=card.dataset?.tipo || "";
       card.appendChild(b);
@@ -8673,11 +8601,19 @@ import { jsPDF } from "jspdf";
     };
     $("#ej-order-img").src=current.image;
     $("#ej-order-name").textContent=current.name;
-    $("#ej-order-detail").textContent=current.detail.slice(0,120);
-    productType.value="adulto"; version.value="aficionado"; qty.value="1";
-    personalize.checked=false; patches.checked=false;
-    if(patchType) patchType.value="LIGA";
-    patchTypeWrap?.classList.add("ej-order-hidden");
+    $("#ej-order-detail").textContent=isSpainTracksuit()?"Chándal":current.detail.slice(0,120);
+    productType.value=isSpainTracksuit()?"chandal":btn.dataset.producto === "nino" ? "nino" : "adulto";
+    document.querySelector("[data-personalizacion-control]")?.classList.toggle("ej-order-hidden",isSpainTracksuit() || !CAN_CUSTOMIZE);
+    document.querySelector("[data-parches-control]")?.classList.toggle("ej-order-hidden",isSpainTracksuit() || !CAN_PATCHES);
+    personalize.disabled=isSpainTracksuit() || !CAN_CUSTOMIZE;
+    patches.disabled=isSpainTracksuit() || !CAN_PATCHES;
+    productType.disabled=true;
+    version.value="aficionado"; qty.value="1";
+    personalize.checked=false; patches.checked=false; spainChampion.checked=false; spainGold.checked=false;
+    setupPatchOptions();
+    if(patchType) patchType.value=is125AnniversaryShirt() ? "ANIVERSARIO_125" : isSpainSelectedShirt() ? "CAMPEON_MUNDO_2026" : isFrenchTeam ? "LIGUE_1" : isGermanTeam ? "BUNDESLIGA" : isItalianTeam ? "SERIE_A" : isEnglishTeam ? "PREMIER" : "LIGA";
+    updatePatchPreview();
+    patchTypeWrap?.classList.add("ej-order-hidden"); spainPatchWrap?.classList.add("ej-order-hidden");
     $("#ej-player-name").value=""; $("#ej-player-number").value="";
     $("#ej-personal-fields").classList.add("ej-order-hidden");
     fillSizes(); show("config");
@@ -8700,7 +8636,8 @@ import { jsPDF } from "jspdf";
     checkout.classList.remove("ej-order-hidden");
     box.innerHTML=cart.map((x,i)=>{
       const isChild=x.product==="Conjunto niño";
-      const productText=isChild?"Conjunto niño":"Camiseta adulto";
+      const isTracksuit=x.product==="Chándal";
+      const productText=isTracksuit?"Chándal":isChild?"Conjunto niño":"Camiseta adulto";
       const versionText=isChild?"Única":(/Jugador/i.test(x.product||"")?"Jugador":"Aficionado");
       const personalization=x.personalize?`${x.playerName || "—"} ${x.playerNumber || ""}`:"No";
       return `
@@ -8723,10 +8660,10 @@ import { jsPDF } from "jspdf";
           <span>Producto</span>
           <strong>${productText}</strong>
         </div>
-        <div class="ej-v29-row">
+        ${!isTracksuit?`<div class="ej-v29-row">
           <span>Versión</span>
           <strong>${versionText}</strong>
-        </div>
+        </div>`:""}
         <div class="ej-v29-row">
           <span>Talla</span>
           <strong>${esc(x.size)}</strong>
@@ -8735,14 +8672,14 @@ import { jsPDF } from "jspdf";
           <span>Cantidad</span>
           <strong>${x.qty}</strong>
         </div>
-        <div class="ej-v29-row">
+        ${!isTracksuit?`<div class="ej-v29-row">
           <span>Nombre + dorsal</span>
           <strong>${esc(personalization)}</strong>
         </div>
         <div class="ej-v29-row">
           <span>Parches</span>
-          <strong>${x.patches?esc(x.patchType || "Sí"):"No"}</strong>
-        </div>
+          <strong>${x.patches?esc((Array.isArray(x.spainPatches)?x.spainPatches.map(k=>PATCH_OPTIONS[k]?.label||k).join(" + "):PATCH_OPTIONS[x.patchType]?.label||x.patchType)||"Ninguno"):"No"}</strong>
+        </div>`:""}
         <div class="ej-v29-row ej-v29-price">
           <span>Importe del artículo</span>
           <strong>${money(x.total)}</strong>
@@ -8772,16 +8709,18 @@ import { jsPDF } from "jspdf";
   overlay.addEventListener("click",e=>{if(e.target===overlay)close();});
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&overlay.classList.contains("is-open"))close();});
   productType.onchange=fillSizes; version.onchange=calc; qty.oninput=calc;
-  personalize.onchange=()=>{$("#ej-personal-fields").classList.toggle("ej-order-hidden",!personalize.checked);calc();};
+  personalize.onchange=()=>{$("#ej-personal-fields").classList.toggle("ej-order-hidden",!CAN_CUSTOMIZE || !personalize.checked);calc();};
   patches.onchange=()=>{
-    patchTypeWrap?.classList.toggle("ej-order-hidden", !(patches.checked && IS_NATIONAL_LEAGUE));
+    patchTypeWrap?.classList.toggle("ej-order-hidden", !(CAN_PATCHES && patches.checked && IS_NATIONAL_LEAGUE && !isSpainSelectedShirt()));
+    spainPatchWrap?.classList.toggle("ej-order-hidden", !(CAN_PATCHES && patches.checked && isSpainSelectedShirt()));
     calc();
   };
-  if(patchType) patchType.onchange=calc;
+  if(patchType) patchType.onchange=()=>{updatePatchPreview();calc();};
+  spainChampion.onchange=calc; spainGold.onchange=calc;
 
   $("#ej-add-cart").onclick=()=>{
     if(!current)return;
-    if(personalize.checked){
+    if(CAN_CUSTOMIZE && personalize.checked){
       const pName=$("#ej-player-name").value.trim();
       const pNumber=$("#ej-player-number").value.trim();
       if(!pName || pName.length>20 || !/^\d{1,2}$/.test(pNumber) || Number(pNumber)<0 || Number(pNumber)>99){
@@ -8790,11 +8729,12 @@ import { jsPDF } from "jspdf";
     }
     const q=Math.min(20,Math.max(1,parseInt(qty.value)||1));
     qty.value=String(q);
-    const prod=productType.value==="nino"?"Conjunto niño":`Camiseta adulto · ${version.value==="jugador"?"Jugador":"Aficionado"}`;
-    cart.push({...current,product:prod,size:size.value,qty:q,personalize:personalize.checked,
+    const prod=isSpainTracksuit()?"Chándal":productType.value==="nino"?"Conjunto niño":`Camiseta adulto · ${version.value==="jugador"?"Jugador":"Aficionado"}`;
+    cart.push({...current,product:prod,size:size.value,qty:q,personalize:!isSpainTracksuit() && CAN_CUSTOMIZE && personalize.checked,
       playerName:$("#ej-player-name").value.trim(),playerNumber:$("#ej-player-number").value.trim(),
-      patches:patches.checked,
-      patchType:(patches.checked && IS_NATIONAL_LEAGUE ? (patchType?.value || "LIGA") : ""),
+      patches:!isSpainTracksuit() && CAN_PATCHES && patches.checked,
+      patchType:(CAN_PATCHES && patches.checked && !isSpainSelectedShirt() && IS_NATIONAL_LEAGUE ? (patchType?.value || "LIGA") : ""),
+      spainPatches:(CAN_PATCHES && patches.checked && isSpainSelectedShirt() ? [...(spainChampion.checked?["CAMPEON_MUNDO_2026"]:[]),...(spainGold.checked?["MUNDIAL_DORADO_2026"]:[])] : []),
       total:unitPrice()*q});
     save(); show("cart");
   };
@@ -8803,9 +8743,10 @@ import { jsPDF } from "jspdf";
   function recalcItem(x){
     const q=safeQty(x.qty);
     const child=x.product==="Conjunto niño";
+    if(x.product==="Chándal") return {...x,qty:q,personalize:false,patches:false,total:35*q};
     let unit=child?12:(/Jugador/i.test(x.product||"")?12:9);
     if(x.personalize) unit+=3;
-    if(x.patches) unit+=1;
+    if(x.patches) unit+=Array.isArray(x.spainPatches) && x.spainPatches.length ? x.spainPatches.reduce((a,k)=>a+(k==="MUNDIAL_DORADO_2026"?2:1),0) : (Array.isArray(x.spainPatches) ? 0 : (x.patchType === "MUNDIAL_DORADO_2026" ? 2 : 1));
     return {...x,qty:q,total:unit*q};
   }
   const pdfMoney = n => `${Number(n).toFixed(2).replace(".",",")} EUR`;
@@ -8836,6 +8777,33 @@ import { jsPDF } from "jspdf";
       return {data:canvas.toDataURL("image/jpeg",0.88),ratio:canvas.width/canvas.height};
     } catch(e){console.warn("Imagen no disponible para PDF",e);return null;}
   }
+  // El PDF incorpora el mismo PNG que muestra el configurador.
+  const patchPdfCache = new Map();
+  async function loadPatchPng(patchKey){
+    const option = PATCH_OPTIONS[String(patchKey || "").toUpperCase()];
+    if(!option) return null;
+    if(!patchPdfCache.has(option.image)){
+      patchPdfCache.set(option.image,(async()=>{
+        try {
+          const response=await fetch(option.image,{credentials:"omit"});
+          if(!response.ok)return null;
+          const blob=await response.blob();
+          const bitmap=await createImageBitmap(blob);
+          const canvas=document.createElement("canvas");
+          const scale=Math.min(1,360/Math.max(bitmap.width,bitmap.height));
+          canvas.width=Math.max(1,Math.round(bitmap.width*scale));
+          canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+          const ctx=canvas.getContext("2d");
+          if(!ctx){bitmap.close();return null;}
+          ctx.clearRect(0,0,canvas.width,canvas.height);
+          ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+          bitmap.close();
+          return {data:canvas.toDataURL("image/png"),ratio:canvas.width/canvas.height};
+        }catch(e){console.warn("Parche PNG no disponible para PDF",e);return null;}
+      })());
+    }
+    return patchPdfCache.get(option.image);
+  }
   const docText = (doc,txt,x,y,maxWidth) => {
     const lines=doc.splitTextToSize(String(txt??""),maxWidth);
     doc.text(lines,x,y);
@@ -8847,33 +8815,31 @@ import { jsPDF } from "jspdf";
     const date=new Date(),pad=n=>String(n).padStart(2,"0");
     const ref=`PRES-${date.getFullYear()}${pad(date.getMonth()+1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
     const total=items.reduce((sum,x)=>sum+x.total,0);
-    // Diseño grande para 1-2, compacto vertical para 3, dos columnas para 4 o más.
-    const layout=items.length<=2?"large":items.length===3?"medium":"grid";
-    const maxPerPage=layout==="grid"?6:layout==="medium"?3:2;
+    // Diseño definitivo: siempre dos columnas, hasta seis artículos por página.
+    const layout="grid";
+    const maxPerPage=layout==="grid"?6:2;
     let page=0;
     function begin(){
       if(page)doc.addPage();page++;
-      doc.setFillColor(15,38,30);doc.rect(0,0,W,43,"F");
+      doc.setFillColor(15,38,30);doc.rect(0,0,W,29,"F");
       doc.setTextColor(217,183,105);doc.setFont("helvetica","bold");doc.setFontSize(21);
-      doc.text("ELITE JERSEYS",left,20);
+      doc.text("ELITE JERSEYS",left,13);
       doc.setTextColor(255,255,255);doc.setFontSize(9);
-      doc.text("PRESUPUESTO PERSONALIZADO",left,30);
+      doc.text("PRESUPUESTO PERSONALIZADO",left,22);
       doc.setFont("helvetica","normal");doc.setFontSize(8);
-      doc.text(ref,right,19,{align:"right"});
-      doc.text(`${pad(date.getDate())}/${pad(date.getMonth()+1)}/${date.getFullYear()}`,right,28,{align:"right"});
+      doc.text(ref,right,12,{align:"right"});
+      doc.text(`${pad(date.getDate())}/${pad(date.getMonth()+1)}/${date.getFullYear()}`,right,21,{align:"right"});
     }
     function footer(){
-      doc.setDrawColor(222,227,223);doc.line(left,279,right,279);
       doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(105,112,108);
-      doc.text("Documento informativo. No constituye un pedido, factura ni justificante de pago.",left,285);
       doc.text(`Página ${page}`,right,291,{align:"right"});
     }
     function totalBox(y){
-      doc.setFillColor(15,38,30);doc.roundedRect(left,y,right-left,24,3,3,"F");
+      doc.setFillColor(15,38,30);doc.roundedRect(left,y,right-left,17,3,3,"F");
       doc.setFont("helvetica","bold");doc.setFontSize(11);doc.setTextColor(255,255,255);
-      doc.text("TOTAL DEL PRESUPUESTO",left+7,y+15);
+      doc.text("TOTAL PRESUPUESTO",left+7,y+11);
       doc.setTextColor(217,183,105);doc.setFontSize(16);
-      doc.text(pdfMoney(total),right-7,y+16,{align:"right"});
+      doc.text(pdfMoney(total),right-7,y+12,{align:"right"});
     }
     async function card(x,i,cx,cy,cw,ch,mode){
       doc.setFillColor(244,246,244);doc.roundedRect(cx,cy,cw,ch,3,3,"F");
@@ -8899,29 +8865,67 @@ import { jsPDF } from "jspdf";
       doc.setFont("helvetica","normal");doc.setFontSize(compact?8:8.5);
       let ly=cy+(compact?17:19)+nameLines.length*(compact?3.5:5);
       const child=x.product==="Conjunto niño";
-      const lines=compact?[
-        `${x.temporada||""} · ${x.tipo||"Equipación"}`,
-        `${child?"Niño":/Jugador/i.test(x.product||"")?"Jugador":"Aficionado"} · Talla ${x.size}`,
+      const isTracksuit=x.product==="Chándal";
+      const lines=isTracksuit ? [
+        ...(x.temporada ? [String(x.temporada)] : []),
+        "Chándal", `Talla: ${x.size}`, `Cantidad: ${x.qty}`
+      ] : compact?[
+        ...(x.temporada ? [String(x.temporada)] : []),
+        `${child?"Niño":/Jugador/i.test(x.product||"")?"Jugador":"Camiseta adulto"}`,
+        `Talla: ${x.size}`,
         `Cantidad: ${x.qty}`,
-        x.personalize?`Dorsal: ${x.playerName} ${x.playerNumber}`:"Nombre y dorsal: No",
-        `Parches: ${x.patches?(x.patchType||"Sí"):"No"}`
+        x.personalize?`Nombre: ${x.playerName} · Dorsal: ${x.playerNumber}`:"Nombre y dorsal: No",
+        `Parches: ${x.patches?(Array.isArray(x.spainPatches)?x.spainPatches.map(k=>PATCH_OPTIONS[k]?.label||k).join(" + ")||"Ninguno":x.patchType||"Sí"):"No"}`
       ]:[
-        `${x.temporada||"Temporada no indicada"} · ${x.tipo||"Equipación"}`,
-        `${child?"Conjunto niño":"Camiseta adulto"} · ${child?"Única":(/Jugador/i.test(x.product||"")?"Jugador":"Aficionado")}`,
+        ...(x.temporada ? [String(x.temporada)] : []),
+        `${child?"Conjunto niño":"Camiseta adulto"}${!child && /Jugador/i.test(x.product||"")?" · Jugador":""}`,
         `Talla: ${x.size}    Cantidad: ${x.qty}`,
-        `Nombre y dorsal: ${x.personalize?`${x.playerName} ${x.playerNumber}`:"No"}`,
-        `Parches: ${x.patches?(x.patchType||"Sí"):"No"}`
+        x.personalize?`Nombre: ${x.playerName} · Dorsal: ${x.playerNumber}`:"Nombre y dorsal: No",
+        `Parches: ${x.patches?(Array.isArray(x.spainPatches)?x.spainPatches.map(k=>PATCH_OPTIONS[k]?.label||k).join(" + ")||"Ninguno":x.patchType||"Sí"):"No"}`
       ];
       const lineHeight=compact?3.8:5;
+      const selectedPatch = x.patches && !Array.isArray(x.spainPatches) ? PATCH_OPTIONS[String(x.patchType || "").toUpperCase()] : null;
+      const patchPng = selectedPatch ? await loadPatchPng(x.patchType) : null;
+      const spainPatchPngs = x.patches && Array.isArray(x.spainPatches) ? (await Promise.all(x.spainPatches.map(async k=>({key:k, png:await loadPatchPng(k)})))).filter(v=>v.png) : [];
       for(const line of lines){
-        const personalized=Boolean(x.personalize) && line.startsWith(compact?"Dorsal:":"Nombre y dorsal:");
+        const personalized=Boolean(x.personalize) && line.startsWith("Nombre:");
         doc.setFont("helvetica",personalized?"bold":"normal");
         doc.setFontSize(compact?8:8.5);
-        const wrapped=doc.splitTextToSize(String(line),tw);
-        // Reservar espacio para el precio y evitar que el texto salga de la tarjeta.
+        const isPatchLine=line.startsWith("Parches:");
+        const displayLine=isPatchLine && selectedPatch ? `Parche: ${selectedPatch.label}` : (isPatchLine && spainPatchPngs.length>1 && compact ? "Parches: Campeón del Mundo 2026 + Mundial Dorado 2026" : line);
+        const wrapped=doc.splitTextToSize(String(displayLine),tw);
+        // El parche se dibuja debajo de su descripción, alineado con los datos,
+        // nunca junto al importe situado a la derecha.
         for(const part of wrapped.slice(0,2)){
           if(ly>cy+ch-(compact?9:7))break;
           doc.text(part,tx,ly);ly+=lineHeight;
+        }
+        if(spainPatchPngs.length && isPatchLine){
+          // Colocar todos los parches de España en horizontal, en una zona fija
+          // reservada encima del importe: evita que el segundo quede recortado.
+          const maxW=compact?11.5:14,maxH=compact?11.5:14;
+          const bottom=cy+ch-(compact?7:9);
+          const top=bottom-maxH;
+          let px=tx;
+          for(const {png} of spainPatchPngs){
+            let pw=maxW,ph=pw/png.ratio;
+            if(ph>maxH){ph=maxH;pw=ph*png.ratio;}
+            if(px+pw<=cx+cw-4){
+              doc.addImage(png.data,"PNG",px,top+(maxH-ph)/2,pw,ph);
+              px+=pw+2;
+            }
+          }
+          ly=Math.max(ly,bottom+1);
+        }
+        if(patchPng && isPatchLine){
+          const maxW=compact?8:12, maxH=compact?8:12;
+          let pw=maxW, ph=pw/patchPng.ratio;
+          if(ph>maxH){ph=maxH;pw=ph*patchPng.ratio;}
+          const availableBottom=cy+ch-10;
+          if(ly+ph<=availableBottom){
+            doc.addImage(patchPng.data,"PNG",tx,ly,pw,ph);
+            ly+=ph+1;
+          }
         }
         if(ly>cy+ch-(compact?9:7))break;
       }
@@ -8935,26 +8939,24 @@ import { jsPDF } from "jspdf";
       const remaining=items.length-index;
       const count=Math.min(maxPerPage,remaining);
       if(layout==="grid"){
-        const cw=85,ch=55,gapX=6,gapY=5,startY=53;
+        const cw=85,ch=62,gapX=6,gapY=5,startY=35;
         for(let j=0;j<count;j++){
           const row=Math.floor(j/2),col=j%2;
           await card(items[index+j],index+j,left+col*(cw+gapX),startY+row*(ch+gapY),cw,ch,"grid");
         }
         index+=count;
         if(index===items.length){
-          const rows=Math.ceil(count/2),totalY=startY+rows*(ch+gapY)+3;
-          if(totalY+24<=274)totalBox(totalY);
-          else{footer();begin();totalBox(56);}
+          // Total anclado al pie de la última página, sin depender de los artículos.
+          totalBox(265);
         }
       }else{
-        const ch=layout==="large"?68:58;
-        const gap=layout==="large"?7:6;
-        for(let j=0;j<count;j++)await card(items[index+j],index+j,left,54+j*(ch+gap),right-left,ch,layout);
+        const ch=layout==="large"?80:76;
+        const gap=7;
+        for(let j=0;j<count;j++)await card(items[index+j],index+j,left,40+j*(ch+gap),right-left,ch,layout);
         index+=count;
         if(index===items.length){
-          const totalY=54+count*(ch+gap)+4;
-          if(totalY+24<=274)totalBox(totalY);
-          else{footer();begin();totalBox(56);}
+          // Total anclado al pie de la última página, sin depender de los artículos.
+          totalBox(265);
         }
       }
       footer();
@@ -9137,4 +9139,189 @@ import { jsPDF } from "jspdf";
   background:transparent !important;
   transform:none !important;
 }
+</style>
+
+<style is:global>
+/* Elite Jerseys: galería por camiseta, miniaturas siempre visibles */
+#ej-v11.ej-v11-open .ej-v11-stage {
+  bottom: 112px !important;
+  height: auto !important;
+  max-height: calc(100dvh - 165px) !important;
+}
+#ej-v11 .ej-v11-thumbs {
+  position: fixed !important;
+  z-index: 2147483600 !important;
+  left: 64px !important;
+  right: 64px !important;
+  bottom: max(12px, env(safe-area-inset-bottom)) !important;
+  height: 86px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 9px !important;
+  overflow-x: auto !important;
+  padding: 7px !important;
+  background: rgba(0,0,0,.75) !important;
+}
+#ej-v11 .ej-v11-thumb {
+  flex: 0 0 58px !important;
+  width: 58px !important;
+  height: 72px !important;
+  padding: 2px !important;
+  border: 2px solid transparent !important;
+  border-radius: 7px !important;
+  background: #222 !important;
+  cursor: pointer !important;
+}
+#ej-v11 .ej-v11-thumb.activa { border-color: #e3bd63 !important; }
+#ej-v11 .ej-v11-thumb img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 4px !important;
+}
+@media (max-width: 700px) {
+  #ej-v11.ej-v11-open .ej-v11-stage { bottom: 103px !important; max-height: calc(100dvh - 155px) !important; }
+  #ej-v11 .ej-v11-thumbs { left: 10px !important; right: 10px !important; height: 78px !important; justify-content: flex-start !important; }
+  #ej-v11 .ej-v11-thumb { flex-basis: 50px !important; width: 50px !important; height: 64px !important; }
+}
+</style>
+
+<style is:global>
+/* V36: miniaturas centradas y presupuesto compacto en esquina superior derecha */
+#ej-v11 .ej-v11-thumbs {
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  width: max-content !important;
+  max-width: calc(100vw - 28px) !important;
+  justify-content: center !important;
+  scrollbar-width: thin;
+}
+#ej-v11 .ej-v11-budget.ej-order-add {
+  position: fixed !important;
+  z-index: 2147483645 !important;
+  top: 15px !important;
+  right: 80px !important;
+  left: auto !important;
+  bottom: auto !important;
+  display: inline-flex !important;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 34px !important;
+  height: 34px !important;
+  margin: 0 !important;
+  padding: 7px 12px !important;
+  font-size: 11px !important;
+  border-radius: 9px !important;
+  white-space: nowrap !important;
+}
+#ej-v11 .ej-v11-budget.ej-order-add::before {
+  width: 15px !important;
+  height: 15px !important;
+  font-size: 12px !important;
+}
+/* Evitar barras de presupuesto añadidas por el código anterior dentro del visor */
+#ej-v11 .ej-order-add:not(#ej-v11-budget) { display: none !important; }
+@media (max-width: 700px) {
+  #ej-v11 .ej-v11-thumbs {
+    left: 50% !important;
+    right: auto !important;
+    justify-content: safe center !important;
+  }
+  #ej-v11 .ej-v11-budget.ej-order-add {
+    top: 12px !important;
+    right: 66px !important;
+    font-size: 10px !important;
+    padding: 6px 8px !important;
+  }
+}
+</style>
+
+
+<!-- V42 · Configuración dentro de la galería, sin cerrarla -->
+<style is:global>
+  /* El configurador debe quedar delante del visor de imágenes. */
+  #ej-order-overlay.is-open {
+    display: block !important;
+    z-index: 2147483647 !important;
+  }
+  /* La camiseta permanece visible detrás del panel lateral. */
+  body.ej-v11-lock #ej-order-overlay.is-open {
+    background: rgba(0, 0, 0, .18) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  #ej-order-overlay.is-open #ej-order-panel {
+    display: block !important;
+    z-index: 1 !important;
+  }
+  /* El configurador también debe funcionar desde el visor en móvil. */
+  @media (max-width: 700px) {
+    #ej-order-overlay.is-open { display: block !important; }
+    #ej-order-overlay.is-open #ej-order-panel {
+      width: min(480px, 100%) !important;
+    }
+  }
+</style>
+
+<style is:global>
+/* V44: presupuesto solo dentro del visor; botón más visible y desplazado
+   hacia el espacio entre la fotografía y el cierre. */
+#ej-v11 .ej-v11-budget.ej-order-add {
+  top: 14px !important;
+  right: clamp(90px, 12vw, 230px) !important;
+  width: auto !important;
+  min-width: 215px !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  padding: 11px 19px !important;
+  font-size: 14px !important;
+  border-radius: 12px !important;
+  margin: 0 !important;
+}
+#ej-v11 .ej-v11-budget.ej-order-add::before {
+  width: 20px !important;
+  height: 20px !important;
+  font-size: 16px !important;
+}
+/* Ocultar los botones de presupuesto de las tarjetas del catálogo. */
+.galeria .ej-order-add,
+.foto .ej-order-add,
+.galeria > .ej-order-add {
+  display: none !important;
+}
+@media (max-width: 700px) {
+  #ej-v11 .ej-v11-budget.ej-order-add {
+    top: 12px !important;
+    right: 66px !important;
+    min-width: 0 !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 8px 11px !important;
+    font-size: 11px !important;
+  }
+}
+  .filtros-producto { margin: 18px 0 20px; gap: 10px; }
+  .filtros-producto .filtro-rapido { min-height: 40px; padding: 0 20px; font-size: 13px; }
+  .foto[hidden] { display: none !important; }
+
+/* V45: catálogo compacto, sin movimiento al pasar el ratón. */
+@media (min-width: 1151px) {
+  .galeria { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+}
+.foto, .foto:hover, .foto:focus-visible {
+  transform: none !important;
+  transition: none !important;
+  animation: none !important;
+}
+.foto:hover { box-shadow: 0 8px 24px rgba(15,27,20,.07), 0 2px 6px rgba(15,27,20,.04) !important; }
+.foto-imagen img, .foto:hover .foto-imagen img {
+  transform: none !important;
+  transition: none !important;
+}
+.foto:hover .foto-imagen::after, .foto:hover .ampliar {
+  transition: none !important;
+}
+.filtros-producto { margin-top: 18px !important; }
 </style>

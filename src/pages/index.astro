@@ -288,6 +288,10 @@ const datosEstructurados = {
               Abre una categoría para consultar todos sus equipos.
             </p>
           </div>
+          <button type="button" class="boton-guia-tallas" id="abrir-guia-tallas" aria-haspopup="dialog" aria-controls="modal-guia-tallas">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 8.7 15.3 2.7a2 2 0 0 0-2.8 0L2.7 12.5a2 2 0 0 0 0 2.8l6 6a2 2 0 0 0 2.8 0l9.8-9.8a2 2 0 0 0 0-2.8Z"/><path d="m7.5 10.5 2 2m1-5 2 2m1-5 2 2m-9 7 2 2"/></svg>
+            GUÍA DE TALLAS
+          </button>
         </div>
 
         <div id="buscar" class="buscador-contenedor">
@@ -454,6 +458,13 @@ const datosEstructurados = {
       </section>
     </main>
 
+    <dialog id="modal-guia-tallas" class="modal-guia-tallas" aria-label="Guía de tallas de Elite Jerseys">
+      <div class="modal-guia-interior">
+        <button type="button" id="cerrar-guia-tallas" class="cerrar-guia-tallas" aria-label="Cerrar guía de tallas">×</button>
+        <img src="/images/guia-tallas-elite-jerseys.png" alt="Guía de tallas de Elite Jerseys: versión aficionado y conjuntos de niño" width="1536" height="1024" />
+      </div>
+    </dialog>
+
     <footer class="pie">
       <div class="contenedor pie-interior">
         <div>
@@ -472,7 +483,16 @@ const datosEstructurados = {
     />
 
     <script>
-      interface EquipoIndice {
+       const botonAbrirGuia = document.querySelector<HTMLButtonElement>("#abrir-guia-tallas");
+       const botonCerrarGuia = document.querySelector<HTMLButtonElement>("#cerrar-guia-tallas");
+       const modalGuia = document.querySelector<HTMLDialogElement>("#modal-guia-tallas");
+       botonAbrirGuia?.addEventListener("click", () => modalGuia?.showModal());
+       botonCerrarGuia?.addEventListener("click", () => modalGuia?.close());
+       modalGuia?.addEventListener("click", (evento) => {
+         if (evento.target === modalGuia) modalGuia.close();
+       });
+
+       interface EquipoIndice {
         nombre: string;
         nombreNormalizado: string;
         slug: string;
@@ -1336,7 +1356,67 @@ const datosEstructurados = {
     color: #748078;
   }
 
-  .contador-categorias {
+   .boton-guia-tallas {
+     flex: 0 0 auto;
+     display: inline-flex;
+     align-items: center;
+     justify-content: center;
+     gap: 11px;
+     min-height: 62px;
+     padding: 0 24px;
+     border: 1px solid #c9a34c;
+     border-radius: 13px;
+     color: #18251d;
+     background: #dfbd68;
+     box-shadow: 0 8px 22px rgba(42, 64, 45, .11);
+     font-size: 14px;
+     font-weight: 900;
+     letter-spacing: .45px;
+     cursor: pointer;
+     transition: transform .18s ease, background .18s ease;
+   }
+   .boton-guia-tallas:hover { background: #edca74; transform: translateY(-2px); }
+   .modal-guia-tallas {
+     position: fixed;
+     width: min(1200px, calc(100vw - 28px));
+     max-width: none;
+     max-height: calc(100dvh - 30px);
+     margin: auto;
+     padding: 0;
+     border: 0;
+     border-radius: 16px;
+     background: transparent;
+     overflow: visible;
+   }
+   .modal-guia-tallas::backdrop { background: rgba(0, 0, 0, .88); }
+   .modal-guia-interior { position: relative; }
+   .modal-guia-interior img {
+     display: block;
+     width: 100%;
+     max-height: calc(100dvh - 30px);
+     object-fit: contain;
+     border-radius: 12px;
+   }
+   .cerrar-guia-tallas {
+     position: absolute;
+     z-index: 2;
+     top: 9px;
+     right: 9px;
+     width: 42px;
+     height: 42px;
+     border: 1px solid rgba(255,255,255,.3);
+     border-radius: 50%;
+     color: white;
+     background: rgba(0,0,0,.78);
+     font-size: 30px;
+     line-height: 1;
+     cursor: pointer;
+   }
+   @media (max-width: 650px) {
+     .boton-guia-tallas { width: 100%; min-height: 54px; }
+   }
+
+   .contador-categorias {
     flex: 0 0 auto;
     padding: 8px 12px;
     border: 1px solid #dce3df;
@@ -1706,10 +1786,12 @@ const datosEstructurados = {
   }
 
   .escudo img {
-    width: 36px;
-    height: 36px;
-    object-fit: contain;
-  }
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+}
 
   .escudo-provisional {
     width: 34px;
