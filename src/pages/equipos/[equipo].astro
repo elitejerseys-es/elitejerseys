@@ -89,7 +89,7 @@ if (fs.existsSync(carpetaEquipo)) {
     if (!portada) continue;
     const imagenes = [portada, ...archivos.filter((archivo) => archivo !== portada)]
       .map((archivo) => `/camisetas/${equipoSlug}/${encodeURIComponent(carpeta.name)}/${encodeURIComponent(archivo)}`);
-    camisetas.push({ id: carpeta.name, src: imagenes[0], fullSrc: imagenes[0], thumbSrc: imagenes[0], imagenes });
+    camisetas.push({ id: carpeta.name, src: imagenes[0], fullSrc: imagenes[0], thumbSrc: `/miniaturas/${equipoSlug}/${encodeURIComponent(carpeta.name)}/01.webp`, imagenes });
   }
 }
 
@@ -8734,7 +8734,7 @@ import { jsPDF } from "jspdf";
       playerName:$("#ej-player-name").value.trim(),playerNumber:$("#ej-player-number").value.trim(),
       patches:!isSpainTracksuit() && CAN_PATCHES && patches.checked,
       patchType:(CAN_PATCHES && patches.checked && !isSpainSelectedShirt() && IS_NATIONAL_LEAGUE ? (patchType?.value || "LIGA") : ""),
-      spainPatches:(CAN_PATCHES && patches.checked && isSpainSelectedShirt() ? [...(spainChampion.checked?["CAMPEON_MUNDO_2026"]:[]),...(spainGold.checked?["MUNDIAL_DORADO_2026"]:[])] : []),
+      spainPatches:(CAN_PATCHES && patches.checked && isSpainSelectedShirt() ? [...(spainChampion.checked?["CAMPEON_MUNDO_2026"]:[]),...(spainGold.checked?["MUNDIAL_DORADO_2026"]:[])] : null),
       total:unitPrice()*q});
     save(); show("cart");
   };
@@ -8746,7 +8746,7 @@ import { jsPDF } from "jspdf";
     if(x.product==="Chándal") return {...x,qty:q,personalize:false,patches:false,total:35*q};
     let unit=child?12:(/Jugador/i.test(x.product||"")?12:9);
     if(x.personalize) unit+=3;
-    if(x.patches) unit+=Array.isArray(x.spainPatches) && x.spainPatches.length ? x.spainPatches.reduce((a,k)=>a+(k==="MUNDIAL_DORADO_2026"?2:1),0) : (Array.isArray(x.spainPatches) ? 0 : (x.patchType === "MUNDIAL_DORADO_2026" ? 2 : 1));
+    if(x.patches) unit+=Array.isArray(x.spainPatches) && x.spainPatches.length ? x.spainPatches.reduce((a,k)=>a+(k==="MUNDIAL_DORADO_2026"?2:1),0) : (x.patchType ? (x.patchType === "MUNDIAL_DORADO_2026" ? 2 : 1) : 0);
     return {...x,qty:q,total:unit*q};
   }
   const pdfMoney = n => `${Number(n).toFixed(2).replace(".",",")} EUR`;
@@ -8875,18 +8875,18 @@ import { jsPDF } from "jspdf";
         `Talla: ${x.size}`,
         `Cantidad: ${x.qty}`,
         x.personalize?`Nombre: ${x.playerName} · Dorsal: ${x.playerNumber}`:"Nombre y dorsal: No",
-        `Parches: ${x.patches?(Array.isArray(x.spainPatches)?x.spainPatches.map(k=>PATCH_OPTIONS[k]?.label||k).join(" + ")||"Ninguno":x.patchType||"Sí"):"No"}`
+        `Parches: ${x.patches?(Array.isArray(x.spainPatches) && x.spainPatches.length?x.spainPatches.map(k=>PATCH_OPTIONS[k]?.label||k).join(" + "):PATCH_OPTIONS[x.patchType]?.label||x.patchType||"Ninguno"):"No"}`
       ]:[
         ...(x.temporada ? [String(x.temporada)] : []),
         `${child?"Conjunto niño":"Camiseta adulto"}${!child && /Jugador/i.test(x.product||"")?" · Jugador":""}`,
         `Talla: ${x.size}    Cantidad: ${x.qty}`,
         x.personalize?`Nombre: ${x.playerName} · Dorsal: ${x.playerNumber}`:"Nombre y dorsal: No",
-        `Parches: ${x.patches?(Array.isArray(x.spainPatches)?x.spainPatches.map(k=>PATCH_OPTIONS[k]?.label||k).join(" + ")||"Ninguno":x.patchType||"Sí"):"No"}`
+        `Parches: ${x.patches?(Array.isArray(x.spainPatches) && x.spainPatches.length?x.spainPatches.map(k=>PATCH_OPTIONS[k]?.label||k).join(" + "):PATCH_OPTIONS[x.patchType]?.label||x.patchType||"Ninguno"):"No"}`
       ];
       const lineHeight=compact?3.8:5;
-      const selectedPatch = x.patches && !Array.isArray(x.spainPatches) ? PATCH_OPTIONS[String(x.patchType || "").toUpperCase()] : null;
+      const selectedPatch = x.patches && x.patchType ? PATCH_OPTIONS[String(x.patchType || "").toUpperCase()] : null;
       const patchPng = selectedPatch ? await loadPatchPng(x.patchType) : null;
-      const spainPatchPngs = x.patches && Array.isArray(x.spainPatches) ? (await Promise.all(x.spainPatches.map(async k=>({key:k, png:await loadPatchPng(k)})))).filter(v=>v.png) : [];
+      const spainPatchPngs = x.patches && Array.isArray(x.spainPatches) && x.spainPatches.length ? (await Promise.all(x.spainPatches.map(async k=>({key:k, png:await loadPatchPng(k)})))).filter(v=>v.png) : [];
       for(const line of lines){
         const personalized=Boolean(x.personalize) && line.startsWith("Nombre:");
         doc.setFont("helvetica",personalized?"bold":"normal");
@@ -8918,14 +8918,13 @@ import { jsPDF } from "jspdf";
           ly=Math.max(ly,bottom+1);
         }
         if(patchPng && isPatchLine){
-          const maxW=compact?8:12, maxH=compact?8:12;
+          const maxW=compact?11.5:14, maxH=compact?11.5:14;
           let pw=maxW, ph=pw/patchPng.ratio;
           if(ph>maxH){ph=maxH;pw=ph*patchPng.ratio;}
-          const availableBottom=cy+ch-10;
-          if(ly+ph<=availableBottom){
-            doc.addImage(patchPng.data,"PNG",tx,ly,pw,ph);
-            ly+=ph+1;
-          }
+          const bottom=cy+ch-(compact?7:9);
+          const top=bottom-maxH;
+          doc.addImage(patchPng.data,"PNG",tx,top+(maxH-ph)/2,pw,ph);
+          ly=Math.max(ly,bottom+1);
         }
         if(ly>cy+ch-(compact?9:7))break;
       }
