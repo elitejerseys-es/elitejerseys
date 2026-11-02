@@ -72,7 +72,13 @@ const categoriasOrdenadas = categoriasConMetricas.map((categoria) => ({
   ...categoria,
   equipos: categoria.equipos
     .slice()
-    .sort((a, b) => a.localeCompare(b, "es"))
+    .sort((a, b) => {
+      if (categoria.slug === "liga-espanola") {
+        if (a === "Otros clubes") return 1;
+        if (b === "Otros clubes") return -1;
+      }
+      return a.localeCompare(b, "es");
+    })
 }));
 
 const aliasEquipos: Record<string, string[]> = {

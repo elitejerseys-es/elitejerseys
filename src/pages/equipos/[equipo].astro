@@ -33,6 +33,9 @@ interface Camiseta {
   fullSrc: string;
   thumbSrc: string;
   imagenes: string[];
+  clubNombre: string;
+  clubSlug: string;
+  tipo: string;
 }
 
 const { equipo, categoria } = Astro.props;
@@ -77,19 +80,53 @@ const carpetaEquipo = path.join(
 
 const camisetas: Camiseta[] = [];
 const extensionesImagen = /\.webp$/i;
-if (fs.existsSync(carpetaEquipo)) {
-  const carpetas = fs.readdirSync(carpetaEquipo, { withFileTypes: true })
-    .filter((entrada) => entrada.isDirectory() && !entrada.name.startsWith('.'))
-    .sort((a, b) => a.name.localeCompare(b.name, 'es', { numeric: true }));
-  for (const carpeta of carpetas) {
-    const archivos = fs.readdirSync(path.join(carpetaEquipo, carpeta.name))
-      .filter((archivo) => extensionesImagen.test(archivo))
-      .sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
-    const portada = archivos.find((archivo) => /^01\.webp$/i.test(archivo));
-    if (!portada) continue;
-    const imagenes = [portada, ...archivos.filter((archivo) => archivo !== portada)]
-      .map((archivo) => `/camisetas/${equipoSlug}/${encodeURIComponent(carpeta.name)}/${encodeURIComponent(archivo)}`);
-    camisetas.push({ id: carpeta.name, src: imagenes[0], fullSrc: imagenes[0], thumbSrc: `/miniaturas/${equipoSlug}/${encodeURIComponent(carpeta.name)}/01.webp`, imagenes });
+const esOtrosClubes = equipoSlug === "otros-clubes-liga-espanola";
+const carpetaProductos = esOtrosClubes
+  ? path.join(process.cwd(), "public", "camisetas", "otros-clubes-liga-espanola")
+  : carpetaEquipo;
+const nombreDesdeSlug = (slug: string) => slug.split("-").map(palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1)).join(" ");
+function registrarProducto(carpeta: string, segmentos: string[], clubNombre: string, clubSlug: string, tipo: string) {
+  const archivos = fs.readdirSync(carpeta)
+    .filter(archivo => extensionesImagen.test(archivo))
+    .sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
+  const portada = archivos.find(archivo => /^01\.webp$/i.test(archivo));
+  if (!portada) return;
+  const url = (base: string, archivo: string) => `/${base}/${segmentos.map(encodeURIComponent).join("/")}/${encodeURIComponent(archivo)}`;
+  const imagenes = [portada, ...archivos.filter(archivo => archivo !== portada)].map(archivo => url("camisetas", archivo));
+  camisetas.push({
+    id: segmentos.length === 2 ? segmentos[1] : segmentos.join("--"), src: imagenes[0], fullSrc: imagenes[0],
+    thumbSrc: url("miniaturas", "01.webp"), imagenes, clubNombre, clubSlug, tipo
+  });
+}
+const directorios = (carpeta: string) => fs.readdirSync(carpeta, { withFileTypes: true })
+  .filter(entrada => entrada.isDirectory() && !entrada.name.startsWith("."))
+  .sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true }));
+if (fs.existsSync(carpetaProductos)) {
+  if (esOtrosClubes) {
+    for (const club of directorios(carpetaProductos)) {
+      const carpetaClub = path.join(carpetaProductos, club.name);
+      // En Otros clubes, los productos están directamente dentro de cada club.
+      // El tipo se identifica por el prefijo de la carpeta del producto.
+      for (const producto of directorios(carpetaClub)) {
+        const nombre = producto.name;
+        const tipo = nombre.startsWith("conjunto-nino-") ? "nino"
+          : nombre.startsWith("especial-") ? "especial"
+          : nombre.startsWith("chandal-") ? "chandal"
+          : nombre.startsWith("camisetas-") ? "adulto"
+          : null;
+        if (!tipo) continue;
+        registrarProducto(path.join(carpetaClub, nombre),
+          [equipoSlug, club.name, nombre],
+          club.name === "granada-cf" ? "Granada CF" : nombreDesdeSlug(club.name),
+          club.name, tipo);
+      }
+    }
+  } else {
+    for (const producto of directorios(carpetaProductos)) {
+      const tipo = producto.name.startsWith("conjunto-nino-") ? "nino" : producto.name.startsWith("especial-") ? "especial" :
+        (producto.name.startsWith("chandal-") || (equipoSlug === "espana" && producto.name === "camisetas-005")) ? "chandal" : "adulto";
+      registrarProducto(path.join(carpetaProductos, producto.name), [equipoSlug, producto.name], equipo, equipoSlug, tipo);
+    }
   }
 }
 
@@ -320,12 +357,12 @@ const datosEstructurados = {
     itemListElement: camisetas.map((camiseta, indice) => ({
       "@type": "ListItem",
       position: indice + 1,
-      name: `${equipo} · ${camiseta.id}`,
+      name: `${camiseta.clubNombre} · ${camiseta.id}`,
       url: `${urlCanonica}#${camiseta.id}`,
       image: {
         "@type": "ImageObject",
         contentUrl: new URL(camiseta.fullSrc, Astro.site).href,
-        caption: `${equipo} · ${camiseta.id}`
+        caption: `${camiseta.clubNombre} · ${camiseta.id}`
       }
     }))
   }
@@ -731,6 +768,8 @@ const datosEstructurados = {
               <button type="button" class="filtro-rapido activo" data-filtro-tipo="todos" aria-pressed="true">Todos</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="adulto" aria-pressed="false">Adulto</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="nino" aria-pressed="false">Niño</button>
+              <button type="button" class="filtro-rapido" data-filtro-tipo="especial" aria-pressed="false">Especial</button>
+              <button type="button" class="filtro-rapido" data-filtro-tipo="chandal" aria-pressed="false">Chándal</button>
             </div>
 
             <section class="galeria" aria-label={`Camisetas de ${equipo}`}>
@@ -745,8 +784,10 @@ const datosEstructurados = {
                     data-src={camiseta.thumbSrc}
                     data-full-src={camiseta.fullSrc}
                     data-imagenes={JSON.stringify(camiseta.imagenes)}
-                     data-producto={camiseta.id.startsWith("conjunto-nino-") ? "nino" : "adulto"}
-                    data-titulo={`${equipo} · ${camiseta.id}`}
+                     data-producto={camiseta.tipo}
+                     data-club-slug={camiseta.clubSlug}
+                     data-club-name={camiseta.clubNombre}
+                    data-titulo={`${camiseta.clubNombre} · ${camiseta.id}`}
                     aria-label={`Ver fotografías de la camiseta ${indice + 1} de ${equipo}`}
                   >
                     <div class="foto-imagen">
@@ -7441,6 +7482,7 @@ const datosEstructurados = {
           <select id="ej-product-type">
             <option value="adulto">Camiseta adulto</option>
             <option value="nino">Conjunto niño</option>
+            <option value="especial">Especial</option>
             <option value="chandal">Chándal</option>
           </select>
         </div>
@@ -7508,7 +7550,7 @@ const datosEstructurados = {
           </div>
         </div>
 
-        <div class="ej-order-pricebox"><span>Total de este artículo</span><b id="ej-line-price">9 €</b></div>
+        <div class="ej-order-pricebox"><span>Total de este artículo</span><b id="ej-line-price">9,50 €</b></div>
         <button id="ej-add-cart" class="ej-order-primary" type="button">Añadir al presupuesto</button>
       </section>
 
@@ -8430,8 +8472,8 @@ import { jsPDF } from "jspdf";
     CAMPEON_MUNDO_2026: {label:"Campeón del Mundo 2026", image:"/parches/campeon-mundo-2026.png"},
     MUNDIAL_DORADO_2026: {label:"Mundial Dorado 2026 (dos mangas)", image:"/parches/mundial-dorado-2026.png"}
   };
-  const CURRENT_TEAM_SLUG = $("#ej-order-panel")?.dataset.teamSlug || "";
-  const CAN_CUSTOMIZE = FIRST_DIVISION_ES.has(CURRENT_TEAM_SLUG) ||
+  let CURRENT_TEAM_SLUG = $("#ej-order-panel")?.dataset.teamSlug || "";
+  let CAN_CUSTOMIZE = FIRST_DIVISION_ES.has(CURRENT_TEAM_SLUG) ||
     (!SPANISH_TEAMS.has(CURRENT_TEAM_SLUG) &&
      !/(?:espa[nñ]ola|espa[nñ]a|laliga)/i.test(TEAM_CATEGORY));
 
@@ -8449,17 +8491,17 @@ import { jsPDF } from "jspdf";
   const personalize=$("#ej-personalize"), patches=$("#ej-patches");
   const patchType=$("#ej-patch-type"), patchTypeWrap=$("#ej-patch-type-wrap");
   const spainPatchWrap=$("#ej-spain-patches"), spainChampion=$("#ej-spain-champion"), spainGold=$("#ej-spain-gold");
-  const isSpanishTeam = SPANISH_TEAMS.has(CURRENT_TEAM_SLUG) ||
+  let isSpanishTeam = SPANISH_TEAMS.has(CURRENT_TEAM_SLUG) ||
     /(?:espa[nñ]ola|espa[nñ]a|laliga)/i.test(TEAM_CATEGORY);
-  const isEnglishTeam = ENGLISH_TEAMS.has(CURRENT_TEAM_SLUG) ||
+  let isEnglishTeam = ENGLISH_TEAMS.has(CURRENT_TEAM_SLUG) ||
     /(?:premier|inglaterra|inglesa|english|championship|efl)/i.test(TEAM_CATEGORY);
-  const isItalianTeam = ITALIAN_TEAMS.has(CURRENT_TEAM_SLUG) ||
+  let isItalianTeam = ITALIAN_TEAMS.has(CURRENT_TEAM_SLUG) ||
     /(?:serie\s*a|italiana|italia)/i.test(TEAM_CATEGORY);
-  const isGermanTeam = GERMAN_TEAMS.has(CURRENT_TEAM_SLUG) ||
+  let isGermanTeam = GERMAN_TEAMS.has(CURRENT_TEAM_SLUG) ||
     /(?:bundesliga|alemana|alemania|germany)/i.test(TEAM_CATEGORY);
-  const isFrenchTeam = FRENCH_TEAMS.has(CURRENT_TEAM_SLUG) ||
+  let isFrenchTeam = FRENCH_TEAMS.has(CURRENT_TEAM_SLUG) ||
     /(?:ligue\s*1|francesa|francia|france)/i.test(TEAM_CATEGORY);
-  const CAN_PATCHES = CAN_CUSTOMIZE || isSpanishTeam || isEnglishTeam || isItalianTeam || isGermanTeam || isFrenchTeam || CURRENT_TEAM_SLUG === "espana";
+  let CAN_PATCHES = CAN_CUSTOMIZE || isSpanishTeam || isEnglishTeam || isItalianTeam || isGermanTeam || isFrenchTeam || CURRENT_TEAM_SLUG === "espana";
   const patchImage = $("#ej-patch-image"), patchLabel = $("#ej-patch-label");
   function updatePatchPreview(){
     const data = PATCH_OPTIONS[patchType?.value] || PATCH_OPTIONS[isFrenchTeam ? "LIGUE_1" : isGermanTeam ? "BUNDESLIGA" : isItalianTeam ? "SERIE_A" : isEnglishTeam ? "PREMIER" : "LIGA"];
@@ -8467,10 +8509,10 @@ import { jsPDF } from "jspdf";
     if(patchLabel)patchLabel.textContent=data.label;
   }
   function isSpainTracksuit(){
-    if(CURRENT_TEAM_SLUG !== "espana" || !current) return false;
+    if(!current) return false;
     try {
       const parts=decodeURIComponent(new URL(current.image,location.origin).pathname).toLowerCase().split("/");
-      return parts.includes("espana") && parts.includes("camisetas-005");
+      return parts.some(part => part.startsWith("chandal-")) || (CURRENT_TEAM_SLUG === "espana" && parts.includes("camisetas-005"));
     } catch { return false; }
   }
   function is125AnniversaryShirt(){
@@ -8535,7 +8577,7 @@ import { jsPDF } from "jspdf";
     overlay.classList.add("is-open"); overlay.setAttribute("aria-hidden","false");
     config.classList.toggle("is-active",view==="config");
     cartView.classList.toggle("is-active",view==="cart");
-    $("#ej-order-title").textContent=view==="config"?(isSpainTracksuit()?"Configurar chándal":productType.value==="nino"?"Configurar conjunto infantil":"Configurar camiseta"):"Mi presupuesto";
+    $("#ej-order-title").textContent=view==="config"?(isSpainTracksuit()?"Configurar chándal":productType.value==="nino"?"Configurar conjunto infantil":productType.value==="especial"?"Configurar especial":"Configurar camiseta"):"Mi presupuesto";
     document.documentElement.style.overflow="hidden";
   }
   function close(){overlay.classList.remove("is-open");overlay.setAttribute("aria-hidden","true");document.documentElement.style.overflow="";}
@@ -8547,7 +8589,7 @@ import { jsPDF } from "jspdf";
   }
   function unitPrice(){
     if(isSpainTracksuit()) return 35;
-    let p=productType.value==="nino"?12:(version.value==="jugador"?12:9);
+    let p=productType.value==="nino"?13:productType.value==="especial"?15:10;
     if(CAN_CUSTOMIZE && personalize.checked)p+=3;
     if(CAN_PATCHES && patches.checked)p+=isSpainSelectedShirt() ? (Number(spainChampion.checked)+2*Number(spainGold.checked)) : (patchType?.value === "MUNDIAL_DORADO_2026" ? 2 : 1);
     return p;
@@ -8567,7 +8609,7 @@ import { jsPDF } from "jspdf";
   };
 
   function detectCard(btn){
-    const card=btn.closest("article, .camiseta-card, .card, li, div");
+    const card=btn.closest(".foto, article, .camiseta-card, .card, li, div");
     const img=card?.querySelector("img");
     const text=(card?.innerText||"").replace(/Añadir al presupuesto/gi,"").trim();
     return {card,img,text};
@@ -8585,6 +8627,8 @@ import { jsPDF } from "jspdf";
       b.setAttribute("aria-label","Añadir esta camiseta al pedido");
       b.dataset.image=card.dataset?.fullSrc || img.currentSrc || img.src;
       b.dataset.producto=card.dataset?.producto || "adulto";
+      b.dataset.clubSlug=card.dataset?.clubSlug || "";
+      b.dataset.clubName=card.dataset?.clubName || "";
       b.dataset.temporada=card.dataset?.temporada || "";
       b.dataset.tipo=card.dataset?.tipo || "";
       card.appendChild(b);
@@ -8592,9 +8636,21 @@ import { jsPDF } from "jspdf";
   }
   function openConfig(btn){
     const {card,img,text}=detectCard(btn);
+    // En Otros clubes, aplicar los permisos y parches del club real de cada producto.
+    CURRENT_TEAM_SLUG = btn.dataset.clubSlug || card?.dataset?.clubSlug || $("#ej-order-panel")?.dataset.teamSlug || "";
+    CAN_CUSTOMIZE = FIRST_DIVISION_ES.has(CURRENT_TEAM_SLUG) ||
+      (!SPANISH_TEAMS.has(CURRENT_TEAM_SLUG) && !/(?:espa[nñ]ola|espa[nñ]a|laliga)/i.test(TEAM_CATEGORY));
+    isSpanishTeam = SPANISH_TEAMS.has(CURRENT_TEAM_SLUG) || /(?:espa[nñ]ola|espa[nñ]a|laliga)/i.test(TEAM_CATEGORY);
+    isEnglishTeam = ENGLISH_TEAMS.has(CURRENT_TEAM_SLUG) || /(?:premier|inglaterra|inglesa|english|championship|efl)/i.test(TEAM_CATEGORY);
+    isItalianTeam = ITALIAN_TEAMS.has(CURRENT_TEAM_SLUG) || /(?:serie\s*a|italiana|italia)/i.test(TEAM_CATEGORY);
+    isGermanTeam = GERMAN_TEAMS.has(CURRENT_TEAM_SLUG) || /(?:bundesliga|alemana|alemania|germany)/i.test(TEAM_CATEGORY);
+    isFrenchTeam = FRENCH_TEAMS.has(CURRENT_TEAM_SLUG) || /(?:ligue\s*1|francesa|francia|france)/i.test(TEAM_CATEGORY);
+    CAN_PATCHES = CAN_CUSTOMIZE || isSpanishTeam || isEnglishTeam || isItalianTeam || isGermanTeam || isFrenchTeam || CURRENT_TEAM_SLUG === "espana";
+    document.querySelector("[data-personalizacion-control]")?.classList.toggle("ej-order-hidden", !CAN_CUSTOMIZE);
+    document.querySelector("[data-parches-control]")?.classList.toggle("ej-order-hidden", !CAN_PATCHES);
     current={
       image:btn.dataset.image || card?.dataset?.fullSrc || img?.currentSrc || img?.src || "",
-      name:(document.querySelector("h1")?.textContent||document.title.split("|")[0]||"Camiseta").trim(),
+      name:(btn.dataset.clubName || card?.dataset?.clubName || document.querySelector("h1")?.textContent || document.title.split("|")[0] || "Camiseta").trim(),
       detail:text || "Camiseta",
       temporada:btn.dataset.temporada || card?.dataset?.temporada || "",
       tipo:btn.dataset.tipo || card?.dataset?.tipo || ""
@@ -8602,7 +8658,7 @@ import { jsPDF } from "jspdf";
     $("#ej-order-img").src=current.image;
     $("#ej-order-name").textContent=current.name;
     $("#ej-order-detail").textContent=isSpainTracksuit()?"Chándal":current.detail.slice(0,120);
-    productType.value=isSpainTracksuit()?"chandal":btn.dataset.producto === "nino" ? "nino" : "adulto";
+    productType.value=isSpainTracksuit()?"chandal":btn.dataset.producto === "nino" ? "nino" : btn.dataset.producto === "especial" ? "especial" : "adulto";
     document.querySelector("[data-personalizacion-control]")?.classList.toggle("ej-order-hidden",isSpainTracksuit() || !CAN_CUSTOMIZE);
     document.querySelector("[data-parches-control]")?.classList.toggle("ej-order-hidden",isSpainTracksuit() || !CAN_PATCHES);
     personalize.disabled=isSpainTracksuit() || !CAN_CUSTOMIZE;
@@ -8637,7 +8693,7 @@ import { jsPDF } from "jspdf";
     box.innerHTML=cart.map((x,i)=>{
       const isChild=x.product==="Conjunto niño";
       const isTracksuit=x.product==="Chándal";
-      const productText=isTracksuit?"Chándal":isChild?"Conjunto niño":"Camiseta adulto";
+      const productText=isTracksuit?"Chándal":isChild?"Conjunto niño":x.product==="Especial"?"Especial":"Camiseta adulto";
       const versionText=isChild?"Única":(/Jugador/i.test(x.product||"")?"Jugador":"Aficionado");
       const personalization=x.personalize?`${x.playerName || "—"} ${x.playerNumber || ""}`:"No";
       return `
@@ -8729,7 +8785,7 @@ import { jsPDF } from "jspdf";
     }
     const q=Math.min(20,Math.max(1,parseInt(qty.value)||1));
     qty.value=String(q);
-    const prod=isSpainTracksuit()?"Chándal":productType.value==="nino"?"Conjunto niño":`Camiseta adulto · ${version.value==="jugador"?"Jugador":"Aficionado"}`;
+    const prod=isSpainTracksuit()?"Chándal":productType.value==="nino"?"Conjunto niño":productType.value==="especial"?"Especial":`Camiseta adulto · ${version.value==="jugador"?"Jugador":"Aficionado"}`;
     cart.push({...current,product:prod,size:size.value,qty:q,personalize:!isSpainTracksuit() && CAN_CUSTOMIZE && personalize.checked,
       playerName:$("#ej-player-name").value.trim(),playerNumber:$("#ej-player-number").value.trim(),
       patches:!isSpainTracksuit() && CAN_PATCHES && patches.checked,
@@ -8744,7 +8800,7 @@ import { jsPDF } from "jspdf";
     const q=safeQty(x.qty);
     const child=x.product==="Conjunto niño";
     if(x.product==="Chándal") return {...x,qty:q,personalize:false,patches:false,total:35*q};
-    let unit=child?12:(/Jugador/i.test(x.product||"")?12:9);
+    let unit=child?13:x.product==="Especial"?15:10;
     if(x.personalize) unit+=3;
     if(x.patches) unit+=Array.isArray(x.spainPatches) && x.spainPatches.length ? x.spainPatches.reduce((a,k)=>a+(k==="MUNDIAL_DORADO_2026"?2:1),0) : (x.patchType ? (x.patchType === "MUNDIAL_DORADO_2026" ? 2 : 1) : 0);
     return {...x,qty:q,total:unit*q};
@@ -8871,14 +8927,14 @@ import { jsPDF } from "jspdf";
         "Chándal", `Talla: ${x.size}`, `Cantidad: ${x.qty}`
       ] : compact?[
         ...(x.temporada ? [String(x.temporada)] : []),
-        `${child?"Niño":/Jugador/i.test(x.product||"")?"Jugador":"Camiseta adulto"}`,
+        `${child?"Niño":x.product==="Especial"?"Especial":/Jugador/i.test(x.product||"")?"Jugador":"Camiseta adulto"}`,
         `Talla: ${x.size}`,
         `Cantidad: ${x.qty}`,
         x.personalize?`Nombre: ${x.playerName} · Dorsal: ${x.playerNumber}`:"Nombre y dorsal: No",
         `Parches: ${x.patches?(Array.isArray(x.spainPatches) && x.spainPatches.length?x.spainPatches.map(k=>PATCH_OPTIONS[k]?.label||k).join(" + "):PATCH_OPTIONS[x.patchType]?.label||x.patchType||"Ninguno"):"No"}`
       ]:[
         ...(x.temporada ? [String(x.temporada)] : []),
-        `${child?"Conjunto niño":"Camiseta adulto"}${!child && /Jugador/i.test(x.product||"")?" · Jugador":""}`,
+        `${child?"Conjunto niño":x.product==="Especial"?"Especial":"Camiseta adulto"}${!child && x.product!=="Especial" && /Jugador/i.test(x.product||"")?" · Jugador":""}`,
         `Talla: ${x.size}    Cantidad: ${x.qty}`,
         x.personalize?`Nombre: ${x.playerName} · Dorsal: ${x.playerNumber}`:"Nombre y dorsal: No",
         `Parches: ${x.patches?(Array.isArray(x.spainPatches) && x.spainPatches.length?x.spainPatches.map(k=>PATCH_OPTIONS[k]?.label||k).join(" + "):PATCH_OPTIONS[x.patchType]?.label||x.patchType||"Ninguno"):"No"}`
