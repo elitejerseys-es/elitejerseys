@@ -1,6 +1,7 @@
 from pathlib import Path
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+# Cambia 'camisetas' por 'miniaturas' para convertir la otra carpeta.
 CARPETA = Path(__file__).resolve().parent / 'public' / 'camisetas'
 EXTENSIONES = {'.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff', '.gif'}
 CALIDAD = 85
@@ -13,8 +14,10 @@ def convertir(origen: Path):
     temporal = destino.with_name(destino.stem + '.temporal.webp')
     try:
         with Image.open(origen) as imagen:
+            # Si el archivo contiene varios fotogramas, utilizamos solo el primero.
             if getattr(imagen, 'is_animated', False) and getattr(imagen, 'n_frames', 1) > 1:
-                return 'omitida', f'Animación no convertida: {origen}'
+                imagen.seek(0)
+                imagen.load()
             imagen = ImageOps.exif_transpose(imagen)
             if imagen.mode in ('RGBA', 'LA') or ('transparency' in imagen.info):
                 imagen = imagen.convert('RGBA')

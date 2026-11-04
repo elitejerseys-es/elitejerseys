@@ -1,0 +1,22 @@
+ELITE JERSEYS - AUDITORÍA DE PORTADAS
+Fecha: 2026-11-04 18:54:39
+Portadas 01.webp en camisetas: 404
+Portadas 01.webp en miniaturas: 404
+Portadas con ambas copias: 404
+FALTAN en miniaturas: 0
+Miniaturas sin portada correspondiente en camisetas: 0
+Miniaturas 01.webp dañadas: 0
+Otras imágenes WebP en miniaturas: 0
+Carpetas de productos con imágenes pero sin 01.webp en camisetas: 0
+
+Este script solo revisa. No modifica ni borra archivos.
+
+=== PORTADAS QUE FALTAN EN MINIATURAS (0) ===
+
+=== MINIATURAS SIN PORTADA EN CAMISETAS (0) ===
+
+=== MINIATURAS DAÑADAS (0) ===
+
+=== IMÁGENES ADICIONALES EN MINIATURAS (0) ===
+
+=== PRODUCTOS SIN 01.WEBP EN CAMISETAS (0) ===

@@ -98,6 +98,7 @@ const tipoProducto = (nombre: string, clubSlug = equipoSlug) => {
   if (n.startsWith("chandal-entera-") || n.startsWith("chandal-cremallera-entera-")) return "chandal-entera";
   if (n.startsWith("chandal-pecho-") || n.startsWith("chandal-cremallera-pecho-") || n.startsWith("chandal-")) return "chandal-pecho";
   if (n.startsWith("conjunto-nino-")) return "nino";
+  if (n.startsWith("retro-") || n.startsWith("version-retro-")) return "retro";
   if (n.startsWith("especial-")) return "especial";
   if (n.startsWith("version-jugador-") || n.startsWith("jugador-")) return "jugador";
   if (n.startsWith("mujer-") || n.startsWith("adulto-mujer-")) return "mujer";
@@ -785,6 +786,7 @@ const datosEstructurados = {
               <button type="button" class="filtro-rapido" data-filtro-tipo="adulto" aria-pressed="false">Adulto - Versión Aficionado</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="jugador" aria-pressed="false">Adulto - Versión Jugador</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="mujer" aria-pressed="false">Adulto - Versión Mujer</button>
+              <button type="button" class="filtro-rapido" data-filtro-tipo="retro" aria-pressed="false">Adulto - Versión Retro</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="especial" aria-pressed="false">Adulto - Versión Especial</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="nino" aria-pressed="false">Conjunto Niño</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="chandal" aria-pressed="false">Chándal</button>
@@ -7501,6 +7503,7 @@ const datosEstructurados = {
             <option value="adulto">Adulto - Versión Aficionado</option>
             <option value="jugador">Adulto - Versión Jugador</option>
             <option value="mujer">Adulto - Versión Mujer</option>
+            <option value="retro">Adulto - Versión Retro</option>
             <option value="especial">Adulto - Versión Especial</option>
             <option value="nino">Conjunto Niño</option>
             <option value="chandal-pecho">Chándal - Cremallera Pecho</option>
@@ -8598,7 +8601,7 @@ import { jsPDF } from "jspdf";
     overlay.classList.add("is-open"); overlay.setAttribute("aria-hidden","false");
     config.classList.toggle("is-active",view==="config");
     cartView.classList.toggle("is-active",view==="cart");
-    $("#ej-order-title").textContent=view==="config"?(isSpainTracksuit()?"Configurar chándal":productType.value==="nino"?"Configurar conjunto infantil":productType.value==="especial"?"Configurar especial":"Configurar camiseta"):"Mi presupuesto";
+    $("#ej-order-title").textContent=view==="config"?(isSpainTracksuit()?"Configurar chándal":productType.value==="nino"?"Configurar conjunto infantil":productType.value==="especial"?"Configurar especial":productType.value==="retro"?"Configurar retro":"Configurar camiseta"):"Mi presupuesto";
     document.documentElement.style.overflow="hidden";
   }
   function close(){overlay.classList.remove("is-open");overlay.setAttribute("aria-hidden","true");document.documentElement.style.overflow="";}
@@ -8608,12 +8611,13 @@ import { jsPDF } from "jspdf";
     $("#ej-version-wrap").classList.toggle("ej-order-hidden",true);
     calc();
   }
-  function isSpecialProduct(){ return productType.value === "especial"; }
+  function isSpecialProduct(){ return productType.value === "especial" || productType.value === "retro"; }
+  function allowsExtras(){ return ["adulto","jugador","mujer","nino"].includes(productType.value); }
   function unitPrice(){
-    if(isSpainTracksuit()) return productType.value==="chandal-entera"?36:28;
-    let p=productType.value==="nino"||productType.value==="jugador"?13:productType.value==="especial"?11:10;
-    if(!isSpecialProduct() && CAN_CUSTOMIZE && personalize.checked)p+=3;
-    if(!isSpecialProduct() && CAN_PATCHES && patches.checked)p+=isSpainSelectedShirt() ? (Number(spainChampion.checked)+2*Number(spainGold.checked)) : (patchType?.value === "MUNDIAL_DORADO_2026" ? 2 : 1);
+    if(isSpainTracksuit()) return productType.value==="chandal-entera"?33:28;
+    let p=["nino","jugador","retro","especial"].includes(productType.value)?13:10;
+    if(allowsExtras() && CAN_CUSTOMIZE && personalize.checked)p+=3;
+    if(allowsExtras() && CAN_PATCHES && patches.checked)p+=isSpainSelectedShirt() ? (Number(spainChampion.checked)+2*Number(spainGold.checked)) : (patchType?.value === "MUNDIAL_DORADO_2026" ? 2 : 1);
     return p;
   }
   function calc(){
@@ -8682,10 +8686,10 @@ import { jsPDF } from "jspdf";
     $("#ej-order-detail").textContent=isSpainTracksuit()?"Chándal":current.detail.slice(0,120);
     const detectedType = btn.dataset.producto || "adulto";
     productType.value = detectedType === "chandal" ? "chandal-pecho" : detectedType;
-    document.querySelector("[data-personalizacion-control]")?.classList.toggle("ej-order-hidden",isSpainTracksuit() || isSpecialProduct() || !CAN_CUSTOMIZE);
-    document.querySelector("[data-parches-control]")?.classList.toggle("ej-order-hidden",isSpainTracksuit() || isSpecialProduct() || !CAN_PATCHES);
-    personalize.disabled=isSpainTracksuit() || isSpecialProduct() || !CAN_CUSTOMIZE;
-    patches.disabled=isSpainTracksuit() || isSpecialProduct() || !CAN_PATCHES;
+    document.querySelector("[data-personalizacion-control]")?.classList.toggle("ej-order-hidden",!allowsExtras() || !CAN_CUSTOMIZE);
+    document.querySelector("[data-parches-control]")?.classList.toggle("ej-order-hidden",!allowsExtras() || !CAN_PATCHES);
+    personalize.disabled=!allowsExtras() || !CAN_CUSTOMIZE;
+    patches.disabled=!allowsExtras() || !CAN_PATCHES;
     productType.disabled=true;
     version.value=productType.value==="jugador"?"jugador":"aficionado"; qty.value="1";
     personalize.checked=false; patches.checked=false; spainChampion.checked=false; spainGold.checked=false;
@@ -8799,7 +8803,7 @@ import { jsPDF } from "jspdf";
 
   $("#ej-add-cart").onclick=()=>{
     if(!current)return;
-    if(!isSpecialProduct() && CAN_CUSTOMIZE && personalize.checked){
+    if(allowsExtras() && CAN_CUSTOMIZE && personalize.checked){
       const pName=$("#ej-player-name").value.trim();
       const pNumber=$("#ej-player-number").value.trim();
       if(!pName || pName.length>20 || !/^\d{1,2}$/.test(pNumber) || Number(pNumber)<0 || Number(pNumber)>99){
@@ -8808,12 +8812,12 @@ import { jsPDF } from "jspdf";
     }
     const q=Math.min(20,Math.max(1,parseInt(qty.value)||1));
     qty.value=String(q);
-    const prod=isSpainTracksuit()?(productType.value==="chandal-entera"?"Chándal - Cremallera Entera":"Chándal - Cremallera Pecho"):productType.value==="nino"?"Conjunto niño":productType.value==="especial"?"Adulto - Versión Especial":productType.value==="jugador"?"Adulto - Versión Jugador":productType.value==="mujer"?"Adulto - Versión Mujer":"Adulto - Versión Aficionado";
-    cart.push({...current,product:prod,size:size.value,qty:q,personalize:!isSpainTracksuit() && !isSpecialProduct() && CAN_CUSTOMIZE && personalize.checked,
+    const prod=isSpainTracksuit()?(productType.value==="chandal-entera"?"Chándal - Cremallera Entera":"Chándal - Cremallera Pecho"):productType.value==="nino"?"Conjunto niño":productType.value==="especial"?"Adulto - Versión Especial":productType.value==="retro"?"Adulto - Versión Retro":productType.value==="jugador"?"Adulto - Versión Jugador":productType.value==="mujer"?"Adulto - Versión Mujer":"Adulto - Versión Aficionado";
+    cart.push({...current,product:prod,size:size.value,qty:q,personalize:!isSpainTracksuit() && allowsExtras() && CAN_CUSTOMIZE && personalize.checked,
       playerName:$("#ej-player-name").value.trim(),playerNumber:$("#ej-player-number").value.trim(),
-      patches:!isSpainTracksuit() && !isSpecialProduct() && CAN_PATCHES && patches.checked,
-      patchType:(!isSpecialProduct() && CAN_PATCHES && patches.checked && !isSpainSelectedShirt() && IS_NATIONAL_LEAGUE ? (patchType?.value || "LIGA") : ""),
-      spainPatches:(!isSpecialProduct() && CAN_PATCHES && patches.checked && isSpainSelectedShirt() ? [...(spainChampion.checked?["CAMPEON_MUNDO_2026"]:[]),...(spainGold.checked?["MUNDIAL_DORADO_2026"]:[])] : null),
+      patches:!isSpainTracksuit() && allowsExtras() && CAN_PATCHES && patches.checked,
+      patchType:(allowsExtras() && CAN_PATCHES && patches.checked && !isSpainSelectedShirt() && IS_NATIONAL_LEAGUE ? (patchType?.value || "LIGA") : ""),
+      spainPatches:(allowsExtras() && CAN_PATCHES && patches.checked && isSpainSelectedShirt() ? [...(spainChampion.checked?["CAMPEON_MUNDO_2026"]:[]),...(spainGold.checked?["MUNDIAL_DORADO_2026"]:[])] : null),
       total:unitPrice()*q});
     save(); show("cart");
   };
@@ -8822,11 +8826,12 @@ import { jsPDF } from "jspdf";
   function recalcItem(x){
     const q=safeQty(x.qty);
     const child=x.product==="Conjunto niño";
-    if(/^Chándal/.test(x.product)) return {...x,qty:q,personalize:false,patches:false,total:(/Entera/.test(x.product)?36:28)*q};
-    let unit=child||/Versión Jugador/.test(x.product)||/· Jugador/.test(x.product)?13:/Especial/.test(x.product)?11:10;
-    if(!/Especial/.test(x.product) && x.personalize) unit+=3;
-    if(!/Especial/.test(x.product) && x.patches) unit+=Array.isArray(x.spainPatches) && x.spainPatches.length ? x.spainPatches.reduce((a,k)=>a+(k==="MUNDIAL_DORADO_2026"?2:1),0) : (x.patchType ? (x.patchType === "MUNDIAL_DORADO_2026" ? 2 : 1) : 0);
-    return {...x,qty:q,personalize:/Especial/.test(x.product)?false:x.personalize,patches:/Especial/.test(x.product)?false:x.patches,total:unit*q};
+    if(/^Chándal/.test(x.product)) return {...x,qty:q,personalize:false,patches:false,spainPatches:null,patchType:"",total:(/Entera/.test(x.product)?33:28)*q};
+    let unit=child||/Versión (Jugador|Retro|Especial)/.test(x.product)||/· Jugador/.test(x.product)?13:10;
+    const extrasAllowed=/Versión (Aficionado|Jugador|Mujer)/.test(x.product)||child;
+    if(extrasAllowed && x.personalize) unit+=3;
+    if(extrasAllowed && x.patches) unit+=Array.isArray(x.spainPatches) && x.spainPatches.length ? x.spainPatches.reduce((a,k)=>a+(k==="MUNDIAL_DORADO_2026"?2:1),0) : (x.patchType ? (x.patchType === "MUNDIAL_DORADO_2026" ? 2 : 1) : 0);
+    return {...x,qty:q,personalize:extrasAllowed?x.personalize:false,patches:extrasAllowed?x.patches:false,spainPatches:extrasAllowed?x.spainPatches:null,patchType:extrasAllowed?x.patchType:"",total:unit*q};
   }
   const pdfMoney = n => `${Number(n).toFixed(2).replace(".",",")} EUR`;
   function safeImageUrl(raw){

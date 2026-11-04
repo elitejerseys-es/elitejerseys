@@ -1,0 +1,38 @@
+ELITE JERSEYS - AUDITORÍA DE IMÁGENES
+Modo: SOLO LECTURA
+
+=== CAMISETAS ===
+Imágenes: 1376
+WebP: 1356
+No WebP con equivalente: 20
+No WebP sin equivalente: 0
+WebP dañados: 0
+
+CON EQUIVALENTE: camisetas\real-madrid\especial-003\01.jpg -> camisetas\real-madrid\especial-003\01.webp
+CON EQUIVALENTE: camisetas\real-madrid\especial-003\02.jpg -> camisetas\real-madrid\especial-003\02.webp
+CON EQUIVALENTE: camisetas\real-madrid\mujer-002\01.jpeg -> camisetas\real-madrid\mujer-002\01.webp
+CON EQUIVALENTE: camisetas\real-madrid\mujer-002\02.jpg -> camisetas\real-madrid\mujer-002\02.webp
+CON EQUIVALENTE: camisetas\real-oviedo\especial-001\01.jpg -> camisetas\real-oviedo\especial-001\01.webp
+CON EQUIVALENTE: camisetas\real-oviedo\especial-001\02.jpg -> camisetas\real-oviedo\especial-001\02.webp
+CON EQUIVALENTE: camisetas\real-sociedad\especial-001\01.jpg -> camisetas\real-sociedad\especial-001\01.webp
+CON EQUIVALENTE: camisetas\real-sociedad\especial-001\02.jpg -> camisetas\real-sociedad\especial-001\02.webp
+CON EQUIVALENTE: camisetas\real-sociedad\especial-001\03.jpg -> camisetas\real-sociedad\especial-001\03.webp
+CON EQUIVALENTE: camisetas\sevilla-fc\especial-001\01.jpg -> camisetas\sevilla-fc\especial-001\01.webp
+CON EQUIVALENTE: camisetas\sevilla-fc\especial-001\02.jpg -> camisetas\sevilla-fc\especial-001\02.webp
+CON EQUIVALENTE: camisetas\sevilla-fc\especial-001\03.jpg -> camisetas\sevilla-fc\especial-001\03.webp
+CON EQUIVALENTE: camisetas\sevilla-fc\especial-001\04.jpg -> camisetas\sevilla-fc\especial-001\04.webp
+CON EQUIVALENTE: camisetas\ud-almeria\conjunto-nino-001\01.jpg -> camisetas\ud-almeria\conjunto-nino-001\01.webp
+CON EQUIVALENTE: camisetas\ud-almeria\conjunto-nino-001\02.jpg -> camisetas\ud-almeria\conjunto-nino-001\02.webp
+CON EQUIVALENTE: camisetas\valencia-cf\version-jugador-001\01.jpeg -> camisetas\valencia-cf\version-jugador-001\01.webp
+CON EQUIVALENTE: camisetas\valencia-cf\version-jugador-001\02.jpeg -> camisetas\valencia-cf\version-jugador-001\02.webp
+CON EQUIVALENTE: camisetas\valencia-cf\version-jugador-001\03.jpeg -> camisetas\valencia-cf\version-jugador-001\03.webp
+CON EQUIVALENTE: camisetas\valencia-cf\version-jugador-002\01.jpeg -> camisetas\valencia-cf\version-jugador-002\01.webp
+CON EQUIVALENTE: camisetas\valencia-cf\version-jugador-002\02.jpeg -> camisetas\valencia-cf\version-jugador-002\02.webp
+
+=== MINIATURAS ===
+Imágenes: 391
+WebP: 391
+No WebP con equivalente: 0
+No WebP sin equivalente: 0
+WebP dañados: 0
+

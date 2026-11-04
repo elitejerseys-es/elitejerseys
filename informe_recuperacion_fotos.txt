@@ -1,0 +1,47 @@
+ELITE JERSEYS - RECUPERACIÓN DE FOTOGRAFÍAS
+Fecha: 4/11/2026, 17:49:13
+Modo: COPIA (sin sobrescribir)
+Imágenes revisadas en miniaturas: 410
+Imágenes ausentes en camisetas: 32
+Imágenes copiadas: 32
+Errores de copia: 0
+
+FOTOGRAFÍAS DETECTADAS:
+- atletico-de-madrid\especial-001\01.jpg
+- atletico-de-madrid\especial-001\02.jpg
+- getafe-cf\camisetas-004\01.jpg
+- getafe-cf\camisetas-004\02.jpg
+- levante-ud\conjunto-nino-001\01.jpg
+- levante-ud\conjunto-nino-001\02.jpg
+- racing-de-santander\camisetas-003\01.jpg
+- racing-de-santander\camisetas-003\02.jpg
+- rc-deportivo\especial-001\01.jpg
+- rc-deportivo\especial-001\02.jpg
+- rc-deportivo\especial-001\03.jpg
+- rc-deportivo\especial-001\04.jpg
+- real-betis\chandal-pecho-001\01.jpeg
+- real-betis\chandal-pecho-001\02.jpeg
+- real-betis\chandal-pecho-002\01.jpg
+- real-betis\chandal-pecho-002\02.jpg
+- real-betis\chandal-pecho-002\03.jpg
+- real-betis\chandal-pecho-002\04.jpg
+- real-betis\chandal-pecho-002\05.jpg
+- real-betis\especial-001\01.jpg
+- real-betis\especial-001\02.jpg
+- real-betis\especial-002\01.jpg
+- real-betis\especial-002\02.png
+- real-betis\especial-002\03.jpg
+- real-madrid\mujer-001\01.jpeg
+- real-madrid\mujer-001\02.jpg
+- real-madrid\mujer-001\03.jpg
+- real-madrid\mujer-001\04.jpg
+- real-madrid\mujer-001\05.jpg
+- real-madrid\mujer-003\01.jpeg
+- real-madrid\mujer-003\02.jpg
+- real-madrid\mujer-003\03.jpg
+
+AVISOS:
+Ninguno
+
+NOTA: Una miniatura puede tener menor resolución que la foto original.
+No se elimina ni se sobrescribe ningún archivo existente.

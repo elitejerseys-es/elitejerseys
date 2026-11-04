@@ -1,0 +1,38 @@
+ELITE JERSEYS - REVISION DE MINIATURAS
+Fecha: 2026-11-04 18:18:38
+Modo: APLICAR
+Portadas 01.webp conservadas: 389
+Miniaturas sobrantes con copia en camisetas: 21
+Miniaturas adicionales SIN copia en camisetas (se conservan): 0
+Archivos no WebP (se conservan): 0
+Miniaturas movidas a respaldo: 21
+Errores: 0
+
+SOBRANTES CON COPIA EN CAMISETAS:
+atletico-de-madrid\especial-001\02.webp
+getafe-cf\camisetas-004\02.webp
+levante-ud\conjunto-nino-001\02.webp
+racing-de-santander\camisetas-003\02.webp
+rc-deportivo\especial-001\02.webp
+rc-deportivo\especial-001\03.webp
+rc-deportivo\especial-001\04.webp
+real-betis\chandal-pecho-001\02.webp
+real-betis\chandal-pecho-002\02.webp
+real-betis\chandal-pecho-002\03.webp
+real-betis\chandal-pecho-002\04.webp
+real-betis\chandal-pecho-002\05.webp
+real-betis\especial-001\02.webp
+real-betis\especial-002\02.webp
+real-betis\especial-002\03.webp
+real-madrid\mujer-001\02.webp
+real-madrid\mujer-001\03.webp
+real-madrid\mujer-001\04.webp
+real-madrid\mujer-001\05.webp
+real-madrid\mujer-003\02.webp
+real-madrid\mujer-003\03.webp
+
+SIN COPIA EN CAMISETAS (NO TOCAR):
+
+OTROS ARCHIVOS (NO TOCAR):
+
+ERRORES:
