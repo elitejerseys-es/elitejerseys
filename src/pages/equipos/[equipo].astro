@@ -84,6 +84,18 @@ const esOtrosClubes = equipoSlug === "otros-clubes-liga-espanola";
 const carpetaProductos = esOtrosClubes
   ? path.join(process.cwd(), "public", "camisetas", "otros-clubes-liga-espanola")
   : carpetaEquipo;
+const tipoProducto = (nombre: string, clubSlug = equipoSlug) => {
+  const n = nombre.toLowerCase();
+  if (clubSlug === "espana" && n === "camisetas-005") return "chandal-pecho";
+  if (n.startsWith("chandal-entera-") || n.startsWith("chandal-cremallera-entera-")) return "chandal-entera";
+  if (n.startsWith("chandal-pecho-") || n.startsWith("chandal-cremallera-pecho-") || n.startsWith("chandal-")) return "chandal-pecho";
+  if (n.startsWith("conjunto-nino-")) return "nino";
+  if (n.startsWith("especial-")) return "especial";
+  if (n.startsWith("version-jugador-") || n.startsWith("jugador-")) return "jugador";
+  if (n.startsWith("mujer-") || n.startsWith("adulto-mujer-")) return "mujer";
+  if (n.startsWith("camisetas-")) return "adulto";
+  return null;
+};
 const nombreDesdeSlug = (slug: string) => slug.split("-").map(palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1)).join(" ");
 function registrarProducto(carpeta: string, segmentos: string[], clubNombre: string, clubSlug: string, tipo: string) {
   const archivos = fs.readdirSync(carpeta)
@@ -109,11 +121,7 @@ if (fs.existsSync(carpetaProductos)) {
       // El tipo se identifica por el prefijo de la carpeta del producto.
       for (const producto of directorios(carpetaClub)) {
         const nombre = producto.name;
-        const tipo = nombre.startsWith("conjunto-nino-") ? "nino"
-          : nombre.startsWith("especial-") ? "especial"
-          : nombre.startsWith("chandal-") ? "chandal"
-          : nombre.startsWith("camisetas-") ? "adulto"
-          : null;
+        const tipo = tipoProducto(nombre, club.name);
         if (!tipo) continue;
         registrarProducto(path.join(carpetaClub, nombre),
           [equipoSlug, club.name, nombre],
@@ -123,8 +131,8 @@ if (fs.existsSync(carpetaProductos)) {
     }
   } else {
     for (const producto of directorios(carpetaProductos)) {
-      const tipo = producto.name.startsWith("conjunto-nino-") ? "nino" : producto.name.startsWith("especial-") ? "especial" :
-        (producto.name.startsWith("chandal-") || (equipoSlug === "espana" && producto.name === "camisetas-005")) ? "chandal" : "adulto";
+      const tipo = tipoProducto(producto.name);
+      if (!tipo) continue;
       registrarProducto(path.join(carpetaProductos, producto.name), [equipoSlug, producto.name], equipo, equipoSlug, tipo);
     }
   }
@@ -766,9 +774,11 @@ const datosEstructurados = {
           <>
             <div class="filtros-rapidos filtros-producto" role="group" aria-label="Filtrar productos por edad">
               <button type="button" class="filtro-rapido activo" data-filtro-tipo="todos" aria-pressed="true">Todos</button>
-              <button type="button" class="filtro-rapido" data-filtro-tipo="adulto" aria-pressed="false">Adulto</button>
-              <button type="button" class="filtro-rapido" data-filtro-tipo="nino" aria-pressed="false">Niño</button>
-              <button type="button" class="filtro-rapido" data-filtro-tipo="especial" aria-pressed="false">Especial</button>
+              <button type="button" class="filtro-rapido" data-filtro-tipo="adulto" aria-pressed="false">Adulto - Versión Aficionado</button>
+              <button type="button" class="filtro-rapido" data-filtro-tipo="jugador" aria-pressed="false">Adulto - Versión Jugador</button>
+              <button type="button" class="filtro-rapido" data-filtro-tipo="mujer" aria-pressed="false">Adulto - Versión Mujer</button>
+              <button type="button" class="filtro-rapido" data-filtro-tipo="especial" aria-pressed="false">Adulto - Versión Especial</button>
+              <button type="button" class="filtro-rapido" data-filtro-tipo="nino" aria-pressed="false">Conjunto Niño</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="chandal" aria-pressed="false">Chándal</button>
             </div>
 
@@ -1323,7 +1333,7 @@ const datosEstructurados = {
         totalCoincidenciasFiltro = 0;
         limiteRenderizado = TAMANO_LOTE;
         tarjetas.forEach((tarjeta) => {
-          const coincide = tipoActivo === "todos" || tarjeta.dataset.producto === tipoActivo;
+          const coincide = tipoActivo === "todos" || (tipoActivo === "chandal" ? tarjeta.dataset.producto?.startsWith("chandal") : tarjeta.dataset.producto === tipoActivo);
           tarjeta.hidden = !coincide;
           tarjeta.dataset.coincideFiltro = String(coincide);
           if (coincide) totalCoincidenciasFiltro++;
@@ -7480,10 +7490,13 @@ const datosEstructurados = {
         <div class="ej-order-field">
           <label>Producto</label>
           <select id="ej-product-type">
-            <option value="adulto">Camiseta adulto</option>
-            <option value="nino">Conjunto niño</option>
-            <option value="especial">Especial</option>
-            <option value="chandal">Chándal</option>
+            <option value="adulto">Adulto - Versión Aficionado</option>
+            <option value="jugador">Adulto - Versión Jugador</option>
+            <option value="mujer">Adulto - Versión Mujer</option>
+            <option value="especial">Adulto - Versión Especial</option>
+            <option value="nino">Conjunto Niño</option>
+            <option value="chandal-pecho">Chándal - Cremallera Pecho</option>
+            <option value="chandal-entera">Chándal - Cremallera Entera</option>
           </select>
         </div>
 
@@ -8584,12 +8597,12 @@ import { jsPDF } from "jspdf";
   function fillSizes(){
     const arr=productType.value==="nino"?childSizes:adultSizes;
     size.innerHTML=arr.map(x=>`<option>${x}</option>`).join("");
-    $("#ej-version-wrap").classList.toggle("ej-order-hidden",productType.value==="nino" || isSpainTracksuit());
+    $("#ej-version-wrap").classList.toggle("ej-order-hidden",true);
     calc();
   }
   function unitPrice(){
-    if(isSpainTracksuit()) return 35;
-    let p=productType.value==="nino"?13:productType.value==="especial"?15:10;
+    if(isSpainTracksuit()) return productType.value==="chandal-entera"?36:28;
+    let p=productType.value==="nino"||productType.value==="jugador"?13:productType.value==="especial"?11:10;
     if(CAN_CUSTOMIZE && personalize.checked)p+=3;
     if(CAN_PATCHES && patches.checked)p+=isSpainSelectedShirt() ? (Number(spainChampion.checked)+2*Number(spainGold.checked)) : (patchType?.value === "MUNDIAL_DORADO_2026" ? 2 : 1);
     return p;
@@ -8658,13 +8671,14 @@ import { jsPDF } from "jspdf";
     $("#ej-order-img").src=current.image;
     $("#ej-order-name").textContent=current.name;
     $("#ej-order-detail").textContent=isSpainTracksuit()?"Chándal":current.detail.slice(0,120);
-    productType.value=isSpainTracksuit()?"chandal":btn.dataset.producto === "nino" ? "nino" : btn.dataset.producto === "especial" ? "especial" : "adulto";
+    const detectedType = btn.dataset.producto || "adulto";
+    productType.value = detectedType === "chandal" ? "chandal-pecho" : detectedType;
     document.querySelector("[data-personalizacion-control]")?.classList.toggle("ej-order-hidden",isSpainTracksuit() || !CAN_CUSTOMIZE);
     document.querySelector("[data-parches-control]")?.classList.toggle("ej-order-hidden",isSpainTracksuit() || !CAN_PATCHES);
     personalize.disabled=isSpainTracksuit() || !CAN_CUSTOMIZE;
     patches.disabled=isSpainTracksuit() || !CAN_PATCHES;
     productType.disabled=true;
-    version.value="aficionado"; qty.value="1";
+    version.value=productType.value==="jugador"?"jugador":"aficionado"; qty.value="1";
     personalize.checked=false; patches.checked=false; spainChampion.checked=false; spainGold.checked=false;
     setupPatchOptions();
     if(patchType) patchType.value=is125AnniversaryShirt() ? "ANIVERSARIO_125" : isSpainSelectedShirt() ? "CAMPEON_MUNDO_2026" : isFrenchTeam ? "LIGUE_1" : isGermanTeam ? "BUNDESLIGA" : isItalianTeam ? "SERIE_A" : isEnglishTeam ? "PREMIER" : "LIGA";
@@ -8692,9 +8706,9 @@ import { jsPDF } from "jspdf";
     checkout.classList.remove("ej-order-hidden");
     box.innerHTML=cart.map((x,i)=>{
       const isChild=x.product==="Conjunto niño";
-      const isTracksuit=x.product==="Chándal";
-      const productText=isTracksuit?"Chándal":isChild?"Conjunto niño":x.product==="Especial"?"Especial":"Camiseta adulto";
-      const versionText=isChild?"Única":(/Jugador/i.test(x.product||"")?"Jugador":"Aficionado");
+      const isTracksuit=/^Chándal/.test(x.product);
+      const productText=isTracksuit?x.product:isChild?"Conjunto Niño":x.product;
+      const versionText=isChild?"Única":(/Jugador/i.test(x.product||"")?"Jugador":/Mujer/i.test(x.product||"")?"Mujer":/Especial/i.test(x.product||"")?"Especial":"Aficionado");
       const personalization=x.personalize?`${x.playerName || "—"} ${x.playerNumber || ""}`:"No";
       return `
       <article class="ej-v29-item ej-v31-item">
@@ -8785,7 +8799,7 @@ import { jsPDF } from "jspdf";
     }
     const q=Math.min(20,Math.max(1,parseInt(qty.value)||1));
     qty.value=String(q);
-    const prod=isSpainTracksuit()?"Chándal":productType.value==="nino"?"Conjunto niño":productType.value==="especial"?"Especial":`Camiseta adulto · ${version.value==="jugador"?"Jugador":"Aficionado"}`;
+    const prod=isSpainTracksuit()?(productType.value==="chandal-entera"?"Chándal - Cremallera Entera":"Chándal - Cremallera Pecho"):productType.value==="nino"?"Conjunto niño":productType.value==="especial"?"Adulto - Versión Especial":productType.value==="jugador"?"Adulto - Versión Jugador":productType.value==="mujer"?"Adulto - Versión Mujer":"Adulto - Versión Aficionado";
     cart.push({...current,product:prod,size:size.value,qty:q,personalize:!isSpainTracksuit() && CAN_CUSTOMIZE && personalize.checked,
       playerName:$("#ej-player-name").value.trim(),playerNumber:$("#ej-player-number").value.trim(),
       patches:!isSpainTracksuit() && CAN_PATCHES && patches.checked,
@@ -8799,8 +8813,8 @@ import { jsPDF } from "jspdf";
   function recalcItem(x){
     const q=safeQty(x.qty);
     const child=x.product==="Conjunto niño";
-    if(x.product==="Chándal") return {...x,qty:q,personalize:false,patches:false,total:35*q};
-    let unit=child?13:x.product==="Especial"?15:10;
+    if(/^Chándal/.test(x.product)) return {...x,qty:q,personalize:false,patches:false,total:(/Entera/.test(x.product)?36:28)*q};
+    let unit=child||/Versión Jugador/.test(x.product)||/· Jugador/.test(x.product)?13:/Especial/.test(x.product)?11:10;
     if(x.personalize) unit+=3;
     if(x.patches) unit+=Array.isArray(x.spainPatches) && x.spainPatches.length ? x.spainPatches.reduce((a,k)=>a+(k==="MUNDIAL_DORADO_2026"?2:1),0) : (x.patchType ? (x.patchType === "MUNDIAL_DORADO_2026" ? 2 : 1) : 0);
     return {...x,qty:q,total:unit*q};
@@ -8921,20 +8935,20 @@ import { jsPDF } from "jspdf";
       doc.setFont("helvetica","normal");doc.setFontSize(compact?8:8.5);
       let ly=cy+(compact?17:19)+nameLines.length*(compact?3.5:5);
       const child=x.product==="Conjunto niño";
-      const isTracksuit=x.product==="Chándal";
+      const isTracksuit=/^Chándal/.test(x.product);
       const lines=isTracksuit ? [
         ...(x.temporada ? [String(x.temporada)] : []),
-        "Chándal", `Talla: ${x.size}`, `Cantidad: ${x.qty}`
+        x.product, `Talla: ${x.size}`, `Cantidad: ${x.qty}`
       ] : compact?[
         ...(x.temporada ? [String(x.temporada)] : []),
-        `${child?"Niño":x.product==="Especial"?"Especial":/Jugador/i.test(x.product||"")?"Jugador":"Camiseta adulto"}`,
+        `${child?"Conjunto Niño":x.product}`,
         `Talla: ${x.size}`,
         `Cantidad: ${x.qty}`,
         x.personalize?`Nombre: ${x.playerName} · Dorsal: ${x.playerNumber}`:"Nombre y dorsal: No",
         `Parches: ${x.patches?(Array.isArray(x.spainPatches) && x.spainPatches.length?x.spainPatches.map(k=>PATCH_OPTIONS[k]?.label||k).join(" + "):PATCH_OPTIONS[x.patchType]?.label||x.patchType||"Ninguno"):"No"}`
       ]:[
         ...(x.temporada ? [String(x.temporada)] : []),
-        `${child?"Conjunto niño":x.product==="Especial"?"Especial":"Camiseta adulto"}${!child && x.product!=="Especial" && /Jugador/i.test(x.product||"")?" · Jugador":""}`,
+        `${child?"Conjunto Niño":x.product}`,
         `Talla: ${x.size}    Cantidad: ${x.qty}`,
         x.personalize?`Nombre: ${x.playerName} · Dorsal: ${x.playerNumber}`:"Nombre y dorsal: No",
         `Parches: ${x.patches?(Array.isArray(x.spainPatches) && x.spainPatches.length?x.spainPatches.map(k=>PATCH_OPTIONS[k]?.label||k).join(" + "):PATCH_OPTIONS[x.patchType]?.label||x.patchType||"Ninguno"):"No"}`
