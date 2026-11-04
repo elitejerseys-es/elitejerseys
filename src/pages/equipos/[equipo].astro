@@ -98,8 +98,8 @@ const tipoProducto = (nombre: string, clubSlug = equipoSlug) => {
   if (n.startsWith("chandal-entera-") || n.startsWith("chandal-cremallera-entera-")) return "chandal-entera";
   if (n.startsWith("chandal-pecho-") || n.startsWith("chandal-cremallera-pecho-") || n.startsWith("chandal-")) return "chandal-pecho";
   if (n.startsWith("conjunto-nino-")) return "nino";
-  if (n.startsWith("retro-") || n.startsWith("version-retro-")) return "retro";
-  if (n.startsWith("especial-")) return "especial";
+  if (n.startsWith("retro-") || n.startsWith("version-retro-")) return "retro-especial";
+  if (n.startsWith("especial-")) return "retro-especial";
   if (n.startsWith("version-jugador-") || n.startsWith("jugador-")) return "jugador";
   if (n.startsWith("mujer-") || n.startsWith("adulto-mujer-")) return "mujer";
   if (n.startsWith("camisetas-")) return "adulto";
@@ -786,8 +786,7 @@ const datosEstructurados = {
               <button type="button" class="filtro-rapido" data-filtro-tipo="adulto" aria-pressed="false">Adulto - Versión Aficionado</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="jugador" aria-pressed="false">Adulto - Versión Jugador</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="mujer" aria-pressed="false">Adulto - Versión Mujer</button>
-              <button type="button" class="filtro-rapido" data-filtro-tipo="retro" aria-pressed="false">Adulto - Versión Retro</button>
-              <button type="button" class="filtro-rapido" data-filtro-tipo="especial" aria-pressed="false">Adulto - Versión Especial</button>
+              <button type="button" class="filtro-rapido" data-filtro-tipo="retro-especial" aria-pressed="false">Retro/Especial</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="nino" aria-pressed="false">Conjunto Niño</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="chandal" aria-pressed="false">Chándal</button>
             </div>
@@ -7503,8 +7502,7 @@ const datosEstructurados = {
             <option value="adulto">Adulto - Versión Aficionado</option>
             <option value="jugador">Adulto - Versión Jugador</option>
             <option value="mujer">Adulto - Versión Mujer</option>
-            <option value="retro">Adulto - Versión Retro</option>
-            <option value="especial">Adulto - Versión Especial</option>
+            <option value="retro-especial">Retro/Especial</option>
             <option value="nino">Conjunto Niño</option>
             <option value="chandal-pecho">Chándal - Cremallera Pecho</option>
             <option value="chandal-entera">Chándal - Cremallera Entera</option>
@@ -8601,7 +8599,7 @@ import { jsPDF } from "jspdf";
     overlay.classList.add("is-open"); overlay.setAttribute("aria-hidden","false");
     config.classList.toggle("is-active",view==="config");
     cartView.classList.toggle("is-active",view==="cart");
-    $("#ej-order-title").textContent=view==="config"?(isSpainTracksuit()?"Configurar chándal":productType.value==="nino"?"Configurar conjunto infantil":productType.value==="especial"?"Configurar especial":productType.value==="retro"?"Configurar retro":"Configurar camiseta"):"Mi presupuesto";
+    $("#ej-order-title").textContent=view==="config"?(isSpainTracksuit()?"Configurar chándal":productType.value==="nino"?"Configurar conjunto infantil":productType.value==="retro-especial"?"Configurar Retro/Especial":"Configurar camiseta"):"Mi presupuesto";
     document.documentElement.style.overflow="hidden";
   }
   function close(){overlay.classList.remove("is-open");overlay.setAttribute("aria-hidden","true");document.documentElement.style.overflow="";}
@@ -8611,11 +8609,11 @@ import { jsPDF } from "jspdf";
     $("#ej-version-wrap").classList.toggle("ej-order-hidden",true);
     calc();
   }
-  function isSpecialProduct(){ return productType.value === "especial" || productType.value === "retro"; }
+  function isSpecialProduct(){ return productType.value === "retro-especial"; }
   function allowsExtras(){ return ["adulto","jugador","mujer","nino"].includes(productType.value); }
   function unitPrice(){
     if(isSpainTracksuit()) return productType.value==="chandal-entera"?33:28;
-    let p=["nino","jugador","retro","especial"].includes(productType.value)?13:10;
+    let p=["nino","jugador","retro-especial"].includes(productType.value)?13:10;
     if(allowsExtras() && CAN_CUSTOMIZE && personalize.checked)p+=3;
     if(allowsExtras() && CAN_PATCHES && patches.checked)p+=isSpainSelectedShirt() ? (Number(spainChampion.checked)+2*Number(spainGold.checked)) : (patchType?.value === "MUNDIAL_DORADO_2026" ? 2 : 1);
     return p;
@@ -8721,7 +8719,7 @@ import { jsPDF } from "jspdf";
       const isChild=x.product==="Conjunto niño";
       const isTracksuit=/^Chándal/.test(x.product);
       const productText=isTracksuit?x.product:isChild?"Conjunto Niño":x.product;
-      const versionText=isChild?"Única":(/Jugador/i.test(x.product||"")?"Jugador":/Mujer/i.test(x.product||"")?"Mujer":/Especial/i.test(x.product||"")?"Especial":"Aficionado");
+      const versionText=isChild?"Única":(/Jugador/i.test(x.product||"")?"Jugador":/Mujer/i.test(x.product||"")?"Mujer":/Especial|Retro/i.test(x.product||"")?"Retro/Especial":"Aficionado");
       const personalization=x.personalize?`${x.playerName || "—"} ${x.playerNumber || ""}`:"No";
       return `
       <article class="ej-v29-item ej-v31-item">
@@ -8743,7 +8741,7 @@ import { jsPDF } from "jspdf";
           <span>Producto</span>
           <strong>${productText}</strong>
         </div>
-        ${!isTracksuit?`<div class="ej-v29-row">
+        ${!isTracksuit && x.product!=="Retro/Especial"?`<div class="ej-v29-row">
           <span>Versión</span>
           <strong>${versionText}</strong>
         </div>`:""}
@@ -8755,7 +8753,7 @@ import { jsPDF } from "jspdf";
           <span>Cantidad</span>
           <strong>${x.qty}</strong>
         </div>
-        ${!isTracksuit?`<div class="ej-v29-row">
+        ${!isTracksuit && x.product!=="Retro/Especial"?`<div class="ej-v29-row">
           <span>Nombre + dorsal</span>
           <strong>${esc(personalization)}</strong>
         </div>
@@ -8812,7 +8810,7 @@ import { jsPDF } from "jspdf";
     }
     const q=Math.min(20,Math.max(1,parseInt(qty.value)||1));
     qty.value=String(q);
-    const prod=isSpainTracksuit()?(productType.value==="chandal-entera"?"Chándal - Cremallera Entera":"Chándal - Cremallera Pecho"):productType.value==="nino"?"Conjunto niño":productType.value==="especial"?"Adulto - Versión Especial":productType.value==="retro"?"Adulto - Versión Retro":productType.value==="jugador"?"Adulto - Versión Jugador":productType.value==="mujer"?"Adulto - Versión Mujer":"Adulto - Versión Aficionado";
+    const prod=isSpainTracksuit()?(productType.value==="chandal-entera"?"Chándal - Cremallera Entera":"Chándal - Cremallera Pecho"):productType.value==="nino"?"Conjunto niño":productType.value==="retro-especial"?"Retro/Especial":productType.value==="jugador"?"Adulto - Versión Jugador":productType.value==="mujer"?"Adulto - Versión Mujer":"Adulto - Versión Aficionado";
     cart.push({...current,product:prod,size:size.value,qty:q,personalize:!isSpainTracksuit() && allowsExtras() && CAN_CUSTOMIZE && personalize.checked,
       playerName:$("#ej-player-name").value.trim(),playerNumber:$("#ej-player-number").value.trim(),
       patches:!isSpainTracksuit() && allowsExtras() && CAN_PATCHES && patches.checked,
@@ -8827,7 +8825,7 @@ import { jsPDF } from "jspdf";
     const q=safeQty(x.qty);
     const child=x.product==="Conjunto niño";
     if(/^Chándal/.test(x.product)) return {...x,qty:q,personalize:false,patches:false,spainPatches:null,patchType:"",total:(/Entera/.test(x.product)?33:28)*q};
-    let unit=child||/Versión (Jugador|Retro|Especial)/.test(x.product)||/· Jugador/.test(x.product)?13:10;
+    let unit=child||(/Versión (Jugador|Retro|Especial)/.test(x.product)||x.product==="Retro/Especial")||/· Jugador/.test(x.product)?13:10;
     const extrasAllowed=/Versión (Aficionado|Jugador|Mujer)/.test(x.product)||child;
     if(extrasAllowed && x.personalize) unit+=3;
     if(extrasAllowed && x.patches) unit+=Array.isArray(x.spainPatches) && x.spainPatches.length ? x.spainPatches.reduce((a,k)=>a+(k==="MUNDIAL_DORADO_2026"?2:1),0) : (x.patchType ? (x.patchType === "MUNDIAL_DORADO_2026" ? 2 : 1) : 0);

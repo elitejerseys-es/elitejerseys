@@ -1,32 +1,12 @@
-ELITE JERSEYS - LIMPIEZA NO WEBP - 2026-11-04 18:51:28
-MODO: ELIMINACION
+ELITE JERSEYS - LIMPIEZA NO WEBP - 2026-11-05 00:07:52
+MODO: SIMULACION
 
-public\camisetas: 20 imagenes no WebP
-ELIMINADA: public\camisetas\real-madrid\especial-003\01.jpg
-ELIMINADA: public\camisetas\real-madrid\especial-003\02.jpg
-ELIMINADA: public\camisetas\real-madrid\mujer-002\01.jpeg
-ELIMINADA: public\camisetas\real-madrid\mujer-002\02.jpg
-ELIMINADA: public\camisetas\real-oviedo\especial-001\01.jpg
-ELIMINADA: public\camisetas\real-oviedo\especial-001\02.jpg
-ELIMINADA: public\camisetas\real-sociedad\especial-001\01.jpg
-ELIMINADA: public\camisetas\real-sociedad\especial-001\02.jpg
-ELIMINADA: public\camisetas\real-sociedad\especial-001\03.jpg
-ELIMINADA: public\camisetas\sevilla-fc\especial-001\01.jpg
-ELIMINADA: public\camisetas\sevilla-fc\especial-001\02.jpg
-ELIMINADA: public\camisetas\sevilla-fc\especial-001\03.jpg
-ELIMINADA: public\camisetas\sevilla-fc\especial-001\04.jpg
-ELIMINADA: public\camisetas\ud-almeria\conjunto-nino-001\01.jpg
-ELIMINADA: public\camisetas\ud-almeria\conjunto-nino-001\02.jpg
-ELIMINADA: public\camisetas\valencia-cf\version-jugador-001\01.jpeg
-ELIMINADA: public\camisetas\valencia-cf\version-jugador-001\02.jpeg
-ELIMINADA: public\camisetas\valencia-cf\version-jugador-001\03.jpeg
-ELIMINADA: public\camisetas\valencia-cf\version-jugador-002\01.jpeg
-ELIMINADA: public\camisetas\valencia-cf\version-jugador-002\02.jpeg
+public\camisetas: 0 imagenes no WebP
 
 public\miniaturas: 0 imagenes no WebP
 
-No WebP encontrados: 20
-Eliminados: 20
+No WebP encontrados: 0
+Eliminados: 0
 Conservados por seguridad: 0
 Errores: 0
 El script no modifica ningun archivo WebP.
