@@ -1,0 +1,21 @@
+ELITE JERSEYS - EQUIPOS DEL CATALOGO SIN FOTOGRAFIAS
+No se ha modificado ningun archivo ni carpeta.
+
+Categorias: 6
+Equipos y selecciones: 84
+Equipos sin fotografias WebP: 2
+
+RESUMEN POR CATEGORIA
+Liga Española: 27 equipos | 0 sin carpeta | 0 sin fotos WebP | 27 con fotos
+Liga Inglesa: 12 equipos | 0 sin carpeta | 0 sin fotos WebP | 12 con fotos
+Liga Italiana: 11 equipos | 0 sin carpeta | 1 sin fotos WebP | 10 con fotos
+Liga Francesa: 4 equipos | 0 sin carpeta | 0 sin fotos WebP | 4 con fotos
+Liga Alemana: 10 equipos | 0 sin carpeta | 1 sin fotos WebP | 9 con fotos
+Selecciones: 20 equipos | 0 sin carpeta | 0 sin fotos WebP | 20 con fotos
+
+EQUIPOS QUE NECESITAN REVISION
+[Liga Italiana] Juventus | SIN FOTOS WEBP | public\camisetas\juventus
+[Liga Alemana] VfL Wolfsburg | SIN FOTOS WEBP | public\camisetas\vfl-wolfsburg
+
+NOTA: Se cuentan fotos WebP en subcarpetas de cada equipo.
+No se comprueba que la web muestre correctamente cada imagen.
