@@ -94,7 +94,6 @@ const carpetaProductos = esOtrosClubes
   : carpetaEquipo;
 const tipoProducto = (nombre: string, clubSlug = equipoSlug) => {
   const n = nombre.toLowerCase();
-  if (clubSlug === "espana" && n === "camisetas-005") return "chandal-pecho";
   if (n.startsWith("chandal-entera-") || n.startsWith("chandal-cremallera-entera-")) return "chandal-entera";
   if (n.startsWith("chandal-pecho-") || n.startsWith("chandal-cremallera-pecho-") || n.startsWith("chandal-")) return "chandal-pecho";
   if (n.startsWith("conjunto-nino-")) return "nino";
