@@ -122,6 +122,49 @@ const indiceEquipos = categoriasOrdenadas.flatMap((categoria) =>
   })
 );
 
+// Fotografías reales: se descubren al compilar, sin descargar imágenes ajenas.
+// Para marcar novedades exactas en el futuro conviene mantener una fecha de alta por producto.
+const productosPortada: { nombre: string; slug: string; foto: string; fecha: number }[] = [];
+for (const item of indiceEquipos) {
+  const pendientes = [carpetaCamisetas];
+  const directoriosEquipo: string[] = [];
+  // La estructura real puede ser /camisetas/liga/equipo/tipo/...
+  while (pendientes.length) {
+    const actual = pendientes.pop()!;
+    for (const entrada of fs.readdirSync(actual, { withFileTypes: true })) {
+      if (!entrada.isDirectory()) continue;
+      const ruta = path.join(actual, entrada.name);
+      if (entrada.name.toLowerCase() === item.slug) directoriosEquipo.push(ruta);
+      else if (actual === carpetaCamisetas || path.dirname(actual) === carpetaCamisetas) pendientes.push(ruta);
+    }
+  }
+  const pendientesFotos = [...directoriosEquipo];
+  while (pendientesFotos.length) {
+    const actual = pendientesFotos.pop()!;
+    for (const entrada of fs.readdirSync(actual, { withFileTypes: true })) {
+      const ruta = path.join(actual, entrada.name);
+      if (entrada.isDirectory()) {
+        pendientesFotos.push(ruta);
+        continue;
+      }
+      // Solo la foto principal 01.webp de cada carpeta, nunca otras vistas.
+      if (!entrada.isFile() || entrada.name.toLowerCase() !== "01.webp") continue;
+      const relativa = path.relative(carpetaCamisetas, ruta)
+        .split(path.sep).map(encodeURIComponent).join("/");
+      productosPortada.push({
+        nombre: item.nombre,
+        slug: item.slug,
+        foto: `/camisetas/${relativa}`,
+        fecha: fs.statSync(ruta).mtimeMs
+      });
+    }
+  }
+}
+// Cada carpeta aporta exclusivamente su 01.webp; se ordenan por fecha del archivo.
+const novedadesPortada = productosPortada.sort((a,b) => b.fecha - a.fecha).slice(0, 12);
+// Todas las fotos 01.webp de todas las carpetas, no solo seis.
+const carruselPortada = [...productosPortada];
+
 const tituloPagina = "Elite Jerseys | Catálogo de camisetas de fútbol";
 const descripcionPagina =
   `Explora ${totalCamisetas} camisetas de ${totalEquipos} equipos, organizadas por liga, temporada y tipo de equipación.`;
@@ -204,23 +247,46 @@ const datosEstructurados = {
     <header class="cabecera">
       <div class="contenedor cabecera-interior">
         <a href="/" class="marca" aria-label="Página de inicio">
-          <span class="marca-icono">
-            <img
-              src="/images/logo-elite-jerseys.png"
-              alt=""
-              width="46"
-              height="46"
-              decoding="async"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
-            />
-            <span class="marca-icono-fallback">EJ</span>
-          </span>
-
-          <span class="marca-texto">
-            <strong>Elite Jerseys</strong>
-            <small>Catálogo de camisetas de fútbol</small>
-          </span>
+          <span class="marca-icono"><img src="/images/logo-elite-jerseys.png" alt="" width="46" height="46" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" /><span class="marca-icono-fallback">EJ</span></span>
+          <span class="marca-texto"><strong>Elite Jerseys</strong><small>Catálogo independiente de camisetas de fútbol</small></span>
         </a>
+        <div class="guia-cabecera">
+          <button type="button" class="boton-guia-tallas" id="abrir-guia-tallas" aria-haspopup="dialog" aria-controls="modal-guia-tallas">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 8.7 15.3 2.7a2 2 0 0 0-2.8 0L2.7 12.5a2 2 0 0 0 0 2.8l6 6a2 2 0 0 0 2.8 0l9.8-9.8a2 2 0 0 0 0-2.8Z"/><path d="m7.5 10.5 2 2m1-5 2 2m1-5 2 2m-9 7 2 2"/></svg>
+            GUÍA DE TALLAS
+          </button>
+        </div>
+        <nav class="nav-principal" aria-label="Navegación principal">
+          <a class="nav-activo" href="/">⌂ Inicio</a>
+          <details class="nav-desplegable">
+            <summary>⚽ Ligas <span aria-hidden="true">⌄</span></summary>
+            <div class="nav-menu">
+              {categoriasOrdenadas.filter(c => c.slug !== "selecciones").map(c => (
+                <details class="nav-subcategoria">
+                  <summary><img src={c.logo} alt="" width="25" height="25" /><span>{c.nombre}</span><span class="nav-subflecha" aria-hidden="true">⌄</span></summary>
+                  <div class="nav-submenu">
+                    {c.equipos.map(equipo => (
+                      <a href={`/equipos/${crearSlug(equipo)}`}><img src={obtenerEscudo(equipo)} alt="" width="25" height="25" loading="lazy" decoding="async" /><span>{equipo}</span></a>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </details>
+          <details class="nav-desplegable">
+            <summary>◉ Selecciones <span aria-hidden="true">⌄</span></summary>
+            <div class="nav-menu nav-menu-selecciones">
+              {categoriasOrdenadas.find(c => c.slug === "selecciones")?.equipos.map(equipo => (
+                <a href={`/equipos/${crearSlug(equipo)}`}><img src={obtenerEscudo(equipo)} alt="" width="25" height="25" loading="lazy" />{equipo}</a>
+              ))}
+            </div>
+          </details>
+          <a href="#novedades">☆ Novedades</a>
+        </nav>
+        <div class="nav-busqueda">
+          <input id="buscador-superior" type="search" placeholder="⌕ Buscar equipos..." autocomplete="off" aria-label="Buscar equipos desde la cabecera" aria-controls="sugerencias-superiores" aria-expanded="false" />
+          <div id="sugerencias-superiores" class="sugerencias-superiores" hidden></div>
+        </div>
       </div>
     </header>
 
@@ -228,61 +294,31 @@ const datosEstructurados = {
       <section class="hero">
         <div class="contenedor hero-interior">
           <div class="hero-contenido">
-            <span class="etiqueta-superior">
-              CATÁLOGO INDEPENDIENTE
-            </span>
-
-            <h1>
-              Camisetas de fútbol,
-              <span>organizadas para explorar.</span>
-            </h1>
-
-            <p>
-              Descubre clubes y selecciones por liga, equipo,
-              temporada y tipo de equipación.
-            </p>
-
-            <div class="hero-acciones">
-              <a href="#catalogo" class="boton boton-principal">
-                Explorar catálogo
-              </a>
-
-              <a href="#buscar" class="boton boton-secundario">
-                Buscar equipo
-              </a>
-            </div>
+            <span class="etiqueta-superior">CATÁLOGO DE CAMISETAS</span>
+            <h1><em>Elite</em> <span>Jerseys</span></h1>
+            <p class="hero-subtitulo">Tu catálogo de camisetas de fútbol</p>
+            <ul class="hero-ventajas"><li>Todas las ligas y selecciones</li><li>Diferentes versiones y precios</li><li>Personalización y parches disponibles</li></ul>
+            
           </div>
-
-          <div class="hero-visual" aria-hidden="true">
-            <div class="hero-tarjeta">
-              <div class="hero-marca">
-                <span class="corona">♛</span>
-                <strong>EJ</strong>
-                <span>ELITE</span>
-                <small>JERSEYS</small>
+          <div class="hero-visual" aria-label="Presentación automática de camisetas">
+            {carruselPortada.length > 0 && (
+              <div class="hero-diapositiva activa" aria-hidden="false">
+                <img id="foto-carrusel-portada" src={carruselPortada[0].foto} alt={`Camiseta de ${carruselPortada[0].nombre}`} loading="eager" decoding="async" fetchpriority="high" />
               </div>
-
-              <div class="hero-categorias">
-                {
-                  categoriasOrdenadas.slice(0, 5).map((categoria) => (
-                    <div class="hero-categoria">
-                      <img
-                        src={categoria.logo}
-                        alt=""
-                        width="28"
-                        height="28"
-                        loading="eager"
-                        decoding="async"
-                      />
-                      <span>{categoria.nombre}</span>
-                    </div>
-                  ))
-                }
-              </div>
-            </div>
+            )}
+            {carruselPortada.length === 0 && <div class="hero-sin-fotos">Elite Jerseys</div>}
           </div>
         </div>
       </section>
+
+      <div class="contenedor accesos-categorias" aria-label="Ligas y selecciones del catálogo">
+        {categoriasOrdenadas.map((categoria) => (
+          <div class="acceso-categoria">
+            <img src={categoria.logo} alt="" width="55" height="55" loading="lazy" decoding="async" />
+            <strong>{categoria.nombre}</strong>
+          </div>
+        ))}
+      </div>
 
       <section id="catalogo" class="catalogo contenedor">
         <div class="seccion-cabecera">
@@ -294,65 +330,22 @@ const datosEstructurados = {
               Abre una categoría para consultar todos sus equipos.
             </p>
           </div>
-          <button type="button" class="boton-guia-tallas" id="abrir-guia-tallas" aria-haspopup="dialog" aria-controls="modal-guia-tallas">
-            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 8.7 15.3 2.7a2 2 0 0 0-2.8 0L2.7 12.5a2 2 0 0 0 0 2.8l6 6a2 2 0 0 0 2.8 0l9.8-9.8a2 2 0 0 0 0-2.8Z"/><path d="m7.5 10.5 2 2m1-5 2 2m1-5 2 2m-9 7 2 2"/></svg>
-            GUÍA DE TALLAS
-          </button>
+
         </div>
 
-        <div id="buscar" class="buscador-contenedor">
-          <div class="buscador-cabecera">
-            <div>
-              <span class="etiqueta-busqueda">BUSCADOR</span>
-              <h3>Encuentra tu equipo</h3>
-            </div>
 
-            <span class="atajo-teclado"><kbd>/</kbd> para buscar</span>
-          </div>
-
-          <div class="buscador">
-            <span class="icono-busqueda" aria-hidden="true">⌕</span>
-
-            <input
-              id="buscador-equipos"
-              type="search"
-              placeholder="Real Madrid, Arsenal, Milan, España..."
-              autocomplete="off"
-              aria-label="Buscar equipo"
-              aria-controls="resultados-directos"
-              aria-describedby="resultado-busqueda"
-              enterkeyhint="search"
-              spellcheck="false"
-            />
-
-            <button
-              id="limpiar-buscador"
-              type="button"
-              aria-label="Borrar búsqueda"
-              hidden
-            >
-              ×
-            </button>
-          </div>
-
-          <p
-            id="resultado-busqueda"
-            class="resultado-busqueda"
-            aria-live="polite"
-          >
-            Escribe el nombre de un equipo para encontrarlo rápidamente.
-          </p>
-
-          <div
-            id="resultados-directos"
-            class="resultados-directos"
-            role="listbox"
-            aria-label="Resultados de búsqueda"
-            hidden
-          ></div>
-        </div>
-
-        <section class="categorias">
+         <section id="novedades" class="novedades-portada" aria-labelledby="titulo-novedades">
+           <div class="novedades-cabecera"><div><span class="novedades-etiqueta">NEW</span><h2 id="titulo-novedades">Novedades</h2><p>Una selección de camisetas del catálogo</p></div></div>
+           <div class="novedades-rejilla">
+             {novedadesPortada.slice(0, 8).map((producto) => (
+               <a class="novedad-producto" href={`/equipos/${producto.slug}`}>
+                 <div class="novedad-imagen"><img src={producto.foto} alt={`Camiseta de ${producto.nombre}`} loading="lazy" decoding="async" /></div>
+                 <strong>{producto.nombre}</strong>
+               </a>
+             ))}
+           </div>
+         </section>
+<section class="categorias">
           {
             categoriasOrdenadas.map((categoria, indice) => (
               <article
@@ -488,7 +481,95 @@ const datosEstructurados = {
       set:html={JSON.stringify(indiceEquipos)}
     />
 
+    <script id="fotos-carrusel-portada" type="application/json" set:html={JSON.stringify(carruselPortada.map(({foto,nombre}) => ({foto,nombre})))} />
+
     <script>
+       const fotosCarrusel = JSON.parse(document.getElementById("fotos-carrusel-portada")?.textContent || "[]") as Array<{foto:string; nombre:string}>;
+       const imagenCarrusel = document.querySelector<HTMLImageElement>("#foto-carrusel-portada");
+       if (imagenCarrusel && fotosCarrusel.length > 1 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+         // Barajar todas las fotos: cada 01.webp aparece una vez antes de repetir.
+         const barajar = () => {
+           const indices = fotosCarrusel.map((_, i) => i);
+           for (let i = indices.length - 1; i > 0; i--) {
+             const j = Math.floor(Math.random() * (i + 1));
+             [indices[i], indices[j]] = [indices[j], indices[i]];
+           }
+           return indices;
+         };
+         let orden = barajar();
+         let posicion = 0;
+         let ultimaFoto = -1;
+         const precargar = (indice: number) => {
+           const siguiente = new Image();
+           siguiente.src = fotosCarrusel[indice].foto;
+         };
+         const mostrar = (indice: number) => {
+           imagenCarrusel.src = fotosCarrusel[indice].foto;
+           imagenCarrusel.alt = `Camiseta de ${fotosCarrusel[indice].nombre}`;
+           ultimaFoto = indice;
+         };
+         mostrar(orden[0]);
+         precargar(orden[1]);
+         window.setInterval(() => {
+           if (document.hidden) return;
+           posicion++;
+           if (posicion >= orden.length) {
+             orden = barajar();
+             // Evitar que la última foto de una ronda se repita al empezar la siguiente.
+             if (orden[0] === ultimaFoto) [orden[0], orden[1]] = [orden[1], orden[0]];
+             posicion = 0;
+           }
+           mostrar(orden[posicion]);
+           precargar(orden[(posicion + 1) % orden.length]);
+         }, 5000);
+       }
+       // Desplegables de navegación y buscador de la cabecera: sin desplazamiento.
+       const menuDetalles = [...document.querySelectorAll<HTMLDetailsElement>(".nav-desplegable")];
+       menuDetalles.forEach(menu => {
+         menu.addEventListener("toggle", () => {
+           if (menu.open) menuDetalles.forEach(otro => { if (otro !== menu) otro.open = false; });
+         });
+       });
+       document.querySelectorAll<HTMLDetailsElement>(".nav-subcategoria").forEach(submenu => {
+         submenu.addEventListener("toggle", () => {
+           if (!submenu.open) return;
+           document.querySelectorAll<HTMLDetailsElement>(".nav-subcategoria").forEach(otro => {
+             if (otro !== submenu) otro.open = false;
+           });
+         });
+       });
+       const buscarArriba = document.querySelector<HTMLInputElement>("#buscador-superior");
+       const sugerenciasArriba = document.querySelector<HTMLElement>("#sugerencias-superiores");
+       const datosArriba = JSON.parse(document.querySelector<HTMLScriptElement>("#indice-equipos")?.textContent || "[]") as Array<{nombre:string; nombreNormalizado:string; href:string; escudo:string; categoria:string}>;
+       const normalizarArriba = (v:string) => v.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").trim();
+       const cerrarSugerencias = () => { if(sugerenciasArriba) sugerenciasArriba.hidden=true; buscarArriba?.setAttribute("aria-expanded","false"); };
+       const mostrarSugerencias = () => {
+         if (!buscarArriba || !sugerenciasArriba) return;
+         const q = normalizarArriba(buscarArriba.value);
+         sugerenciasArriba.replaceChildren();
+         if (!q) { cerrarSugerencias(); return; }
+         const resultados = datosArriba.filter(e => e.nombreNormalizado.includes(q)).slice(0, 8);
+         for (const item of resultados) {
+           const a = document.createElement("a"); a.href = item.href; a.className="sugerencia-superior";
+           const img=document.createElement("img"); img.src=item.escudo; img.alt=""; img.width=28; img.height=28;
+           const span=document.createElement("span"); span.textContent=item.nombre;
+           a.append(img,span); sugerenciasArriba.append(a);
+         }
+         if (!resultados.length) { const aviso=document.createElement("p"); aviso.textContent="No se encontraron equipos"; sugerenciasArriba.append(aviso); }
+         sugerenciasArriba.hidden=false;
+         buscarArriba.setAttribute("aria-expanded","true");
+       };
+       buscarArriba?.addEventListener("input", mostrarSugerencias);
+       buscarArriba?.addEventListener("focus", mostrarSugerencias);
+       buscarArriba?.addEventListener("keydown", e => {
+         if(e.key==="Escape") cerrarSugerencias();
+         if(e.key==="Enter") { const primero=sugerenciasArriba?.querySelector<HTMLAnchorElement>("a"); if(primero) { e.preventDefault(); window.location.href=primero.href; } }
+       });
+       document.addEventListener("click", e => {
+         if(!(e.target instanceof Node)) return;
+         if(!e.target.parentElement?.closest(".nav-busqueda")) cerrarSugerencias();
+         if(!e.target.parentElement?.closest(".nav-desplegable")) menuDetalles.forEach(menu=>menu.open=false);
+       });
        const botonAbrirGuia = document.querySelector<HTMLButtonElement>("#abrir-guia-tallas");
        const botonCerrarGuia = document.querySelector<HTMLButtonElement>("#cerrar-guia-tallas");
        const modalGuia = document.querySelector<HTMLDialogElement>("#modal-guia-tallas");
@@ -643,8 +724,7 @@ const datosEstructurados = {
       });
 
 
-      const categoriasGuardadas =
-        new Set(obtenerCategoriasGuardadas());
+      const categoriasGuardadas = new Set<string>(); // Todas cerradas al cargar la página.
 
       categoriasElementos.forEach((categoria) => {
         const boton =
@@ -2864,4 +2944,163 @@ const datosEstructurados = {
     }
   }
 
+
+  /* Rediseño de portada para PC — mantiene el catálogo y buscador existentes. */
+  .cabecera-interior { min-height: 70px; gap: 20px; }
+  .marca { flex-shrink: 0; }
+  .marca-texto strong { font-size: 16px; }
+  .marca-texto small { font-size: 9px; }
+  .nav-principal { display:flex; align-items:center; gap: 6px; margin-left:auto; }
+  .nav-principal a, .nav-buscar { text-decoration:none; color:#26352c; font-weight:750; font-size:12px; white-space:nowrap; padding:11px 12px; border-radius:11px; }
+  .nav-principal a:hover { background:#edf4ef; }
+  .nav-principal .nav-activo { background:#08703f; color:white; }
+  .nav-buscar { border:1px solid #dfe6e2; color:#7b8780; min-width:195px; }
+  .hero { color:#14281b; background:linear-gradient(115deg,#f9fdf9 0%,#e9f4ec 50%,#b4d8c3 100%); }
+  .hero::before { opacity:.12; }
+  .hero-interior { min-height:390px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.03fr); gap:20px; padding-top:26px; padding-bottom:26px; }
+  .hero-contenido { padding:24px 0; }
+  .etiqueta-superior { color:#14653b; }
+  .hero h1 { margin:13px 0 5px; font-size:clamp(44px,5vw,74px); line-height:1.05; letter-spacing:-2.8px; white-space:nowrap; }
+  .hero h1 em { color:#0c6037; font-style:italic; }
+  .hero h1 span { display:inline; color:#c69c27; font-style:italic; }
+  .hero .hero-subtitulo { color:#26352c; font-weight:800; font-size:20px; }
+  .hero-ventajas { list-style:none; padding:0; margin:21px 0 0; color:#26352c; font-size:14px; line-height:1.9; }
+  .hero-ventajas li::before { content:'✓'; color:#078348; font-weight:900; margin-right:10px; }
+  .hero-acciones { margin-top:20px; }
+  .boton-principal { color:white; background:#0a7444; }
+  .boton-principal:hover { background:#075e37; }
+  .boton-secundario { color:#0a7444; border:1px solid #0a7444; background:#f6fff9; }
+  .hero-visual { position:relative; height:350px; overflow:hidden; border-radius:18px; background:linear-gradient(135deg,#184d30,#0b2f1c); isolation:isolate; }
+  .hero-diapositiva { position:absolute; inset:0; display:grid; place-items:center; opacity:0; transition:opacity .85s ease; pointer-events:none; }
+  .hero-diapositiva.activa { opacity:1; z-index:1; }
+  .hero-diapositiva img { display:block; width:100%; height:100%; object-fit:contain; padding:8px; mix-blend-mode:normal; }
+  .hero-sin-fotos { color:#dfbd68; font-size:44px; font-weight:900; }
+  .accesos-categorias { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; margin-top:16px; margin-bottom:12px; }
+  .acceso-categoria { min-height:116px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; text-decoration:none; color:#18271e; border:1px solid #e1e8e3; border-radius:16px; background:white; box-shadow:0 4px 15px #182b1a0b; transition:transform .2s ease, border-color .2s ease; }
+  .acceso-categoria { cursor:default; }
+  .acceso-categoria img { width:52px; height:52px; object-fit:contain; }
+  .acceso-categoria strong { font-size:13px; }
+  .catalogo { padding-top:18px; }
+  .seccion-cabecera { margin-bottom:14px; }
+  .seccion-cabecera h2 { font-size:28px; }
+  .busqueda-y-guia { display:grid; grid-template-columns:minmax(0,1.8fr) minmax(260px,.8fr); gap:14px; margin-bottom:20px; }
+  .buscador-contenedor { margin-bottom:0; }
+  .guia-atajo { display:flex; align-items:stretch; }
+  .guia-atajo-sola { justify-content:flex-end; margin-bottom:20px; }
+  .guia-atajo-sola .boton-guia-tallas { width:auto; min-height:58px; padding:0 24px; }
+  .guia-atajo .boton-guia-tallas { width:100%; min-height:100%; border-color:#e1eae3; background:#e9f5ed; color:#135d37; font-size:18px; }
+  .guia-atajo .boton-guia-tallas:hover { background:#d9ecdf; }
+  .novedades-portada { padding:22px; margin-bottom:20px; background:white; border:1px solid #e0e7e2; border-radius:17px; box-shadow:0 6px 20px #182b1a0b; scroll-margin-top:90px; }
+  .novedades-cabecera { display:flex; align-items:center; margin-bottom:20px; }
+  .novedades-cabecera h2 { display:inline; margin:0 0 0 10px; font-size:26px; }
+  .novedades-cabecera p { margin:6px 0 0; color:#77877d; font-size:12px; }
+  .novedades-etiqueta { display:inline-block; background:#f8d652; color:#162116; border-radius:8px; padding:5px 8px; font-size:11px; font-weight:900; }
+  .novedades-rejilla { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+  .novedad-producto { min-width:0; text-align:center; text-decoration:none; color:#1b281f; border:1px solid #e5eae6; border-radius:14px; overflow:hidden; background:#fff; }
+  .novedad-producto:hover { border-color:#8bbda0; }
+  .novedad-imagen { height:190px; background:#f5f7f5; }
+  .novedad-imagen img { width:100%; height:100%; object-fit:contain; }
+  .novedad-producto strong { display:block; padding:10px; font-size:13px; }
+  #catalogo, #selecciones { scroll-margin-top:90px; }
+  @media(max-width:1100px) { .nav-principal a { padding:9px 7px; font-size:11px; } .nav-buscar { min-width:140px; } .hero-interior { grid-template-columns:1fr 1fr; } }
+  @media(max-width:800px) { .nav-principal { overflow-x:auto; max-width:100%; } .nav-buscar { display:none; } .cabecera-interior { flex-wrap:wrap; padding:8px 0; } .hero-interior { grid-template-columns:1fr; } .hero-visual { height:290px; } .accesos-categorias { grid-template-columns:repeat(3,1fr); } .busqueda-y-guia { grid-template-columns:1fr; } .guia-atajo .boton-guia-tallas { min-height:64px; } .novedades-rejilla { grid-template-columns:repeat(2,1fr); } .hero h1 { white-space:normal; } }
+  @media(prefers-reduced-motion:reduce) { .hero-diapositiva { transition:none; } }
+
+  /* Ajustes PC: menús y sugerencias sin desplazamiento */
+  .marca-icono-fallback { display:none; place-items:center; width:46px; height:46px; color:#dfbd68; font-weight:950; font-size:17px; }
+  .nav-desplegable { position:relative; }
+  .nav-desplegable summary { list-style:none; cursor:pointer; color:#26352c; font-weight:750; font-size:12px; white-space:nowrap; padding:11px 12px; border-radius:11px; }
+  .nav-desplegable summary::-webkit-details-marker { display:none; }
+  .nav-desplegable summary:hover, .nav-desplegable[open] summary { background:#edf4ef; }
+  .nav-menu { position:absolute; top:calc(100% + 10px); left:0; width:235px; max-height:450px; overflow-y:auto; display:grid; gap:2px; padding:9px; border:1px solid #dde8e0; border-radius:13px; background:white; box-shadow:0 14px 40px #102c1b24; z-index:1100; }
+  .nav-menu-selecciones { width:255px; }
+  .nav-menu a { display:flex; align-items:center; gap:9px; padding:9px; border-radius:8px; color:#24382a; text-decoration:none; font-size:12px; font-weight:650; }
+  .nav-menu a:hover { background:#eef7f1; }
+  .nav-menu img { width:25px; height:25px; object-fit:contain; }
+  .nav-busqueda { position:relative; width:205px; flex-shrink:0; }
+  .nav-busqueda input { width:100%; height:41px; padding:0 12px; border:1px solid #dfe6e2; border-radius:11px; background:#f8faf8; color:#26352c; font-size:12px; outline:none; }
+  .nav-busqueda input:focus { border-color:#16805a; background:white; }
+  .sugerencias-superiores { position:absolute; top:calc(100% + 8px); right:0; width:310px; max-height:410px; overflow:auto; z-index:1100; padding:7px; border:1px solid #dde8e0; border-radius:13px; background:white; box-shadow:0 14px 40px #102c1b24; }
+  .sugerencias-superiores[hidden] { display:none; }
+  :global(.sugerencia-superior) { display:flex; align-items:center; gap:10px; padding:9px; border-radius:8px; text-decoration:none; color:#203526; font-size:12px; font-weight:700; }
+  :global(.sugerencia-superior:hover) { background:#eef7f1; }
+  :global(.sugerencia-superior img) { width:28px; height:28px; object-fit:contain; }
+  .sugerencias-superiores p { margin:10px; font-size:12px; color:#78867d; }
+  .hero-visual { background:#e8f1eb; border:1px solid #cbded1; }
+  .hero-diapositiva img { object-fit:contain; object-position:center; padding:0; }
+  .novedad-imagen { display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .novedad-imagen img { width:100%; height:100%; object-fit:contain; object-position:center; }
+  @media(max-width:1100px) { .nav-busqueda { width:150px; } }
+  @media(max-width:800px) { .nav-busqueda { display:none; } }
+
+  /* Segundo nivel de Ligas: cada liga despliega sus equipos. */
+  .nav-subcategoria { display:block; border-radius:9px; }
+  .nav-subcategoria > summary { display:flex; align-items:center; gap:9px; padding:9px; border-radius:8px; cursor:pointer; list-style:none; color:#24382a; font-size:12px; font-weight:700; }
+  .nav-subcategoria > summary::-webkit-details-marker { display:none; }
+  .nav-subcategoria > summary:hover, .nav-subcategoria[open] > summary { background:#edf7f0; }
+  .nav-subcategoria > summary img { width:25px; height:25px; object-fit:contain; flex-shrink:0; }
+  .nav-subcategoria > summary span:nth-child(2) { flex:1; }
+  .nav-subflecha { color:#718277; }
+  .nav-subcategoria[open] .nav-subflecha { transform:rotate(180deg); }
+  .nav-submenu { display:grid; gap:2px; margin:3px 0 7px 12px; padding:4px 0 4px 10px; border-left:2px solid #dcece1; }
+  .nav-submenu a { display:flex; align-items:center; gap:9px; min-height:37px; padding:5px 8px; border-radius:8px; text-decoration:none; color:#24382a; font-size:12px; font-weight:600; white-space:normal; }
+  .nav-submenu a:hover { background:#edf7f0; color:#08703f; }
+  .nav-submenu a img { width:25px; height:25px; object-fit:contain; flex-shrink:0; }
+  /* Menú de dos columnas: equipos aparecen a la derecha de la liga. */
+  .nav-desplegable:first-of-type .nav-menu { width:245px; max-height:none; overflow:visible; }
+  .nav-desplegable:first-of-type .nav-subcategoria { position:relative; }
+  .nav-desplegable:first-of-type .nav-subcategoria > summary { min-height:44px; }
+  .nav-desplegable:first-of-type .nav-subflecha { transform:rotate(-90deg); }
+  .nav-desplegable:first-of-type .nav-subcategoria[open] .nav-subflecha { transform:rotate(-90deg); }
+  .nav-desplegable:first-of-type .nav-submenu {
+    position:absolute; top:0; left:calc(100% + 12px); z-index:1200;
+    width:270px; max-height:min(70vh, 560px); overflow-y:auto;
+    display:grid; gap:2px; margin:0; padding:9px;
+    border:1px solid #dde8e0; border-radius:13px;
+    background:white; box-shadow:0 14px 40px #102c1b24;
+  }
+  .nav-desplegable:first-of-type .nav-subcategoria:not([open]) .nav-submenu { display:none; }
+  .nav-desplegable:first-of-type .nav-submenu a { white-space:normal; }
+  .nav-menu-selecciones { max-height:min(70vh, 560px); overflow-y:auto; }
+
+  .sugerencias-superiores { display:flex; flex-direction:column; gap:3px; width:310px; }
+  .sugerencias-superiores[hidden] { display:none; }
+  :global(.sugerencia-superior) { display:flex !important; flex-direction:row; align-items:center; width:100%; min-height:42px; gap:11px; padding:8px 10px; border-radius:8px; color:#203526 !important; font-size:12px; font-weight:700; text-decoration:none !important; white-space:normal; }
+  :global(.sugerencia-superior:hover) { background:#eef7f1; }
+  :global(.sugerencia-superior img) { width:28px; height:28px; flex-shrink:0; object-fit:contain; }
+  :global(.sugerencia-superior span) { display:block; flex:1; }
+  /* Portada: el marco conserva su tamaño; la foto original se muestra íntegra. */
+  .hero-visual { position:relative; height:350px; overflow:hidden; }
+  .hero-diapositiva { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .hero-diapositiva img {
+    display:block;
+    position:relative;
+    flex:0 1 auto;
+    width:auto !important;
+    height:auto !important;
+    max-width:100% !important;
+    max-height:100% !important;
+    object-fit:contain !important;
+    object-position:center center !important;
+    padding:0 !important;
+    margin:auto;
+    border-radius:0;
+    transform:none !important;
+  }
+  @media(max-width:800px) { .hero-visual { height:290px; } }
+
+  /* Guía de tallas destacada entre la marca y la navegación en PC. */
+  .guia-cabecera { flex: 0 0 auto; display:flex; align-items:center; justify-content:center; margin-left: 8px; }
+  .guia-cabecera .boton-guia-tallas {
+    display:inline-flex; align-items:center; justify-content:center; gap:9px;
+    width:auto; min-height:43px; padding:0 16px;
+    border:1px solid #c69b22; border-radius:11px;
+    color:#2d250b; background:#f5c842;
+    box-shadow:0 3px 12px rgba(161,119,14,.18);
+    font-size:12px; font-weight:900; letter-spacing:.25px; white-space:nowrap; cursor:pointer;
+  }
+  .guia-cabecera .boton-guia-tallas:hover { background:#ffda65; transform:translateY(-1px); }
+  .guia-cabecera .boton-guia-tallas svg { flex-shrink:0; width:19px; height:19px; }
+  @media(max-width:1100px) { .guia-cabecera { margin-left:0; } .guia-cabecera .boton-guia-tallas { padding:0 10px; font-size:11px; } }
+  @media(max-width:800px) { .guia-cabecera { order:1; } }
 </style>
