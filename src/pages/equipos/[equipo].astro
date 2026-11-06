@@ -454,8 +454,6 @@ const datosEstructurados = {
     />
 
     <script type="application/ld+json" set:html={JSON.stringify(datosEstructurados)} />
-    <link rel="prefetch" href={urlEquipoAnterior} />
-    <link rel="prefetch" href={urlEquipoSiguiente} />
     <title>{equipo} | Elite Jerseys</title>
   </head>
 
@@ -479,6 +477,8 @@ const datosEstructurados = {
     <div class="fondo-paleta-club" aria-hidden="true"></div>
     <img
       class="fondo-escudo-equipo"
+      loading="lazy"
+      decoding="async"
       src={obtenerEscudo(equipo)}
       alt=""
       aria-hidden="true"
@@ -697,6 +697,8 @@ const datosEstructurados = {
       <section class="equipo-hero">
         <img
           class="marca-agua-escudo"
+          loading="lazy"
+          decoding="async"
           src={obtenerEscudo(equipo)}
           alt=""
           aria-hidden="true"
@@ -707,6 +709,7 @@ const datosEstructurados = {
             <img
               src={obtenerEscudo(equipo)}
               alt={`Escudo de ${equipo}`}
+              fetchpriority="high"
               decoding="async"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
             />
@@ -813,7 +816,8 @@ const datosEstructurados = {
                         src={camiseta.thumbSrc}
                         alt={`Camiseta ${indice + 1} de ${equipo}`}
                         width="800" height="1000"
-                        loading={indice === 0 ? "eager" : "lazy"}
+                        loading={indice < 4 ? "eager" : "lazy"}
+                        fetchpriority={indice === 0 ? "high" : "auto"}
                         decoding="async"
                         onload="this.classList.add('cargada')"
                         onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
@@ -8543,18 +8547,12 @@ import { jsPDF } from "jspdf";
       return pathname.split("/").some(part => decodeURIComponent(part).toLowerCase() === "camisetas-005");
     } catch { return false; }
   }
-  // Parche exclusivo de las seis equipaciones indicadas de España.
-  const SPAIN_PATCH_FOLDERS = new Set([
-    "camisetas-001", "camisetas-002", "camisetas-003", "camisetas-004",
-    "conjunto-nino-001", "conjunto-nino-002"
-  ]);
+  // España: compartir los dos parches entre Aficionado, Jugador y Mujer,
+  // además de los conjuntos de niño. Retro/Especial y chándales no llevan parches.
   function isSpainSelectedShirt(){
-    if(CURRENT_TEAM_SLUG !== "espana" || !current) return false;
-    try {
-      const pathname = decodeURIComponent(new URL(current.image, location.origin).pathname).toLowerCase();
-      const parts = pathname.split("/");
-      return parts.includes("espana") && parts.some(part => SPAIN_PATCH_FOLDERS.has(part));
-    } catch { return false; }
+    return CURRENT_TEAM_SLUG === "espana" && !!current &&
+      ["adulto", "jugador", "mujer", "nino"].includes(productType.value) &&
+      !isSpainTracksuit();
   }
   function setupPatchOptions(){
     if(!patchType)return;

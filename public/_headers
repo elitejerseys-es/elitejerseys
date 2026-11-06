@@ -1,0 +1,12 @@
+
+/camisetas/*
+  Cache-Control: public, max-age=86400
+
+/miniaturas/*
+  Cache-Control: public, max-age=86400
+
+/images/*
+  Cache-Control: public, max-age=86400
+
+/parches/*
+  Cache-Control: public, max-age=86400
