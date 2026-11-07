@@ -122,40 +122,40 @@ const indiceEquipos = categoriasOrdenadas.flatMap((categoria) =>
   })
 );
 
-// Fotografías reales: se descubren al compilar, sin descargar imágenes ajenas.
-// Para marcar novedades exactas en el futuro conviene mantener una fecha de alta por producto.
+// Descubrir las fotografías en una única exploración del catálogo.
+// Conserva todas las fotos 01.webp y sus equipos, sin repetir búsquedas por equipo.
 const productosPortada: { nombre: string; slug: string; foto: string; fecha: number }[] = [];
-for (const item of indiceEquipos) {
-  const pendientes = [carpetaCamisetas];
-  const directoriosEquipo: string[] = [];
-  // La estructura real puede ser /camisetas/liga/equipo/tipo/...
-  while (pendientes.length) {
-    const actual = pendientes.pop()!;
-    for (const entrada of fs.readdirSync(actual, { withFileTypes: true })) {
-      if (!entrada.isDirectory()) continue;
-      const ruta = path.join(actual, entrada.name);
-      if (entrada.name.toLowerCase() === item.slug) directoriosEquipo.push(ruta);
-      else if (actual === carpetaCamisetas || path.dirname(actual) === carpetaCamisetas) pendientes.push(ruta);
-    }
-  }
-  const pendientesFotos = [...directoriosEquipo];
-  while (pendientesFotos.length) {
-    const actual = pendientesFotos.pop()!;
-    for (const entrada of fs.readdirSync(actual, { withFileTypes: true })) {
-      const ruta = path.join(actual, entrada.name);
+const equipoPorSlug = new Map(indiceEquipos.map((item) => [item.slug, item]));
+if (fs.existsSync(carpetaCamisetas)) {
+  const pendientes: { ruta: string; profundidad: number; equipo: (typeof indiceEquipos)[number] | null }[] = [
+    { ruta: carpetaCamisetas, profundidad: 0, equipo: null }
+  ];
+  while (pendientes.length > 0) {
+    const { ruta, profundidad, equipo } = pendientes.pop()!;
+    for (const entrada of fs.readdirSync(ruta, { withFileTypes: true })) {
+      const rutaEntrada = path.join(ruta, entrada.name);
       if (entrada.isDirectory()) {
-        pendientesFotos.push(ruta);
+        // Igual que antes: localizar equipos en el primer o segundo nivel.
+        const equipoEncontrado = !equipo && profundidad < 2
+          ? equipoPorSlug.get(entrada.name.toLowerCase()) ?? null
+          : null;
+        if (equipo || equipoEncontrado || profundidad < 2) {
+          pendientes.push({
+            ruta: rutaEntrada,
+            profundidad: profundidad + 1,
+            equipo: equipo ?? equipoEncontrado
+          });
+        }
         continue;
       }
-      // Solo la foto principal 01.webp de cada carpeta, nunca otras vistas.
-      if (!entrada.isFile() || entrada.name.toLowerCase() !== "01.webp") continue;
-      const relativa = path.relative(carpetaCamisetas, ruta)
+      if (!equipo || !entrada.isFile() || entrada.name.toLowerCase() !== "01.webp") continue;
+      const relativa = path.relative(carpetaCamisetas, rutaEntrada)
         .split(path.sep).map(encodeURIComponent).join("/");
       productosPortada.push({
-        nombre: item.nombre,
-        slug: item.slug,
+        nombre: equipo.nombre,
+        slug: equipo.slug,
         foto: `/camisetas/${relativa}`,
-        fecha: fs.statSync(ruta).mtimeMs
+        fecha: fs.statSync(rutaEntrada).mtimeMs
       });
     }
   }
@@ -250,13 +250,14 @@ const datosEstructurados = {
           <span class="marca-icono"><img src="/images/logo-elite-jerseys.png" alt="" width="46" height="46" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" /><span class="marca-icono-fallback">EJ</span></span>
           <span class="marca-texto"><strong>Elite Jerseys</strong><small>Catálogo independiente de camisetas de fútbol</small></span>
         </a>
+        <button type="button" class="boton-menu-movil" id="boton-menu-movil" aria-controls="navegacion-principal" aria-expanded="false" aria-label="Abrir menú de navegación">☰ <span>Menú</span></button>
         <div class="guia-cabecera">
           <button type="button" class="boton-guia-tallas" id="abrir-guia-tallas" aria-haspopup="dialog" aria-controls="modal-guia-tallas">
             <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 8.7 15.3 2.7a2 2 0 0 0-2.8 0L2.7 12.5a2 2 0 0 0 0 2.8l6 6a2 2 0 0 0 2.8 0l9.8-9.8a2 2 0 0 0 0-2.8Z"/><path d="m7.5 10.5 2 2m1-5 2 2m1-5 2 2m-9 7 2 2"/></svg>
             GUÍA DE TALLAS
           </button>
         </div>
-        <nav class="nav-principal" aria-label="Navegación principal">
+        <nav id="navegacion-principal" class="nav-principal" aria-label="Navegación principal">
           <a class="nav-activo" href="/">⌂ Inicio</a>
           <details class="nav-desplegable">
             <summary>⚽ Ligas <span aria-hidden="true">⌄</span></summary>
@@ -523,6 +524,25 @@ const datosEstructurados = {
            precargar(orden[(posicion + 1) % orden.length]);
          }, 5000);
        }
+       // Menú compacto: solo se activa en pantallas de móvil.
+       const botonMenuMovil = document.querySelector<HTMLButtonElement>("#boton-menu-movil");
+       const navegacionMovil = document.querySelector<HTMLElement>("#navegacion-principal");
+       const cerrarMenuMovil = () => {
+         botonMenuMovil?.setAttribute("aria-expanded", "false");
+         botonMenuMovil?.setAttribute("aria-label", "Abrir menú de navegación");
+         navegacionMovil?.classList.remove("menu-movil-abierto");
+         navegacionMovil?.querySelectorAll<HTMLDetailsElement>("details").forEach(d => d.open = false);
+       };
+       botonMenuMovil?.addEventListener("click", () => {
+         const abrir = botonMenuMovil.getAttribute("aria-expanded") !== "true";
+         if (!abrir) { cerrarMenuMovil(); return; }
+         navegacionMovil?.classList.add("menu-movil-abierto");
+         botonMenuMovil.setAttribute("aria-expanded", "true");
+         botonMenuMovil.setAttribute("aria-label", "Cerrar menú de navegación");
+       });
+       navegacionMovil?.querySelectorAll<HTMLAnchorElement>("a").forEach(a => a.addEventListener("click", cerrarMenuMovil));
+       document.addEventListener("keydown", e => { if (e.key === "Escape") cerrarMenuMovil(); });
+       window.matchMedia("(min-width: 801px)").addEventListener("change", e => { if (e.matches) cerrarMenuMovil(); });
        // Desplegables de navegación y buscador de la cabecera: sin desplazamiento.
        const menuDetalles = [...document.querySelectorAll<HTMLDetailsElement>(".nav-desplegable")];
        menuDetalles.forEach(menu => {
@@ -3103,4 +3123,31 @@ const datosEstructurados = {
   .guia-cabecera .boton-guia-tallas svg { flex-shrink:0; width:19px; height:19px; }
   @media(max-width:1100px) { .guia-cabecera { margin-left:0; } .guia-cabecera .boton-guia-tallas { padding:0 10px; font-size:11px; } }
   @media(max-width:800px) { .guia-cabecera { order:1; } }
+
+  /* Adaptación EXCLUSIVA de los desplegables de cabecera para móvil. */
+  .boton-menu-movil { display:none; }
+  @media (max-width:800px) {
+    .cabecera-interior { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:10px 0; }
+    .marca { min-width:0; flex:1 1 auto; }
+    .marca-texto small { display:none; }
+    .boton-menu-movil { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:42px; padding:0 13px; border:1px solid #d7e3d9; border-radius:11px; background:#fff; color:#126b41; font-size:15px; font-weight:800; cursor:pointer; }
+    .boton-menu-movil[aria-expanded="true"] { background:#e9f5ed; }
+    .guia-cabecera { order:2; flex:1 1 100%; }
+    .guia-cabecera .boton-guia-tallas { width:100%; min-height:42px; }
+    .nav-principal { display:none; order:3; flex:1 1 100%; width:100%; max-width:none; margin:0; padding:8px; overflow:visible; flex-direction:column; align-items:stretch; gap:4px; border:1px solid #e0e9e2; border-radius:13px; background:#fff; }
+    .nav-principal.menu-movil-abierto { display:flex; }
+    .nav-principal > a, .nav-desplegable > summary { display:flex; justify-content:space-between; align-items:center; width:100%; min-height:45px; padding:12px; border-radius:9px; font-size:14px; }
+    .nav-desplegable { position:static; width:100%; }
+    .nav-menu, .nav-menu-selecciones, .nav-desplegable:first-of-type .nav-menu { position:static; display:grid; width:100%; max-height:min(55dvh, 440px); overflow-y:auto; margin:4px 0 8px; padding:6px; border:0; border-radius:9px; box-shadow:none; background:#f5f9f6; }
+    .nav-desplegable:not([open]) > .nav-menu { display:none; }
+    .nav-subcategoria, .nav-desplegable:first-of-type .nav-subcategoria { position:static; }
+    .nav-subcategoria > summary { min-height:44px; font-size:13px; }
+    .nav-desplegable:first-of-type .nav-subflecha { transform:none; }
+    .nav-desplegable:first-of-type .nav-subcategoria[open] .nav-subflecha { transform:rotate(180deg); }
+    .nav-desplegable:first-of-type .nav-submenu { position:static; width:auto; max-height:260px; overflow-y:auto; margin:2px 0 8px 12px; padding:3px 0 3px 10px; border:0; border-left:2px solid #cce4d3; border-radius:0; background:transparent; box-shadow:none; }
+    .nav-menu a, .nav-submenu a { min-height:43px; font-size:13px; white-space:normal; }
+    .nav-busqueda { display:block; order:4; width:100%; flex:1 1 100%; }
+    .nav-busqueda input { height:44px; font-size:16px; }
+    .sugerencias-superiores { width:100%; max-width:100%; }
+  }
 </style>
