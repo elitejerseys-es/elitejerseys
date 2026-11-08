@@ -7579,13 +7579,26 @@ const datosEstructurados = {
         <button id="ej-add-cart" class="ej-order-primary" type="button">Añadir al presupuesto</button>
       </section>
 
+      <section id="ej-final-view" aria-label="Resumen final del presupuesto">
+        <h3 class="ej-mobile-heading">Resumen del presupuesto</h3>
+        <div id="ej-final-items"></div>
+        <div class="ej-mobile-total"><span>TOTAL PRESUPUESTO</span><strong id="ej-final-total"></strong></div>
+        <button id="ej-final-pdf" type="button" class="ej-order-primary">↗ Ver presupuesto (PDF)</button>
+        <p class="ej-mobile-help">Se abrirá en una pestaña nueva para revisarlo, guardarlo o compartirlo.</p>
+        <button id="ej-final-edit" type="button" class="ej-mobile-outline">✎ Modificar presupuesto</button>
+      </section>
       <section id="ej-cart-view" class="is-active">
+        <div class="ej-mobile-heading">Mi presupuesto</div>
         <div id="ej-cart-summary" class="ej-cart-summary ej-order-hidden"></div>
         <div id="ej-cart-items"></div>
         <div id="ej-cart-checkout" class="ej-order-hidden">
           <div class="ej-cart-total ej-v31-total">
             <div><span>TOTAL PRESUPUESTO</span><small>Importe total de todos los artículos</small></div>
             <span id="ej-cart-total">0 €</span>
+          </div>
+          <div class="ej-mobile-actions">
+            <button id="ej-mobile-more" type="button" class="ej-mobile-outline">＋ Añadir más camisetas</button>
+            <button id="ej-mobile-finalize" type="button" class="ej-mobile-gold">Finalizar presupuesto</button>
           </div>
           <p class="ej-order-privacy">El presupuesto se genera en tu dispositivo, sin solicitar datos personales ni enviarlo a una base de datos.</p>
           <button id="ej-send-order" class="ej-order-primary" type="button">Descargar presupuesto PDF</button>
@@ -8504,6 +8517,7 @@ import { jsPDF } from "jspdf";
 
   const $$ = s => [...document.querySelectorAll(s)];
   let current = null;
+  let editingIndex = -1;
   let cart = [];
   try { cart = JSON.parse(localStorage.getItem(STORE) || "[]"); } catch {}
 
@@ -8596,7 +8610,11 @@ import { jsPDF } from "jspdf";
     overlay.classList.add("is-open"); overlay.setAttribute("aria-hidden","false");
     config.classList.toggle("is-active",view==="config");
     cartView.classList.toggle("is-active",view==="cart");
-    $("#ej-order-title").textContent=view==="config"?(isSpainTracksuit()?"Configurar chándal":productType.value==="nino"?"Configurar conjunto infantil":productType.value==="retro-especial"?"Configurar Retro/Especial":"Configurar camiseta"):"Mi presupuesto";
+    const finalView=$("#ej-final-view");
+    finalView?.classList.toggle("is-active",view==="final");
+    if(view==="final") renderFinal();
+    $("#ej-order-panel")?.classList.toggle("ej-mobile-final-mode",view==="final");
+    $("#ej-order-title").textContent=view==="config"?(isSpainTracksuit()?"Configurar chándal":productType.value==="nino"?"Configurar conjunto infantil":productType.value==="retro-especial"?"Configurar Retro/Especial":"Configurar camiseta"):view==="final"?"Resumen del presupuesto":"Mi presupuesto";
     document.documentElement.style.overflow="hidden";
   }
   function close(){overlay.classList.remove("is-open");overlay.setAttribute("aria-hidden","true");document.documentElement.style.overflow="";}
@@ -8674,7 +8692,8 @@ import { jsPDF } from "jspdf";
       name:(btn.dataset.clubName || card?.dataset?.clubName || document.querySelector("h1")?.textContent || document.title.split("|")[0] || "Camiseta").trim(),
       detail:text || "Camiseta",
       temporada:btn.dataset.temporada || card?.dataset?.temporada || "",
-      tipo:btn.dataset.tipo || card?.dataset?.tipo || ""
+      tipo:btn.dataset.tipo || card?.dataset?.tipo || "",
+      clubSlug:CURRENT_TEAM_SLUG
     };
     $("#ej-order-img").src=current.image;
     $("#ej-order-name").textContent=current.name;
@@ -8694,7 +8713,7 @@ import { jsPDF } from "jspdf";
     patchTypeWrap?.classList.add("ej-order-hidden"); spainPatchWrap?.classList.add("ej-order-hidden");
     $("#ej-player-name").value=""; $("#ej-player-number").value="";
     $("#ej-personal-fields").classList.add("ej-order-hidden");
-    fillSizes(); show("config");
+    fillSizes(); $("#ej-add-cart").textContent="Añadir al presupuesto"; show("config");
   }
   const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   function renderCart(){
@@ -8762,6 +8781,12 @@ import { jsPDF } from "jspdf";
           <span>Importe del artículo</span>
           <strong>${money(x.total)}</strong>
         </div>
+        <div class="ej-mobile-item-controls">
+          <button type="button" data-edit="${i}" class="ej-mobile-edit">✎ Editar</button>
+          <button type="button" data-qty-minus="${i}" aria-label="Restar cantidad">−</button>
+          <span>${x.qty} ud.</span>
+          <button type="button" data-qty-plus="${i}" aria-label="Sumar cantidad">+</button>
+        </div>
         <button class="ej-v29-remove" data-remove="${i}" type="button" aria-label="Eliminar ${esc(x.name)} del presupuesto">
           <span aria-hidden="true">×</span> Eliminar artículo
         </button>
@@ -8770,7 +8795,55 @@ import { jsPDF } from "jspdf";
     $("#ej-cart-total").textContent=money(cart.reduce((a,x)=>a+x.total,0));
   }
 
+  function renderFinal(){
+    const target=$("#ej-final-items");
+    if(!target)return;
+    target.innerHTML=cart.map((x,i)=>`
+      <article class="ej-mobile-final-item">
+        <img src="${esc(safeImageUrl(x.image)||"")}" alt="${esc(x.name)}" loading="lazy">
+        <div><strong>${esc(x.name)}</strong><small>${esc(x.product)}</small>
+        <small>Talla: ${esc(x.size)} · Cantidad: ${safeQty(x.qty)}</small>
+        ${x.personalize?`<small>Nombre: ${esc(x.playerName)} · Dorsal: ${esc(x.playerNumber)}</small>`:""}
+        ${x.patches?`<small>Parches: ${esc(Array.isArray(x.spainPatches)&&x.spainPatches.length?x.spainPatches.map(k=>PATCH_OPTIONS[k]?.label||k).join(", "):PATCH_OPTIONS[x.patchType]?.label||"Sí")}</small>`:""}
+        </div><b>${money(x.total)}</b>
+      </article>`).join("");
+    $("#ej-final-total").textContent=money(cart.reduce((a,x)=>a+x.total,0));
+  }
   document.addEventListener("click",e=>{
+    const edit=e.target.closest("[data-edit]");
+    if(edit){
+      const i=Number(edit.dataset.edit),x=cart[i];
+      if(!x)return;
+      editingIndex=i;
+      const btn=document.createElement("button");
+      btn.dataset.image=x.image;
+      btn.dataset.clubSlug=x.clubSlug||($("#ej-order-panel")?.dataset.teamSlug||"");
+      btn.dataset.clubName=x.name;
+      btn.dataset.temporada=x.temporada||"";
+      btn.dataset.tipo=x.tipo||"";
+      btn.dataset.producto=/^Chándal.*Entera/.test(x.product)?"chandal-entera":/^Chándal/.test(x.product)?"chandal-pecho":x.product==="Conjunto niño"?"nino":x.product==="Retro/Especial"?"retro-especial":/Jugador/.test(x.product)?"jugador":/Mujer/.test(x.product)?"mujer":"adulto";
+      openConfig(btn);
+      size.value=x.size;qty.value=String(safeQty(x.qty));
+      personalize.checked=!!x.personalize;patches.checked=!!x.patches;
+      $("#ej-player-name").value=x.playerName||"";
+      $("#ej-player-number").value=x.playerNumber||"";
+      $("#ej-personal-fields").classList.toggle("ej-order-hidden",!x.personalize);
+      if(x.patchType && [...patchType.options].some(o=>o.value===x.patchType))patchType.value=x.patchType;
+      spainChampion.checked=!!x.spainPatches?.includes("CAMPEON_MUNDO_2026");
+      spainGold.checked=!!x.spainPatches?.includes("MUNDIAL_DORADO_2026");
+      patchTypeWrap?.classList.toggle("ej-order-hidden",!x.patches||isSpainSelectedShirt());
+      spainPatchWrap?.classList.toggle("ej-order-hidden",!x.patches||!isSpainSelectedShirt());
+      updatePatchPreview();calc();
+      $("#ej-add-cart").textContent="Guardar cambios";
+      return;
+    }
+    const minus=e.target.closest("[data-qty-minus]");
+    const plus=e.target.closest("[data-qty-plus]");
+    if(minus||plus){
+      const i=Number((minus||plus).dataset[minus?"qtyMinus":"qtyPlus"]);
+      if(cart[i]){cart[i]=recalcItem({...cart[i],qty:safeQty(cart[i].qty)+(minus?-1:1)});save();}
+      return;
+    }
     const add=e.target.closest(".ej-order-add");
     if(add){
       e.preventDefault();
@@ -8783,6 +8856,9 @@ import { jsPDF } from "jspdf";
     if(rem){cart.splice(+rem.dataset.remove,1);save();}
   }, true);
   $("#ej-order-fab").onclick=()=>show("cart");
+  $("#ej-mobile-more")?.addEventListener("click",close);
+  $("#ej-mobile-finalize")?.addEventListener("click",()=>show("final"));
+  $("#ej-final-edit")?.addEventListener("click",()=>show("cart"));
   $("#ej-order-close").onclick=close;
   overlay.addEventListener("click",e=>{if(e.target===overlay)close();});
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&overlay.classList.contains("is-open"))close();});
@@ -8808,12 +8884,16 @@ import { jsPDF } from "jspdf";
     const q=Math.min(20,Math.max(1,parseInt(qty.value)||1));
     qty.value=String(q);
     const prod=isSpainTracksuit()?(productType.value==="chandal-entera"?"Chándal - Cremallera Entera":"Chándal - Cremallera Pecho"):productType.value==="nino"?"Conjunto niño":productType.value==="retro-especial"?"Retro/Especial":productType.value==="jugador"?"Adulto - Versión Jugador":productType.value==="mujer"?"Adulto - Versión Mujer":"Adulto - Versión Aficionado";
-    cart.push({...current,product:prod,size:size.value,qty:q,personalize:!isSpainTracksuit() && allowsExtras() && CAN_CUSTOMIZE && personalize.checked,
+    const newItem={...current,product:prod,size:size.value,qty:q,personalize:!isSpainTracksuit() && allowsExtras() && CAN_CUSTOMIZE && personalize.checked,
       playerName:$("#ej-player-name").value.trim(),playerNumber:$("#ej-player-number").value.trim(),
       patches:!isSpainTracksuit() && allowsExtras() && CAN_PATCHES && patches.checked,
       patchType:(allowsExtras() && CAN_PATCHES && patches.checked && !isSpainSelectedShirt() && IS_NATIONAL_LEAGUE ? (patchType?.value || "LIGA") : ""),
       spainPatches:(allowsExtras() && CAN_PATCHES && patches.checked && isSpainSelectedShirt() ? [...(spainChampion.checked?["CAMPEON_MUNDO_2026"]:[]),...(spainGold.checked?["MUNDIAL_DORADO_2026"]:[])] : null),
-      total:unitPrice()*q});
+      total:unitPrice()*q};
+    if(editingIndex>=0 && editingIndex<cart.length)cart[editingIndex]=newItem;
+    else cart.push(newItem);
+    editingIndex=-1;
+    $("#ej-add-cart").textContent="Añadir al presupuesto";
     save(); show("cart");
   };
 
@@ -8888,7 +8968,7 @@ import { jsPDF } from "jspdf";
     doc.text(lines,x,y);
     return y+lines.length*5;
   };
-  async function createPdf(items){
+  async function createPdf(items, previewTab=null){
     const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
     const W=210,H=297,left=17,right=193;
     const date=new Date(),pad=n=>String(n).padStart(2,"0");
@@ -9039,10 +9119,17 @@ import { jsPDF } from "jspdf";
       }
       footer();
     }
-    doc.save(`${ref}.pdf`);
+    if(previewTab){
+      const blob=doc.output("blob");
+      const url=URL.createObjectURL(blob);
+      previewTab.location.replace(url);
+      setTimeout(()=>URL.revokeObjectURL(url),180000);
+    }else{
+      doc.save(`${ref}.pdf`);
+    }
   }
   let generating=false;
-  $("#ej-send-order").onclick=async()=>{
+  async function generateBudget(openPreview=false){
     if(generating)return;
     const status=$("#ej-order-status"),button=$("#ej-send-order");
     if(!cart.length){status.textContent="Añade al menos una camiseta.";return;}
@@ -9055,18 +9142,30 @@ import { jsPDF } from "jspdf";
         status.textContent="Revisa el nombre y dorsal de la personalización.";return;
       }
     }
+    const previewTab=openPreview?window.open("","_blank"):null;
+    if(openPreview && !previewTab){
+      status.textContent="Safari ha bloqueado la pestaña. Permite las ventanas emergentes e inténtalo de nuevo.";
+      return;
+    }
+    if(previewTab){
+      previewTab.document.title="Preparando presupuesto Elite Jerseys";
+      previewTab.document.body.textContent="Preparando presupuesto PDF…";
+    }
     generating=true;button.disabled=true;button.textContent="Generando PDF…";
     status.textContent="Preparando presupuesto…";status.className="ej-order-status";
     try{
-      await createPdf(cart.map(recalcItem));
+      await createPdf(cart.map(recalcItem),previewTab);
       status.className="ej-order-status ok";
-      status.textContent="Presupuesto descargado. Puedes volver a descargarlo o modificar los artículos.";
+      status.textContent=openPreview?"Presupuesto abierto en otra pestaña.":"Presupuesto descargado. Puedes volver a descargarlo o modificar los artículos.";
     }catch(err){
+      if(previewTab)previewTab.close();
       console.error("No se pudo generar el PDF",err);
       status.className="ej-order-status error";
       status.textContent="No se pudo generar el PDF. Inténtalo de nuevo.";
     }finally{generating=false;button.disabled=false;button.textContent="Descargar presupuesto PDF";}
-  };
+  }
+  $("#ej-send-order").onclick=()=>generateBudget(false);
+  $("#ej-final-pdf")?.addEventListener("click",()=>generateBudget(true));
   fillSizes();renderCart();addButtons();
   new MutationObserver(addButtons).observe(document.body,{childList:true,subtree:true});
 })();
@@ -9402,4 +9501,58 @@ import { jsPDF } from "jspdf";
   transition: none !important;
 }
 .filtros-producto { margin-top: 18px !important; }
+</style>
+
+<style>
+/* Elite Jerseys: flujo de presupuesto exclusivamente móvil. PC sin cambios. */
+@media(max-width:700px){
+  #ej-order-fab{display:block!important;position:fixed!important;bottom:calc(20px + env(safe-area-inset-bottom));right:16px;z-index:9000}
+  #ej-order-overlay{display:none!important}
+  #ej-order-overlay.is-open{display:flex!important;position:fixed!important;inset:0!important;z-index:99999!important;background:#050807!important;padding:0!important;align-items:stretch!important;justify-content:stretch!important}
+  #ej-order-overlay.is-open #ej-order-panel{position:relative!important;inset:auto!important;display:flex!important;flex-direction:column!important;width:100%!important;max-width:none!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important;background:linear-gradient(160deg,#09271d 0,#101412 24%,#080a09 100%)!important;color:#fff!important;box-shadow:none!important}
+  #ej-order-panel .ej-order-head{flex:0 0 auto!important;background:#073323!important;color:#fff!important;padding:calc(12px + env(safe-area-inset-top)) 18px 15px!important;border-bottom:1px solid #315043!important}
+  #ej-order-panel .ej-order-head h2{color:#fff!important;font-size:20px!important}
+  #ej-order-panel .ej-order-x{color:#fff!important;background:#1b2420!important;border:1px solid #64716b!important}
+  #ej-order-panel .ej-order-body{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain!important;padding:18px 16px calc(35px + env(safe-area-inset-bottom))!important}
+  #ej-config-view,#ej-cart-view,#ej-final-view{display:none!important}
+  #ej-config-view.is-active,#ej-cart-view.is-active,#ej-final-view.is-active{display:block!important}
+  #ej-order-panel .ej-order-product{background:#19221e!important;border-radius:14px!important;padding:12px!important;color:#fff!important}
+  #ej-order-panel .ej-order-product strong{color:#fff!important}
+  #ej-order-panel .ej-order-product small{color:#c7d0ca!important}
+  #ej-order-panel .ej-order-field>label,#ej-order-panel .ej-order-check,#ej-order-panel .ej-order-pricebox{color:#fff!important}
+  #ej-order-panel .ej-order-field input,#ej-order-panel .ej-order-field select{min-height:44px!important}
+  #ej-order-panel .ej-order-primary{background:#00633f!important;color:#fff!important;border:1px solid #48ae82!important;border-radius:12px!important;min-height:52px!important;font-weight:800!important}
+  #ej-order-panel .ej-order-pricebox{background:#133d2d!important;border-radius:12px!important;padding:14px!important}
+  #ej-order-panel .ej-order-pricebox b{color:#fff!important}
+  #ej-order-panel #ej-cart-summary{background:#173f30!important;color:#fff!important}
+  #ej-order-panel #ej-cart-items .ej-v31-item{background:#161c19!important;color:#fff!important;border:1px solid #3c5146!important;border-radius:14px!important;overflow:hidden!important}
+  #ej-order-panel #ej-cart-items .ej-v31-item strong,#ej-order-panel #ej-cart-items .ej-v31-item span{color:#fff!important}
+  #ej-order-panel #ej-cart-items .ej-v29-row{border-color:#33443a!important}
+  #ej-order-panel #ej-cart-items .ej-v29-row>span{color:#cbd7cf!important}
+  #ej-order-panel #ej-cart-items .ej-budget-preview{background:#202a24!important;border-color:#33443a!important}
+  #ej-order-panel #ej-cart-items .ej-budget-preview-info small{color:#cad6cf!important}
+  #ej-order-panel .ej-cart-total{background:#073d2b!important;padding:16px!important;border-radius:12px!important;color:#fff!important}
+  #ej-order-panel .ej-cart-total span,#ej-order-panel .ej-cart-total small{color:#fff!important}
+  #ej-order-panel .ej-order-privacy{color:#bdcbc2!important}
+  #ej-order-panel #ej-send-order{display:none!important}
+  #ej-order-panel .ej-mobile-heading{display:block;font-size:21px;font-weight:850;color:#fff;margin:4px 0 20px}
+  #ej-order-panel .ej-mobile-actions{display:grid;gap:12px;margin-top:16px}
+  #ej-order-panel .ej-mobile-outline,#ej-order-panel .ej-mobile-gold{display:block;width:100%;min-height:51px;padding:12px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer}
+  #ej-order-panel .ej-mobile-outline{background:#073e2b;color:#fff;border:1px solid #63b58a}
+  #ej-order-panel .ej-mobile-gold{background:#f4bc28;color:#141811;border:1px solid #ffd664}
+  #ej-order-panel .ej-mobile-item-controls{display:flex;align-items:center;gap:9px;padding:10px 14px}
+  #ej-order-panel .ej-mobile-item-controls button{background:#123f2c;color:#fff;border:1px solid #578d6e;border-radius:9px;min-height:36px;min-width:36px;font-weight:750}
+  #ej-order-panel .ej-mobile-item-controls .ej-mobile-edit{padding:0 12px;margin-right:auto}
+  #ej-order-panel .ej-mobile-final-item{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:10px;padding:12px 8px;background:#f8faf9;border-radius:12px;margin-bottom:12px;color:#18231c;align-items:start}
+  #ej-order-panel .ej-mobile-final-item img{width:70px;height:94px;object-fit:contain;background:#fff;border-radius:7px}
+  #ej-order-panel .ej-mobile-final-item strong{display:block;font-size:14px;color:#14251a}
+  #ej-order-panel .ej-mobile-final-item small{display:block;font-size:11px;color:#43564a;margin-top:5px;line-height:1.3}
+  #ej-order-panel .ej-mobile-final-item b{white-space:nowrap;font-size:13px;color:#132b1b}
+  #ej-order-panel .ej-mobile-total{display:flex;justify-content:space-between;gap:10px;align-items:center;background:#075336;border:1px solid #36ae75;border-radius:12px;padding:16px 12px;margin:18px 0;color:#fff;font-size:14px;font-weight:850}
+  #ej-order-panel .ej-mobile-total strong{white-space:nowrap;font-size:20px}
+  #ej-order-panel .ej-mobile-help{font-size:12px;text-align:center;color:#b8ddc6;margin:8px 0 20px}
+}
+@media(min-width:701px){
+  #ej-final-view,.ej-mobile-heading,.ej-mobile-actions,.ej-mobile-item-controls{display:none!important}
+}
 </style>
