@@ -9758,3 +9758,38 @@ import { jsPDF } from "jspdf";
   html body #ej-order-panel #ej-config-view #ej-add-cart {display:block!important;width:100%!important;box-sizing:border-box!important;text-align:center!important;}
 }
 </style>
+
+<style is:global>
+/* V44: Safari iPhone mantiene el fondo al interactuar y respeta campos condicionales. */
+@media (max-width:700px) {
+  html body #ej-order-overlay.is-open #ej-order-panel,
+  html body #ej-order-overlay.is-open #ej-order-panel:hover,
+  html body #ej-order-overlay.is-open #ej-order-panel:focus-within,
+  html body #ej-order-overlay.is-open #ej-order-panel .ej-order-body,
+  html body #ej-order-overlay.is-open #ej-order-panel .ej-order-body:hover,
+  html body #ej-order-overlay.is-open #ej-order-panel .ej-order-body:focus-within,
+  html body #ej-order-overlay.is-open #ej-order-panel #ej-config-view,
+  html body #ej-order-overlay.is-open #ej-order-panel #ej-config-view:hover,
+  html body #ej-order-overlay.is-open #ej-order-panel #ej-config-view:focus-within {
+    background:#101a16!important;
+    background-color:#101a16!important;
+    background-image:none!important;
+    color:#f5f8f6!important;
+  }
+  html body #ej-order-overlay.is-open #ej-order-panel #ej-config-view .ej-order-row,
+  html body #ej-order-overlay.is-open #ej-order-panel #ej-config-view .ej-order-field,
+  html body #ej-order-overlay.is-open #ej-order-panel #ej-config-view .ej-order-check {
+    background:transparent!important;
+    background-color:transparent!important;
+    background-image:none!important;
+  }
+  html body #ej-order-overlay.is-open #ej-order-panel #ej-config-view #ej-personal-fields.ej-order-hidden,
+  html body #ej-order-overlay.is-open #ej-order-panel #ej-config-view #ej-patch-type-wrap.ej-order-hidden,
+  html body #ej-order-overlay.is-open #ej-order-panel #ej-config-view #ej-spain-patches.ej-order-hidden {
+    display:none!important;
+  }
+  html body #ej-order-overlay.is-open #ej-order-panel #ej-config-view #ej-personal-fields:not(.ej-order-hidden) {
+    display:grid!important;
+  }
+}
+</style>
