@@ -7541,7 +7541,7 @@ const datosEstructurados = {
 
         <div id="ej-personal-fields" class="ej-order-row ej-order-hidden">
           <div class="ej-order-field"><label>Nombre</label><input id="ej-player-name" maxlength="20" placeholder="Ej. SUAREZ"></div>
-          <div class="ej-order-field"><label>Dorsal</label><input id="ej-player-number" type="number" min="0" max="99" inputmode="numeric" placeholder="9"></div>
+          <div class="ej-order-field"><label>Dorsal</label><input id="ej-player-number" type="number" min="0" max="99" inputmode="numeric" placeholder=""></div>
         </div>
 
         <label class="ej-order-check" data-parches-control>
@@ -9163,7 +9163,13 @@ import { jsPDF } from "jspdf";
     try{
       await createPdf(cart.map(recalcItem),previewTab);
       status.className="ej-order-status ok";
-      status.textContent=openPreview?"Presupuesto abierto en otra pestaña.":"Presupuesto descargado. Puedes volver a descargarlo o modificar los artículos.";
+      status.textContent=openPreview?"Presupuesto abierto en otra pestaña.":"Presupuesto descargado.";
+      // Una vez generado correctamente el PDF, el siguiente presupuesto comienza vacío.
+      // No se limpia antes: si falla la generación, se conservan los artículos.
+      cart=[];
+      editingIndex=-1;
+      save();
+      close();
     }catch(err){
       if(previewTab)previewTab.close();
       console.error("No se pudo generar el PDF",err);
@@ -9996,6 +10002,38 @@ import { jsPDF } from "jspdf";
   html body #ej-order-overlay.is-open #ej-order-panel #ej-final-view .ej-mobile-total strong {
     color:#fff!important;
     -webkit-text-fill-color:#fff!important;
+  }
+}
+</style>
+
+<style is:global>
+/* V45 · Contraste de todos los parches en iPhone, sin cambiar la vista de escritorio. */
+@media (max-width:700px) {
+  html body #ej-order-panel #ej-config-view #ej-patch-preview img,
+  html body #ej-order-panel #ej-config-view #ej-spain-patches label img {
+    display:block!important;
+    box-sizing:border-box!important;
+    width:64px!important;
+    height:64px!important;
+    min-width:64px!important;
+    flex:0 0 64px!important;
+    object-fit:contain!important;
+    padding:7px!important;
+    background:#fff!important;
+    border:1px solid #d7e0d9!important;
+    border-radius:10px!important;
+  }
+  html body #ej-order-panel #ej-config-view #ej-patch-preview {
+    gap:14px!important;
+    min-height:70px!important;
+  }
+  html body #ej-order-panel #ej-config-view #ej-patch-label {
+    color:#fff!important;
+    font-size:15px!important;
+    line-height:1.4!important;
+  }
+  html body #ej-order-panel #ej-config-view #ej-spain-patches label {
+    gap:10px!important;
   }
 }
 </style>
