@@ -3151,3 +3151,30 @@ const datosEstructurados = {
     .sugerencias-superiores { width:100%; max-width:100%; }
   }
 </style>
+
+<style is:global>
+/* Elite Jerseys: portada compacta SOLO en móvil; carrusel original intacto. */
+@media (max-width:800px) {
+  html body .hero { min-height:0!important; padding:12px 0 16px!important; }
+  html body .hero .hero-interior {
+    display:grid!important; grid-template-columns:minmax(0,1fr)!important;
+    min-height:0!important; height:auto!important; gap:14px!important;
+    padding-top:12px!important; padding-bottom:12px!important;
+    align-items:start!important;
+  }
+  html body .hero .hero-contenido { padding:0!important; margin:0!important; min-height:0!important; }
+  html body .hero .etiqueta-superior { font-size:10px!important; letter-spacing:2px!important; }
+  html body .hero h1 { margin:5px 0 4px!important; font-size:clamp(34px,9vw,48px)!important; line-height:1.1!important; letter-spacing:-1.6px!important; }
+  html body .hero .hero-subtitulo { margin:0!important; font-size:16px!important; line-height:1.35!important; }
+  html body .hero .hero-ventajas { margin:7px 0 0!important; font-size:12px!important; line-height:1.4!important; }
+  html body .hero .hero-ventajas li { display:none!important; }
+  html body .hero .hero-ventajas li:first-child { display:list-item!important; }
+  html body .hero .hero-visual {
+    display:block!important; position:relative!important; width:100%!important;
+    height:190px!important; min-height:190px!important; max-height:190px!important;
+    margin:0!important; border-radius:14px!important;
+  }
+  html body .hero .hero-diapositiva { inset:0!important; }
+  html body .hero .hero-diapositiva img { max-width:100%!important; max-height:100%!important; object-fit:contain!important; }
+}
+</style>
