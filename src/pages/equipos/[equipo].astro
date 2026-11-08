@@ -8607,6 +8607,13 @@ import { jsPDF } from "jspdf";
   function money(n){ return `${n.toFixed(2).replace(".00","")} €`; }
   function save(){ try { localStorage.setItem(STORE, JSON.stringify(cart)); } catch {} renderCart(); }
   function show(view){
+    // En móvil el visor de fotos no debe tapar el configurador.
+    if (window.matchMedia("(max-width:700px)").matches) {
+      const visorFotos = document.getElementById("ej-v11");
+      if (visorFotos?.classList.contains("ej-v11-open")) {
+        document.getElementById("ej-v11-close")?.click();
+      }
+    }
     overlay.classList.add("is-open"); overlay.setAttribute("aria-hidden","false");
     config.classList.toggle("is-active",view==="config");
     cartView.classList.toggle("is-active",view==="cart");
@@ -9554,5 +9561,121 @@ import { jsPDF } from "jspdf";
 }
 @media(min-width:701px){
   #ej-final-view,.ej-mobile-heading,.ej-mobile-actions,.ej-mobile-item-controls{display:none!important}
+}
+</style>
+
+<style is:global>
+/* Corrección móvil V2: prioridad visual y miniatura contenida. */
+@media (max-width:700px) {
+  html body #ej-order-overlay.is-open {
+    position:fixed!important;
+    inset:0!important;
+    z-index:2147483647!important;
+    display:flex!important;
+    width:100vw!important;
+    height:100dvh!important;
+    overflow:hidden!important;
+  }
+  html body #ej-order-overlay.is-open #ej-order-panel {
+    display:flex!important;
+    flex-direction:column!important;
+    position:relative!important;
+    inset:auto!important;
+    width:100vw!important;
+    max-width:100vw!important;
+    min-width:0!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+  }
+  html body #ej-order-panel .ej-order-head {
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:12px!important;
+    padding:18px 16px!important;
+    min-height:74px!important;
+    box-sizing:border-box!important;
+  }
+  html body #ej-order-panel .ej-order-head h2 {
+    margin:0!important;
+    padding:0!important;
+    font-size:21px!important;
+    line-height:1.2!important;
+    flex:1 1 auto!important;
+    min-width:0!important;
+  }
+  html body #ej-order-panel .ej-order-x {
+    display:grid!important;
+    place-items:center!important;
+    flex:0 0 42px!important;
+    width:42px!important;
+    height:42px!important;
+    margin:0!important;
+    padding:0!important;
+    font-size:28px!important;
+    line-height:1!important;
+  }
+  html body #ej-order-panel .ej-order-body {
+    display:block!important;
+    flex:1 1 auto!important;
+    min-height:0!important;
+    width:100%!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    padding:16px 14px calc(30px + env(safe-area-inset-bottom))!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+  html body #ej-config-view .ej-order-product {
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    gap:14px!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    height:auto!important;
+    min-height:112px!important;
+    padding:12px!important;
+    box-sizing:border-box!important;
+    overflow:hidden!important;
+  }
+  html body #ej-config-view .ej-order-product img#ej-order-img {
+    display:block!important;
+    position:static!important;
+    flex:0 0 78px!important;
+    width:78px!important;
+    min-width:78px!important;
+    max-width:78px!important;
+    height:96px!important;
+    min-height:96px!important;
+    max-height:96px!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:8px!important;
+    object-fit:contain!important;
+    object-position:center!important;
+    background:#fff!important;
+    transform:none!important;
+  }
+  html body #ej-config-view .ej-order-product>div {
+    display:block!important;
+    flex:1 1 auto!important;
+    min-width:0!important;
+    overflow-wrap:anywhere!important;
+  }
+  html body #ej-order-panel .ej-order-field,
+  html body #ej-order-panel .ej-order-row {
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+  html body #ej-order-panel .ej-order-row {
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  }
 }
 </style>
