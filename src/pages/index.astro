@@ -487,7 +487,7 @@ const datosEstructurados = {
     <script>
        const fotosCarrusel = JSON.parse(document.getElementById("fotos-carrusel-portada")?.textContent || "[]") as Array<{foto:string; nombre:string}>;
        const imagenCarrusel = document.querySelector<HTMLImageElement>("#foto-carrusel-portada");
-       if (imagenCarrusel && fotosCarrusel.length > 1 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+       if (imagenCarrusel && fotosCarrusel.length > 1 ) {
          // Barajar todas las fotos: cada 01.webp aparece una vez antes de repetir.
          const barajar = () => {
            const indices = fotosCarrusel.map((_, i) => i);
@@ -504,10 +504,21 @@ const datosEstructurados = {
            const siguiente = new Image();
            siguiente.src = fotosCarrusel[indice].foto;
          };
+         let solicitudFoto = 0;
          const mostrar = (indice: number) => {
-           imagenCarrusel.src = fotosCarrusel[indice].foto;
-           imagenCarrusel.alt = `Camiseta de ${fotosCarrusel[indice].nombre}`;
-           ultimaFoto = indice;
+           const solicitudActual = ++solicitudFoto;
+           const foto = fotosCarrusel[indice];
+           const nuevaImagen = new Image();
+           nuevaImagen.onload = () => {
+             if (solicitudActual !== solicitudFoto) return;
+             imagenCarrusel.src = foto.foto;
+             imagenCarrusel.alt = `Camiseta de ${foto.nombre}`;
+             ultimaFoto = indice;
+           };
+           nuevaImagen.onerror = () => {
+             // Si falla la foto nueva, conservar la anterior visible.
+           };
+           nuevaImagen.src = foto.foto;
          };
          mostrar(orden[0]);
          precargar(orden[1]);
