@@ -7583,6 +7583,11 @@ const datosEstructurados = {
         <h3 class="ej-mobile-heading">Resumen del presupuesto</h3>
         <div id="ej-final-items"></div>
         <div class="ej-mobile-total"><span>TOTAL PRESUPUESTO</span><strong id="ej-final-total"></strong></div>
+        <div class="ej-order-field ej-applicant-field">
+          <label for="ej-applicant-mobile">Nombre del solicitante *</label>
+          <input id="ej-applicant-mobile" type="text" autocomplete="name" maxlength="80" placeholder="Nombre y apellidos" required />
+        </div>
+        <div id="ej-final-status" class="ej-order-status" role="status" aria-live="polite"></div>
         <button id="ej-final-pdf" type="button" class="ej-order-primary">↗ Ver presupuesto (PDF)</button>
         <p class="ej-mobile-help">Se abrirá en una pestaña nueva para revisarlo, guardarlo o compartirlo.</p>
         <button id="ej-final-edit" type="button" class="ej-mobile-outline">✎ Modificar presupuesto</button>
@@ -7601,6 +7606,10 @@ const datosEstructurados = {
             <button id="ej-mobile-finalize" type="button" class="ej-mobile-gold">Finalizar presupuesto</button>
           </div>
           <p class="ej-order-privacy">El presupuesto se genera en tu dispositivo, sin solicitar datos personales ni enviarlo a una base de datos.</p>
+          <div class="ej-order-field ej-applicant-field">
+            <label for="ej-applicant-desktop">Nombre del solicitante *</label>
+            <input id="ej-applicant-desktop" type="text" autocomplete="name" maxlength="80" placeholder="Nombre y apellidos" required />
+          </div>
           <button id="ej-send-order" class="ej-order-primary" type="button">Descargar presupuesto PDF</button>
           <div id="ej-order-status" class="ej-order-status" role="status" aria-live="polite"></div>
 
@@ -8975,7 +8984,7 @@ import { jsPDF } from "jspdf";
     doc.text(lines,x,y);
     return y+lines.length*5;
   };
-  async function createPdf(items, previewTab=null){
+  async function createPdf(items, applicantName, previewTab=null){
     const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
     const W=210,H=297,left=17,right=193;
     const date=new Date(),pad=n=>String(n).padStart(2,"0");
@@ -8995,6 +9004,17 @@ import { jsPDF } from "jspdf";
       doc.setFont("helvetica","normal");doc.setFontSize(8);
       doc.text(ref,right,12,{align:"right"});
       doc.text(`${pad(date.getDate())}/${pad(date.getMonth()+1)}/${date.getFullYear()}`,right,21,{align:"right"});
+      // Solicitante centrado dentro de la franja verde superior, con tamaño discreto.
+      const applicantLine=`Solicitante: ${applicantName}`;
+      doc.setFont("helvetica","bold");
+      let applicantFontSize=9;
+      doc.setFontSize(applicantFontSize);
+      while(doc.getTextWidth(applicantLine)>76 && applicantFontSize>6){
+        applicantFontSize-=0.25;
+        doc.setFontSize(applicantFontSize);
+      }
+      doc.setTextColor(255,255,255);
+      doc.text(applicantLine,W/2,14.5,{align:"center",maxWidth:76});
     }
     function footer(){
       doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(105,112,108);
@@ -9104,7 +9124,7 @@ import { jsPDF } from "jspdf";
       const remaining=items.length-index;
       const count=Math.min(maxPerPage,remaining);
       if(layout==="grid"){
-        const cw=85,ch=62,gapX=6,gapY=5,startY=35;
+        const cw=85,ch=62,gapX=6,gapY=5,startY=42;
         for(let j=0;j<count;j++){
           const row=Math.floor(j/2),col=j%2;
           await card(items[index+j],index+j,left+col*(cw+gapX),startY+row*(ch+gapY),cw,ch,"grid");
@@ -9117,7 +9137,7 @@ import { jsPDF } from "jspdf";
       }else{
         const ch=layout==="large"?80:76;
         const gap=7;
-        for(let j=0;j<count;j++)await card(items[index+j],index+j,left,40+j*(ch+gap),right-left,ch,layout);
+        for(let j=0;j<count;j++)await card(items[index+j],index+j,left,42+j*(ch+gap),right-left,ch,layout);
         index+=count;
         if(index===items.length){
           // Total anclado al pie de la última página, sin depender de los artículos.
@@ -9138,7 +9158,16 @@ import { jsPDF } from "jspdf";
   let generating=false;
   async function generateBudget(openPreview=false){
     if(generating)return;
-    const status=$("#ej-order-status"),button=$("#ej-send-order");
+    const status=$(openPreview?"#ej-final-status":"#ej-order-status");
+    const button=$(openPreview?"#ej-final-pdf":"#ej-send-order");
+    const applicantInput=$(openPreview?"#ej-applicant-mobile":"#ej-applicant-desktop");
+    const applicantName=applicantInput?.value.trim().replace(/\s+/g," ") || "";
+    if(!applicantName){
+      status.className="ej-order-status error";
+      status.textContent="Introduce el nombre del solicitante antes de generar el PDF.";
+      applicantInput?.focus();
+      return;
+    }
     if(!cart.length){status.textContent="Añade al menos una camiseta.";return;}
     const allowedAdult=["S","M","L","XL","2XL","3XL"],allowedChild=["16","18","20","22","24","26","28"];
     for(const x of cart){
@@ -9161,7 +9190,7 @@ import { jsPDF } from "jspdf";
     generating=true;button.disabled=true;button.textContent="Generando PDF…";
     status.textContent="Preparando presupuesto…";status.className="ej-order-status";
     try{
-      await createPdf(cart.map(recalcItem),previewTab);
+      await createPdf(cart.map(recalcItem),applicantName,previewTab);
       status.className="ej-order-status ok";
       status.textContent=openPreview?"Presupuesto abierto en otra pestaña.":"Presupuesto descargado.";
       // Una vez generado correctamente el PDF, el siguiente presupuesto comienza vacío.
@@ -9175,8 +9204,15 @@ import { jsPDF } from "jspdf";
       console.error("No se pudo generar el PDF",err);
       status.className="ej-order-status error";
       status.textContent="No se pudo generar el PDF. Inténtalo de nuevo.";
-    }finally{generating=false;button.disabled=false;button.textContent="Descargar presupuesto PDF";}
+    }finally{
+      generating=false;button.disabled=false;
+      button.textContent=openPreview?"↗ Ver presupuesto (PDF)":"Descargar presupuesto PDF";
+    }
   }
+  const applicantDesktop=$("#ej-applicant-desktop");
+  const applicantMobile=$("#ej-applicant-mobile");
+  applicantDesktop?.addEventListener("input",()=>{if(applicantMobile)applicantMobile.value=applicantDesktop.value;});
+  applicantMobile?.addEventListener("input",()=>{if(applicantDesktop)applicantDesktop.value=applicantMobile.value;});
   $("#ej-send-order").onclick=()=>generateBudget(false);
   $("#ej-final-pdf")?.addEventListener("click",()=>generateBudget(true));
   fillSizes();renderCart();addButtons();
@@ -9185,6 +9221,19 @@ import { jsPDF } from "jspdf";
 </script>
 
 
+<style is:global>
+/* Campo solicitante: reutiliza el estilo de los formularios existentes. */
+#ej-order-panel .ej-applicant-field {margin:16px 0 12px;}
+#ej-order-panel .ej-applicant-field > label {display:block;margin-bottom:7px;font-size:13px;font-weight:800;}
+#ej-order-panel .ej-applicant-field > input {
+  width:100%;min-height:46px;box-sizing:border-box;border:1px solid #cfd6d1;
+  border-radius:11px;padding:0 12px;background:#fff;color:#171b18;font-size:15px;
+}
+#ej-order-panel #ej-final-status:not(:empty) {display:block;margin:8px 0 12px;}
+@media(max-width:700px){
+  #ej-order-panel #ej-final-view .ej-applicant-field > label {color:#fff;}
+}
+</style>
 <style is:global>
 /* V34 · botón Añadir al presupuesto + selector de parche */
 .ej-order-add{
