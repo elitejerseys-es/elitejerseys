@@ -96,6 +96,7 @@ const tipoProducto = (nombre: string, clubSlug = equipoSlug) => {
   const n = nombre.toLowerCase();
   if (n.startsWith("chandal-entera-") || n.startsWith("chandal-cremallera-entera-")) return "chandal-entera";
   if (n.startsWith("chandal-pecho-") || n.startsWith("chandal-cremallera-pecho-") || n.startsWith("chandal-")) return "chandal-pecho";
+  if (n.startsWith("pantalones-") || n.startsWith("pantalon-")) return "pantalones";
   if (n.startsWith("conjunto-nino-")) return "nino";
   if (n.startsWith("retro-") || n.startsWith("version-retro-")) return "retro-especial";
   if (n.startsWith("especial-")) return "retro-especial";
@@ -790,6 +791,7 @@ const datosEstructurados = {
               <button type="button" class="filtro-rapido" data-filtro-tipo="mujer" aria-pressed="false">Adulto - Versión Mujer</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="retro-especial" aria-pressed="false">Retro/Especial</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="nino" aria-pressed="false">Conjunto Niño</button>
+              <button type="button" class="filtro-rapido" data-filtro-tipo="pantalones" aria-pressed="false">Pantalones</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="chandal" aria-pressed="false">Chándal</button>
             </div>
 
@@ -7507,6 +7509,7 @@ const datosEstructurados = {
             <option value="mujer">Adulto - Versión Mujer</option>
             <option value="retro-especial">Retro/Especial</option>
             <option value="nino">Conjunto Niño</option>
+            <option value="pantalones">Pantalones</option>
             <option value="chandal-pecho">Chándal - Cremallera Pecho</option>
             <option value="chandal-entera">Chándal - Cremallera Entera</option>
           </select>
@@ -8630,7 +8633,7 @@ import { jsPDF } from "jspdf";
     finalView?.classList.toggle("is-active",view==="final");
     if(view==="final") renderFinal();
     $("#ej-order-panel")?.classList.toggle("ej-mobile-final-mode",view==="final");
-    $("#ej-order-title").textContent=view==="config"?(isSpainTracksuit()?"Configurar chándal":productType.value==="nino"?"Configurar conjunto infantil":productType.value==="retro-especial"?"Configurar Retro/Especial":"Configurar camiseta"):view==="final"?"Resumen del presupuesto":"Mi presupuesto";
+    $("#ej-order-title").textContent=view==="config"?(isSpainTracksuit()?"Configurar chándal":productType.value==="nino"?"Configurar conjunto infantil":productType.value==="retro-especial"?"Configurar Retro/Especial":productType.value==="pantalones"?"Configurar pantalones":"Configurar camiseta"):view==="final"?"Resumen del presupuesto":"Mi presupuesto";
     document.documentElement.style.overflow="hidden";
   }
   function close(){overlay.classList.remove("is-open");overlay.setAttribute("aria-hidden","true");document.documentElement.style.overflow="";}
@@ -8643,6 +8646,7 @@ import { jsPDF } from "jspdf";
   function isSpecialProduct(){ return productType.value === "retro-especial"; }
   function allowsExtras(){ return ["adulto","jugador","mujer","nino"].includes(productType.value); }
   function unitPrice(){
+    if(productType.value==="pantalones") return 12;
     if(isSpainTracksuit()) return productType.value==="chandal-entera"?33:28;
     let p=["nino","jugador","retro-especial"].includes(productType.value)?13:10;
     if(allowsExtras() && CAN_CUSTOMIZE && personalize.checked)p+=3;
@@ -8750,6 +8754,7 @@ import { jsPDF } from "jspdf";
     box.innerHTML=cart.map((x,i)=>{
       const isChild=x.product==="Conjunto niño";
       const isTracksuit=/^Chándal/.test(x.product);
+      const isPants=x.product==="Pantalones";
       const productText=isTracksuit?x.product:isChild?"Conjunto Niño":x.product;
       const versionText=isChild?"Única":(/Jugador/i.test(x.product||"")?"Jugador":/Mujer/i.test(x.product||"")?"Mujer":/Especial|Retro/i.test(x.product||"")?"Retro/Especial":"Aficionado");
       const personalization=x.personalize?`${x.playerName || "—"} ${x.playerNumber || ""}`:"No";
@@ -8773,7 +8778,7 @@ import { jsPDF } from "jspdf";
           <span>Producto</span>
           <strong>${productText}</strong>
         </div>
-        ${!isTracksuit && x.product!=="Retro/Especial"?`<div class="ej-v29-row">
+        ${!isTracksuit && !isPants && x.product!=="Retro/Especial"?`<div class="ej-v29-row">
           <span>Versión</span>
           <strong>${versionText}</strong>
         </div>`:""}
@@ -8785,7 +8790,7 @@ import { jsPDF } from "jspdf";
           <span>Cantidad</span>
           <strong>${x.qty}</strong>
         </div>
-        ${!isTracksuit && x.product!=="Retro/Especial"?`<div class="ej-v29-row">
+        ${!isTracksuit && !isPants && x.product!=="Retro/Especial"?`<div class="ej-v29-row">
           <span>Nombre + dorsal</span>
           <strong>${esc(personalization)}</strong>
         </div>
@@ -8837,7 +8842,7 @@ import { jsPDF } from "jspdf";
       btn.dataset.clubName=x.name;
       btn.dataset.temporada=x.temporada||"";
       btn.dataset.tipo=x.tipo||"";
-      btn.dataset.producto=/^Chándal.*Entera/.test(x.product)?"chandal-entera":/^Chándal/.test(x.product)?"chandal-pecho":x.product==="Conjunto niño"?"nino":x.product==="Retro/Especial"?"retro-especial":/Jugador/.test(x.product)?"jugador":/Mujer/.test(x.product)?"mujer":"adulto";
+      btn.dataset.producto=x.product==="Pantalones"?"pantalones":/^Chándal.*Entera/.test(x.product)?"chandal-entera":/^Chándal/.test(x.product)?"chandal-pecho":x.product==="Conjunto niño"?"nino":x.product==="Retro/Especial"?"retro-especial":/Jugador/.test(x.product)?"jugador":/Mujer/.test(x.product)?"mujer":"adulto";
       openConfig(btn);
       size.value=x.size;qty.value=String(safeQty(x.qty));
       personalize.checked=!!x.personalize;patches.checked=!!x.patches;
@@ -8899,7 +8904,7 @@ import { jsPDF } from "jspdf";
     }
     const q=Math.min(20,Math.max(1,parseInt(qty.value)||1));
     qty.value=String(q);
-    const prod=isSpainTracksuit()?(productType.value==="chandal-entera"?"Chándal - Cremallera Entera":"Chándal - Cremallera Pecho"):productType.value==="nino"?"Conjunto niño":productType.value==="retro-especial"?"Retro/Especial":productType.value==="jugador"?"Adulto - Versión Jugador":productType.value==="mujer"?"Adulto - Versión Mujer":"Adulto - Versión Aficionado";
+    const prod=isSpainTracksuit()?(productType.value==="chandal-entera"?"Chándal - Cremallera Entera":"Chándal - Cremallera Pecho"):productType.value==="pantalones"?"Pantalones":productType.value==="nino"?"Conjunto niño":productType.value==="retro-especial"?"Retro/Especial":productType.value==="jugador"?"Adulto - Versión Jugador":productType.value==="mujer"?"Adulto - Versión Mujer":"Adulto - Versión Aficionado";
     const newItem={...current,product:prod,size:size.value,qty:q,personalize:!isSpainTracksuit() && allowsExtras() && CAN_CUSTOMIZE && personalize.checked,
       playerName:$("#ej-player-name").value.trim(),playerNumber:$("#ej-player-number").value.trim(),
       patches:!isSpainTracksuit() && allowsExtras() && CAN_PATCHES && patches.checked,
@@ -8917,6 +8922,7 @@ import { jsPDF } from "jspdf";
   function recalcItem(x){
     const q=safeQty(x.qty);
     const child=x.product==="Conjunto niño";
+    if(x.product==="Pantalones") return {...x,qty:q,personalize:false,patches:false,spainPatches:null,patchType:"",total:12*q};
     if(/^Chándal/.test(x.product)) return {...x,qty:q,personalize:false,patches:false,spainPatches:null,patchType:"",total:(/Entera/.test(x.product)?33:28)*q};
     let unit=child||(/Versión (Jugador|Retro|Especial)/.test(x.product)||x.product==="Retro/Especial")||/· Jugador/.test(x.product)?13:10;
     const extrasAllowed=/Versión (Aficionado|Jugador|Mujer)/.test(x.product)||child;
@@ -9052,7 +9058,7 @@ import { jsPDF } from "jspdf";
       let ly=cy+(compact?17:19)+nameLines.length*(compact?3.5:5);
       const child=x.product==="Conjunto niño";
       const isTracksuit=/^Chándal/.test(x.product);
-      const lines=isTracksuit ? [
+      const lines=(isTracksuit || x.product==="Pantalones") ? [
         ...(x.temporada ? [String(x.temporada)] : []),
         x.product, `Talla: ${x.size}`, `Cantidad: ${x.qty}`
       ] : compact?[
