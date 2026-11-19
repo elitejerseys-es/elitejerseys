@@ -66,6 +66,13 @@ export const categorias = [
       "Francia", "Inglaterra", "Italia", "Japón", "Marruecos",
       "México", "Noruega", "Países Bajos", "Perú", "Portugal", "Uruguay"
     ]
+  },
+  {
+    nombre: "Otros",
+    temporada: "",
+    slug: "otros",
+    logo: "/images/ligas/otros.png",
+    equipos: ["F1"]
   }
 ];
 

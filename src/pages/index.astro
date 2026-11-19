@@ -260,7 +260,7 @@ const datosEstructurados = {
           <details class="nav-desplegable">
             <summary>⚽ Ligas <span aria-hidden="true">⌄</span></summary>
             <div class="nav-menu">
-              {categoriasOrdenadas.filter(c => c.slug !== "selecciones").map(c => (
+              {categoriasOrdenadas.filter(c => c.slug !== "selecciones" && c.slug !== "otros").map(c => (
                 <details class="nav-subcategoria">
                   <summary><img src={c.logo} alt="" width="25" height="25" /><span>{c.nombre}</span><span class="nav-subflecha" aria-hidden="true">⌄</span></summary>
                   <div class="nav-submenu">
@@ -277,6 +277,14 @@ const datosEstructurados = {
             <div class="nav-menu nav-menu-selecciones">
               {categoriasOrdenadas.find(c => c.slug === "selecciones")?.equipos.map(equipo => (
                 <a href={`/equipos/${crearSlug(equipo)}`}><img src={obtenerEscudo(equipo)} alt="" width="25" height="25" loading="lazy" />{equipo}</a>
+              ))}
+            </div>
+          </details>
+          <details class="nav-desplegable">
+            <summary>🏎️ Otros <span aria-hidden="true">⌄</span></summary>
+            <div class="nav-menu nav-menu-otros">
+              {categoriasOrdenadas.find(c => c.slug === "otros")?.equipos.map(seccion => (
+                <a href={`/equipos/${crearSlug(seccion)}`}><span aria-hidden="true">🏎️</span><span>{seccion}</span></a>
               ))}
             </div>
           </details>
@@ -309,10 +317,10 @@ const datosEstructurados = {
         </div>
       </section>
 
-      <div class="contenedor accesos-categorias" aria-label="Ligas y selecciones del catálogo">
+      <div class="contenedor accesos-categorias" aria-label="Categorías del catálogo">
         {categoriasOrdenadas.map((categoria) => (
           <div class="acceso-categoria">
-            <img src={categoria.logo} alt="" width="55" height="55" loading="lazy" decoding="async" />
+            {categoria.slug === "otros" ? <span aria-hidden="true">🏎️</span> : <img src={categoria.logo} alt="" width="55" height="55" loading="lazy" decoding="async" />}
             <strong>{categoria.nombre}</strong>
           </div>
         ))}
@@ -322,7 +330,7 @@ const datosEstructurados = {
         <div class="seccion-cabecera">
           <div>
             <span class="etiqueta-seccion">CATÁLOGO</span>
-            <h2>Ligas y selecciones</h2>
+            <h2>Ligas, selecciones y otros</h2>
 
             <p>
               Abre una categoría para consultar todos sus equipos.
@@ -365,7 +373,7 @@ const datosEstructurados = {
                       <strong>{categoria.nombre}</strong>
 
                       <small>
-                        {categoria.equipos.length} equipos · {categoria.camisetas} camisetas
+                        {categoria.slug === "otros" ? `${categoria.equipos.length} secciones` : `${categoria.equipos.length} equipos · ${categoria.camisetas} camisetas`}
                       </small>
                     </span>
                   </div>
@@ -3018,6 +3026,7 @@ const datosEstructurados = {
   .nav-desplegable summary:hover, .nav-desplegable[open] summary { background:#edf4ef; }
   .nav-menu { position:absolute; top:calc(100% + 10px); left:0; width:235px; max-height:450px; overflow-y:auto; display:grid; gap:2px; padding:9px; border:1px solid #dde8e0; border-radius:13px; background:white; box-shadow:0 14px 40px #102c1b24; z-index:1100; }
   .nav-menu-selecciones { width:255px; }
+  .nav-menu-otros { width:180px; }
   .nav-menu a { display:flex; align-items:center; gap:9px; padding:9px; border-radius:8px; color:#24382a; text-decoration:none; font-size:12px; font-weight:650; }
   .nav-menu a:hover { background:#eef7f1; }
   .nav-menu img { width:25px; height:25px; object-fit:contain; }

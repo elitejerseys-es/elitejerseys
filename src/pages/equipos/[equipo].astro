@@ -89,13 +89,17 @@ const carpetaEquipo = path.join(
 const camisetas: Camiseta[] = [];
 const extensionesImagen = /\.webp$/i;
 const esOtrosClubes = equipoSlug === "otros-clubes-liga-espanola";
-const carpetaProductos = esOtrosClubes
+const esF1 = categoria === "Otros" && equipoSlug === "f1";
+const carpetaProductos = esF1
+  ? path.join(process.cwd(), "public", "camisetas", "otros", "f1")
+  : esOtrosClubes
   ? path.join(process.cwd(), "public", "camisetas", "otros-clubes-liga-espanola")
   : carpetaEquipo;
 const tipoProducto = (nombre: string, clubSlug = equipoSlug) => {
   const n = nombre.toLowerCase();
   if (n.startsWith("chandal-entera-") || n.startsWith("chandal-cremallera-entera-")) return "chandal-entera";
   if (n.startsWith("chandal-pecho-") || n.startsWith("chandal-cremallera-pecho-") || n.startsWith("chandal-")) return "chandal-pecho";
+  if (n.startsWith("otros-") && clubSlug === "f1") return "f1";
   if (n.startsWith("pantalones-") || n.startsWith("pantalon-")) return "pantalones";
   if (n.startsWith("conjunto-nino-")) return "nino";
   if (n.startsWith("retro-") || n.startsWith("version-retro-")) return "retro-especial";
@@ -116,14 +120,21 @@ function registrarProducto(carpeta: string, segmentos: string[], clubNombre: str
   const imagenes = [portada, ...archivos.filter(archivo => archivo !== portada)].map(archivo => url("camisetas", archivo));
   camisetas.push({
     id: segmentos.length === 2 ? segmentos[1] : segmentos.join("--"), src: imagenes[0], fullSrc: imagenes[0],
-    thumbSrc: url("miniaturas", "01.webp"), imagenes, clubNombre, clubSlug, tipo
+    thumbSrc: esF1 ? imagenes[0] : url("miniaturas", "01.webp"), imagenes, clubNombre, clubSlug, tipo
   });
 }
 const directorios = (carpeta: string) => fs.readdirSync(carpeta, { withFileTypes: true })
   .filter(entrada => entrada.isDirectory() && !entrada.name.startsWith("."))
   .sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true }));
 if (fs.existsSync(carpetaProductos)) {
-  if (esOtrosClubes) {
+  if (esF1) {
+    for (const producto of directorios(carpetaProductos)) {
+      if (!/^otros-\d+$/i.test(producto.name)) continue;
+      registrarProducto(path.join(carpetaProductos, producto.name),
+        ["otros", "f1", producto.name],
+        `F1 · ${producto.name.toUpperCase()}`, "f1", "f1");
+    }
+  } else if (esOtrosClubes) {
     for (const club of directorios(carpetaProductos)) {
       const carpetaClub = path.join(carpetaProductos, club.name);
       // En Otros clubes, los productos están directamente dentro de cada club.
@@ -784,7 +795,7 @@ const datosEstructurados = {
 
         camisetas.length > 0 ? (
           <>
-            <div class="filtros-rapidos filtros-producto" role="group" aria-label="Filtrar productos por edad">
+            <div class="filtros-rapidos filtros-producto" role="group" aria-label="Filtrar productos por edad" style={esF1 ? "display:none" : undefined}>
               <button type="button" class="filtro-rapido activo" data-filtro-tipo="todos" aria-pressed="true">Todos</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="adulto" aria-pressed="false">Adulto - Versión Aficionado</button>
               <button type="button" class="filtro-rapido" data-filtro-tipo="jugador" aria-pressed="false">Adulto - Versión Jugador</button>
@@ -7510,6 +7521,7 @@ const datosEstructurados = {
             <option value="retro-especial">Retro/Especial</option>
             <option value="nino">Conjunto Niño</option>
             <option value="pantalones">Pantalones</option>
+            <option value="f1">F1 · 20 €</option>
             <option value="chandal-pecho">Chándal - Cremallera Pecho</option>
             <option value="chandal-entera">Chándal - Cremallera Entera</option>
           </select>
@@ -8633,7 +8645,7 @@ import { jsPDF } from "jspdf";
     finalView?.classList.toggle("is-active",view==="final");
     if(view==="final") renderFinal();
     $("#ej-order-panel")?.classList.toggle("ej-mobile-final-mode",view==="final");
-    $("#ej-order-title").textContent=view==="config"?(isSpainTracksuit()?"Configurar chándal":productType.value==="nino"?"Configurar conjunto infantil":productType.value==="retro-especial"?"Configurar Retro/Especial":productType.value==="pantalones"?"Configurar pantalones":"Configurar camiseta"):view==="final"?"Resumen del presupuesto":"Mi presupuesto";
+    $("#ej-order-title").textContent=view==="config"?(productType.value==="f1"?"Configurar producto F1":isSpainTracksuit()?"Configurar chándal":productType.value==="nino"?"Configurar conjunto infantil":productType.value==="retro-especial"?"Configurar Retro/Especial":productType.value==="pantalones"?"Configurar pantalones":"Configurar camiseta"):view==="final"?"Resumen del presupuesto":"Mi presupuesto";
     document.documentElement.style.overflow="hidden";
   }
   function close(){overlay.classList.remove("is-open");overlay.setAttribute("aria-hidden","true");document.documentElement.style.overflow="";}
@@ -8646,6 +8658,7 @@ import { jsPDF } from "jspdf";
   function isSpecialProduct(){ return productType.value === "retro-especial"; }
   function allowsExtras(){ return ["adulto","jugador","mujer","nino"].includes(productType.value); }
   function unitPrice(){
+    if(productType.value==="f1") return 20;
     if(productType.value==="pantalones") return 12;
     if(isSpainTracksuit()) return productType.value==="chandal-entera"?33:28;
     let p=["nino","jugador","retro-especial"].includes(productType.value)?13:10;
@@ -8705,6 +8718,7 @@ import { jsPDF } from "jspdf";
     isGermanTeam = GERMAN_TEAMS.has(CURRENT_TEAM_SLUG) || /(?:bundesliga|alemana|alemania|germany)/i.test(TEAM_CATEGORY);
     isFrenchTeam = FRENCH_TEAMS.has(CURRENT_TEAM_SLUG) || /(?:ligue\s*1|francesa|francia|france)/i.test(TEAM_CATEGORY);
     CAN_PATCHES = CAN_CUSTOMIZE || isSpanishTeam || isEnglishTeam || isItalianTeam || isGermanTeam || isFrenchTeam || CURRENT_TEAM_SLUG === "espana";
+    if (TEAM_CATEGORY === "Otros" || CURRENT_TEAM_SLUG === "f1") { CAN_CUSTOMIZE = false; CAN_PATCHES = false; }
     document.querySelector("[data-personalizacion-control]")?.classList.toggle("ej-order-hidden", !CAN_CUSTOMIZE);
     document.querySelector("[data-parches-control]")?.classList.toggle("ej-order-hidden", !CAN_PATCHES);
     current={
@@ -8725,6 +8739,7 @@ import { jsPDF } from "jspdf";
     personalize.disabled=!allowsExtras() || !CAN_CUSTOMIZE;
     patches.disabled=!allowsExtras() || !CAN_PATCHES;
     productType.disabled=true;
+    productType.closest(".ej-order-field")?.classList.toggle("ej-order-hidden", productType.value === "f1");
     version.value=productType.value==="jugador"?"jugador":"aficionado"; qty.value="1";
     personalize.checked=false; patches.checked=false; spainChampion.checked=false; spainGold.checked=false;
     setupPatchOptions();
@@ -8842,7 +8857,7 @@ import { jsPDF } from "jspdf";
       btn.dataset.clubName=x.name;
       btn.dataset.temporada=x.temporada||"";
       btn.dataset.tipo=x.tipo||"";
-      btn.dataset.producto=x.product==="Pantalones"?"pantalones":/^Chándal.*Entera/.test(x.product)?"chandal-entera":/^Chándal/.test(x.product)?"chandal-pecho":x.product==="Conjunto niño"?"nino":x.product==="Retro/Especial"?"retro-especial":/Jugador/.test(x.product)?"jugador":/Mujer/.test(x.product)?"mujer":"adulto";
+      btn.dataset.producto=x.product==="F1"?"f1":x.product==="Pantalones"?"pantalones":/^Chándal.*Entera/.test(x.product)?"chandal-entera":/^Chándal/.test(x.product)?"chandal-pecho":x.product==="Conjunto niño"?"nino":x.product==="Retro/Especial"?"retro-especial":/Jugador/.test(x.product)?"jugador":/Mujer/.test(x.product)?"mujer":"adulto";
       openConfig(btn);
       size.value=x.size;qty.value=String(safeQty(x.qty));
       personalize.checked=!!x.personalize;patches.checked=!!x.patches;
@@ -8904,7 +8919,7 @@ import { jsPDF } from "jspdf";
     }
     const q=Math.min(20,Math.max(1,parseInt(qty.value)||1));
     qty.value=String(q);
-    const prod=isSpainTracksuit()?(productType.value==="chandal-entera"?"Chándal - Cremallera Entera":"Chándal - Cremallera Pecho"):productType.value==="pantalones"?"Pantalones":productType.value==="nino"?"Conjunto niño":productType.value==="retro-especial"?"Retro/Especial":productType.value==="jugador"?"Adulto - Versión Jugador":productType.value==="mujer"?"Adulto - Versión Mujer":"Adulto - Versión Aficionado";
+    const prod=productType.value==="f1"?"F1":isSpainTracksuit()?(productType.value==="chandal-entera"?"Chándal - Cremallera Entera":"Chándal - Cremallera Pecho"):productType.value==="pantalones"?"Pantalones":productType.value==="nino"?"Conjunto niño":productType.value==="retro-especial"?"Retro/Especial":productType.value==="jugador"?"Adulto - Versión Jugador":productType.value==="mujer"?"Adulto - Versión Mujer":"Adulto - Versión Aficionado";
     const newItem={...current,product:prod,size:size.value,qty:q,personalize:!isSpainTracksuit() && allowsExtras() && CAN_CUSTOMIZE && personalize.checked,
       playerName:$("#ej-player-name").value.trim(),playerNumber:$("#ej-player-number").value.trim(),
       patches:!isSpainTracksuit() && allowsExtras() && CAN_PATCHES && patches.checked,
@@ -8922,6 +8937,7 @@ import { jsPDF } from "jspdf";
   function recalcItem(x){
     const q=safeQty(x.qty);
     const child=x.product==="Conjunto niño";
+    if(x.product==="F1") return {...x,qty:q,personalize:false,patches:false,spainPatches:null,patchType:"",total:20*q};
     if(x.product==="Pantalones") return {...x,qty:q,personalize:false,patches:false,spainPatches:null,patchType:"",total:12*q};
     if(/^Chándal/.test(x.product)) return {...x,qty:q,personalize:false,patches:false,spainPatches:null,patchType:"",total:(/Entera/.test(x.product)?33:28)*q};
     let unit=child||(/Versión (Jugador|Retro|Especial)/.test(x.product)||x.product==="Retro/Especial")||/· Jugador/.test(x.product)?13:10;
