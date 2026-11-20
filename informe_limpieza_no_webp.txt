@@ -1,12 +1,13 @@
-ELITE JERSEYS - LIMPIEZA NO WEBP - 2026-11-06 11:40:45
-MODO: SIMULACION
+ELITE JERSEYS - LIMPIEZA NO WEBP - 2026-11-20 12:43:56
+MODO: ELIMINACION
 
-public\camisetas: 0 imagenes no WebP
+public\camisetas: 1 imagenes no WebP
+ELIMINADA: public\camisetas\real-madrid\pantalones-002\01.jpg
 
 public\miniaturas: 0 imagenes no WebP
 
-No WebP encontrados: 0
-Eliminados: 0
+No WebP encontrados: 1
+Eliminados: 1
 Conservados por seguridad: 0
 Errores: 0
 El script no modifica ningun archivo WebP.
