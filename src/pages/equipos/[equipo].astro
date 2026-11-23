@@ -8720,6 +8720,7 @@ import { jsPDF } from "jspdf";
       const isChild=x.product==="Conjunto niño";
       const isTracksuit=/^Chándal/.test(x.product);
       const isPants=x.product==="Pantalones";
+      const isF1=x.product==="F1";
       const productText=isTracksuit?x.product:isChild?"Conjunto Niño":x.product;
       const versionText=isChild?"Única":(/Jugador/i.test(x.product||"")?"Jugador":/Mujer/i.test(x.product||"")?"Mujer":/Especial|Retro/i.test(x.product||"")?"Retro/Especial":"Aficionado");
       const personalization=x.personalize?`${x.playerName || "—"} ${x.playerNumber || ""}`:"No";
@@ -8728,22 +8729,22 @@ import { jsPDF } from "jspdf";
         <div class="ej-v31-article-head">
           <div>
             <span class="ej-v31-kicker">ARTÍCULO ${i+1}</span>
-            <strong>Detalle de la camiseta</strong>
+            <strong>${isF1?"Detalle del producto F1":"Detalle de la camiseta"}</strong>
           </div>
         </div>
         <div class="ej-budget-preview">
           <img class="ej-budget-thumb" src="${esc(safeImageUrl(x.image)||"")}" alt="Camiseta ${esc(x.name)}" loading="lazy" />
           <div class="ej-budget-preview-info"><strong>${esc(x.name)}</strong><small>${esc(x.temporada||"")} · ${esc(x.tipo||"Equipación")}</small></div>
         </div>
-        <div class="ej-v29-row ej-v29-team">
+        ${!isF1?`<div class="ej-v29-row ej-v29-team">
           <span>Equipo</span>
           <strong>${esc(x.name)}</strong>
-        </div>
+        </div>`:""}
         <div class="ej-v29-row">
           <span>Producto</span>
           <strong>${productText}</strong>
         </div>
-        ${!isTracksuit && !isPants && x.product!=="Retro/Especial"?`<div class="ej-v29-row">
+        ${!isTracksuit && !isPants && !isF1 && x.product!=="Retro/Especial"?`<div class="ej-v29-row">
           <span>Versión</span>
           <strong>${versionText}</strong>
         </div>`:""}
@@ -8755,7 +8756,7 @@ import { jsPDF } from "jspdf";
           <span>Cantidad</span>
           <strong>${x.qty}</strong>
         </div>
-        ${!isTracksuit && !isPants && x.product!=="Retro/Especial"?`<div class="ej-v29-row">
+        ${!isTracksuit && !isPants && !isF1 && x.product!=="Retro/Especial"?`<div class="ej-v29-row">
           <span>Nombre + dorsal</span>
           <strong>${esc(personalization)}</strong>
         </div>
@@ -9024,7 +9025,7 @@ import { jsPDF } from "jspdf";
       let ly=cy+(compact?17:19)+nameLines.length*(compact?3.5:5);
       const child=x.product==="Conjunto niño";
       const isTracksuit=/^Chándal/.test(x.product);
-      const lines=(isTracksuit || x.product==="Pantalones") ? [
+      const lines=(isTracksuit || x.product==="Pantalones" || x.product==="F1") ? [
         ...(x.temporada ? [String(x.temporada)] : []),
         x.product, `Talla: ${x.size}`, `Cantidad: ${x.qty}`
       ] : compact?[
