@@ -273,7 +273,7 @@ const datosEstructurados = {
             </div>
           </details>
           <details class="nav-desplegable">
-            <summary>◉ Selecciones <span aria-hidden="true">⌄</span></summary>
+            <summary><img src="/images/ligas/selecciones.png" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Selecciones <span aria-hidden="true">⌄</span></summary>
             <div class="nav-menu nav-menu-selecciones">
               {categoriasOrdenadas.find(c => c.slug === "selecciones")?.equipos.map(equipo => (
                 <a href={`/equipos/${crearSlug(equipo)}`}><img src={obtenerEscudo(equipo)} alt="" width="25" height="25" loading="lazy" />{equipo}</a>
@@ -281,10 +281,10 @@ const datosEstructurados = {
             </div>
           </details>
           <details class="nav-desplegable">
-            <summary>🏎️ Otros <span aria-hidden="true">⌄</span></summary>
+            <summary><img src="/images/ligas/otros.png" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Otros <span aria-hidden="true">⌄</span></summary>
             <div class="nav-menu nav-menu-otros">
               {categoriasOrdenadas.find(c => c.slug === "otros")?.equipos.map(seccion => (
-                <a href={`/equipos/${crearSlug(seccion)}`}><span aria-hidden="true">🏎️</span><span>{seccion}</span></a>
+                <a href={`/equipos/${crearSlug(seccion)}`}><img src="/images/equipos/f1.png" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" /><span>{seccion}</span></a>
               ))}
             </div>
           </details>
