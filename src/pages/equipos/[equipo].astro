@@ -529,7 +529,7 @@ const datosEstructurados = {
         <nav id="navegacion-principal" class="nav-principal" aria-label="Navegación principal">
           <a class="nav-activo" href="/">⌂ Inicio</a>
           <details class="nav-desplegable nav-ligas">
-            <summary>⚽ Ligas <span aria-hidden="true">⌄</span></summary>
+            <summary><span class="nav-ligas-icono" aria-hidden="true">⚽</span><span class="nav-ligas-titulo">Ligas</span><span aria-hidden="true">⌄</span></summary>
             <div class="nav-menu">
               {categoriasOrdenadas.filter(c => c.slug !== "selecciones" && c.slug !== "otros").map(c => (
                 <details class="nav-subcategoria">
@@ -10200,4 +10200,257 @@ import { jsPDF } from "jspdf";
  .cabecera .sugerencias-superiores {left:0;right:auto;width:100%;}
 }
 
+</style>
+
+
+<!-- Ajuste final: cabecera de las páginas interiores igual a Inicio SOLO en móvil. -->
+<style is:global>
+@media (max-width: 800px) {
+  .cabecera .cabecera-interior {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    min-width: 0;
+  }
+  .cabecera .marca { order: 0; min-width: 0; flex: 1 1 auto; }
+  .cabecera .marca-texto small { display: none; }
+  .cabecera .boton-menu-movil {
+    order: 1; display: inline-flex; align-items: center; justify-content: center;
+    gap: 7px; min-height: 42px; margin-left: auto; padding: 0 13px;
+    border: 1px solid #d7e3d9; border-radius: 11px;
+    background: #fff; color: #126b41; font-size: 15px; font-weight: 800;
+  }
+  .cabecera .boton-menu-movil[aria-expanded="true"] { background: #e9f5ed; }
+  .cabecera .guia-cabecera {
+    order: 2; display: flex; flex: 1 1 100%; width: 100%; margin: 0;
+  }
+  .cabecera .guia-cabecera .boton-guia-tallas {
+    width: 100%; min-height: 42px; justify-content: center;
+  }
+  .cabecera .nav-principal {
+    order: 3; display: none; flex: 1 1 100%; flex-direction: column;
+    align-items: stretch; width: 100%; max-width: none; margin: 0;
+    padding: 8px; gap: 4px; overflow: visible;
+    border: 1px solid #e0e9e2; border-radius: 13px; background: #fff;
+  }
+  .cabecera .nav-principal.menu-movil-abierto { display: flex; }
+  .cabecera .nav-principal > a,
+  .cabecera .nav-desplegable > summary {
+    display: flex; align-items: center; justify-content: center;
+    position: relative; width: 100%; min-height: 45px;
+    padding: 12px 32px; border-radius: 9px; font-size: 14px;
+    text-align: center; white-space: normal;
+  }
+  .cabecera .nav-desplegable { position: static; width: 100%; }
+  .cabecera .nav-desplegable > summary > span:last-child {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  }
+  .cabecera .nav-menu,
+  .cabecera .nav-menu-selecciones,
+  .cabecera .nav-menu-otros,
+  .cabecera .nav-ligas > .nav-menu {
+    position: static; display: grid; width: 100%; max-height: min(55dvh, 440px);
+    margin: 4px 0 8px; padding: 6px; overflow-x: hidden; overflow-y: auto;
+    border: 0; border-radius: 9px; box-shadow: none; background: #f5f9f6;
+  }
+  .cabecera .nav-desplegable:not([open]) > .nav-menu { display: none; }
+  .cabecera .nav-subcategoria { position: static; }
+  .cabecera .nav-subcategoria > summary { min-height: 44px; font-size: 13px; }
+  .cabecera .nav-ligas .nav-subflecha { transform: none; }
+  .cabecera .nav-ligas .nav-subcategoria[open] .nav-subflecha { transform: rotate(180deg); }
+  .cabecera .nav-ligas .nav-subcategoria > .nav-submenu {
+    position: static; display: none; width: auto; max-height: 260px;
+    margin: 2px 0 8px 12px; padding: 3px 0 3px 10px;
+    overflow-x: hidden; overflow-y: auto;
+    border: 0; border-left: 2px solid #cce4d3; border-radius: 0;
+    background: transparent; box-shadow: none;
+  }
+  .cabecera .nav-ligas .nav-subcategoria[open] > .nav-submenu { display: grid; }
+  .cabecera .nav-menu a, .cabecera .nav-submenu a {
+    min-height: 43px; font-size: 13px; white-space: normal;
+  }
+  .cabecera .nav-busqueda {
+    order: 4; display: block; flex: 1 1 100%; width: 100%; min-width: 0;
+  }
+  .cabecera .nav-busqueda input { height: 44px; font-size: 16px; }
+  .cabecera .sugerencias-superiores { width: 100%; max-width: 100%; }
+}
+</style>
+
+<!-- Igualación visual móvil con la cabecera de Inicio. Solo afecta hasta 800px. -->
+<style is:global>
+@media (max-width: 800px) {
+  /* La página interior conserva el subtítulo en escritorio. */
+  .cabecera .marca .marca-texto small,
+  .cabecera .marca:hover .marca-texto small,
+  .cabecera .marca:focus .marca-texto small { display: none !important; }
+
+  /* Inicio y Ligas: texto e icono a la izquierda, como en Inicio. */
+  .cabecera .nav-principal > a.nav-activo,
+  .cabecera .nav-principal > .nav-ligas > summary {
+    justify-content: flex-start;
+    text-align: left;
+    padding: 12px;
+    gap: 4px;
+  }
+  .cabecera .nav-principal > a.nav-activo { padding-left: 12px; }
+
+  /* Selecciones y Otros: nombre centrado e icono a la izquierda. */
+  .cabecera .nav-principal > .nav-desplegable:not(.nav-ligas) > summary {
+    justify-content: center;
+    text-align: center;
+    padding: 12px 35px;
+    position: relative;
+  }
+  .cabecera .nav-principal > .nav-desplegable:not(.nav-ligas) > summary > img {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-right: 0 !important;
+  }
+  .cabecera .nav-principal > .nav-desplegable > summary > span:last-child {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  /* Panel de ligas y filas verdes compactas, idénticas a Inicio. */
+  .cabecera .nav-ligas > .nav-menu {
+    display: grid;
+    gap: 3px;
+    padding: 6px;
+    margin: 4px 0 8px;
+    background: #f5f9f6;
+    border: 0;
+    border-radius: 9px;
+    box-shadow: none;
+    max-height: min(55dvh, 440px);
+    overflow-y: auto;
+  }
+  .cabecera .nav-ligas .nav-subcategoria { border-radius: 9px; }
+  .cabecera .nav-ligas .nav-subcategoria > summary {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 44px;
+    padding: 9px;
+    background: #edf4ef;
+    border-radius: 8px;
+    text-align: left;
+    font-size: 13px;
+  }
+  .cabecera .nav-ligas .nav-subcategoria > summary > img {
+    width: 25px;
+    height: 25px;
+    flex-shrink: 0;
+    object-fit: contain;
+  }
+  .cabecera .nav-ligas .nav-subcategoria > summary > span:nth-child(2) {
+    flex: 1;
+    text-align: left;
+  }
+  .cabecera .nav-ligas .nav-subcategoria > summary > .nav-subflecha {
+    margin-left: auto;
+  }
+}
+</style>
+
+<!-- Centrado preciso de Ligas exclusivamente en móvil. -->
+<style is:global>
+@media (max-width: 800px) {
+  .cabecera .nav-principal > .nav-ligas > summary {
+    display: grid;
+    grid-template-columns: 25px minmax(0, 1fr) 25px;
+    align-items: center;
+    justify-content: stretch;
+    gap: 0;
+    padding: 12px;
+    text-align: center;
+  }
+  .cabecera .nav-principal > .nav-ligas > summary > .nav-ligas-icono {
+    grid-column: 1;
+    position: static;
+    transform: none;
+    justify-self: start;
+  }
+  .cabecera .nav-principal > .nav-ligas > summary > .nav-ligas-titulo {
+    grid-column: 2;
+    position: static;
+    transform: none;
+    justify-self: center;
+    text-align: center;
+  }
+  .cabecera .nav-principal > .nav-ligas > summary > span:last-child {
+    grid-column: 3;
+    position: static;
+    transform: none;
+    justify-self: end;
+  }
+}
+</style>
+
+
+<!-- Ajuste final móvil: cabecera interior igual que Inicio. -->
+<style is:global>
+@media (max-width: 800px) {
+  .cabecera .nav-principal > .nav-ligas > summary {
+    display: grid !important;
+    grid-template-columns: 25px minmax(0, 1fr) 25px !important;
+    align-items: center !important;
+    justify-content: stretch !important;
+    column-gap: 0 !important;
+    padding: 12px !important;
+    text-align: center !important;
+  }
+  .cabecera .nav-principal > .nav-ligas > summary > .nav-ligas-icono {
+    grid-column: 1 !important;
+    justify-self: start !important;
+    position: static !important;
+    transform: none !important;
+    margin: 0 !important;
+  }
+  .cabecera .nav-principal > .nav-ligas > summary > .nav-ligas-titulo {
+    grid-column: 2 !important;
+    justify-self: center !important;
+    position: static !important;
+    transform: none !important;
+    margin: 0 !important;
+    text-align: center !important;
+  }
+  .cabecera .nav-principal > .nav-ligas > summary > span:last-child {
+    grid-column: 3 !important;
+    justify-self: end !important;
+    position: static !important;
+    transform: none !important;
+    margin: 0 !important;
+  }
+  .cabecera .guia-cabecera .boton-guia-tallas {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 9px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-height: 42px !important;
+    padding: 0 10px !important;
+    border: 1px solid #c69b22 !important;
+    border-radius: 11px !important;
+    background: #f5c842 !important;
+    color: #2d250b !important;
+    box-shadow: 0 3px 12px rgba(161,119,14,.18) !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    letter-spacing: .25px !important;
+    white-space: nowrap !important;
+  }
+  .cabecera .guia-cabecera .boton-guia-tallas svg {
+    width: 19px !important;
+    height: 19px !important;
+    flex-shrink: 0 !important;
+  }
+}
 </style>

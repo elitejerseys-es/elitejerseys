@@ -258,7 +258,7 @@ const datosEstructurados = {
         <nav id="navegacion-principal" class="nav-principal" aria-label="Navegación principal">
           <a class="nav-activo" href="/">⌂ Inicio</a>
           <details class="nav-desplegable nav-ligas">
-            <summary>⚽ Ligas <span aria-hidden="true">⌄</span></summary>
+            <summary><span class="nav-ligas-icono" aria-hidden="true">⚽</span><span class="nav-ligas-titulo">Ligas</span><span aria-hidden="true">⌄</span></summary>
             <div class="nav-menu">
               {categoriasOrdenadas.filter(c => c.slug !== "selecciones" && c.slug !== "otros").map(c => (
                 <details class="nav-subcategoria">
@@ -3175,5 +3175,39 @@ const datosEstructurados = {
   }
   html body .hero .hero-diapositiva { inset:0!important; }
   html body .hero .hero-diapositiva img { max-width:100%!important; max-height:100%!important; object-fit:contain!important; }
+}
+</style>
+
+<!-- Centrado preciso de Ligas exclusivamente en móvil. -->
+<style is:global>
+@media (max-width: 800px) {
+  .cabecera .nav-principal > .nav-ligas > summary {
+    display: grid;
+    grid-template-columns: 25px minmax(0, 1fr) 25px;
+    align-items: center;
+    justify-content: stretch;
+    gap: 0;
+    padding: 12px;
+    text-align: center;
+  }
+  .cabecera .nav-principal > .nav-ligas > summary > .nav-ligas-icono {
+    grid-column: 1;
+    position: static;
+    transform: none;
+    justify-self: start;
+  }
+  .cabecera .nav-principal > .nav-ligas > summary > .nav-ligas-titulo {
+    grid-column: 2;
+    position: static;
+    transform: none;
+    justify-self: center;
+    text-align: center;
+  }
+  .cabecera .nav-principal > .nav-ligas > summary > span:last-child {
+    grid-column: 3;
+    position: static;
+    transform: none;
+    justify-self: end;
+  }
 }
 </style>
