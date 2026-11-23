@@ -67,6 +67,11 @@ const categoriasOrdenadas = categorias.map((item) => ({
     .sort(ordenarEquipos)
 }));
 
+const indiceNavegacion = categoriasOrdenadas.flatMap(c => c.equipos.map(nombre => ({
+  nombre, nombreNormalizado: nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
+  href: `/equipos/${crearSlug(nombre)}`, escudo: obtenerEscudo(nombre)
+})));
+
 const indiceEquipoActual = equiposCategoria.indexOf(equipo);
 
 const equipoAnterior =
@@ -514,188 +519,52 @@ const datosEstructurados = {
             <small>Catálogo de camisetas de fútbol</small>
           </span>
         </a>
+        <button type="button" class="boton-menu-movil" id="boton-menu-movil" aria-controls="navegacion-principal" aria-expanded="false" aria-label="Abrir menú">☰ Menú</button>
+        <nav id="navegacion-principal" class="nav-principal" aria-label="Navegación principal">
+          <a class="nav-activo" href="/">⌂ Inicio</a>
+          <details class="nav-desplegable">
+            <summary>⚽ Ligas <span aria-hidden="true">⌄</span></summary>
+            <div class="nav-menu">
+              {categoriasOrdenadas.filter(c => c.slug !== "selecciones" && c.slug !== "otros").map(c => (
+                <details class="nav-subcategoria">
+                  <summary><img src={c.logo} alt="" width="25" height="25" /><span>{c.nombre}</span><span class="nav-subflecha" aria-hidden="true">⌄</span></summary>
+                  <div class="nav-submenu">
+                    {c.equipos.map(equipo => (
+                      <a href={`/equipos/${crearSlug(equipo)}`}><img src={obtenerEscudo(equipo)} alt="" width="25" height="25" loading="lazy" decoding="async" /><span>{equipo}</span></a>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </details>
+          <details class="nav-desplegable">
+            <summary><img src="/images/ligas/selecciones.png" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Selecciones <span aria-hidden="true">⌄</span></summary>
+            <div class="nav-menu nav-menu-selecciones">
+              {categoriasOrdenadas.find(c => c.slug === "selecciones")?.equipos.map(equipo => (
+                <a href={`/equipos/${crearSlug(equipo)}`}><img src={obtenerEscudo(equipo)} alt="" width="25" height="25" loading="lazy" />{equipo}</a>
+              ))}
+            </div>
+          </details>
+          <details class="nav-desplegable">
+            <summary><img src="/images/ligas/otros.png?v=2" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Otros <span aria-hidden="true">⌄</span></summary>
+            <div class="nav-menu nav-menu-otros">
+              {categoriasOrdenadas.find(c => c.slug === "otros")?.equipos.map(seccion => (
+                <a href={`/equipos/${crearSlug(seccion)}`}><img src="/images/equipos/f1.png?v=2" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" /><span>{seccion}</span></a>
+              ))}
+            </div>
+          </details>
+        </nav>
+        <div class="nav-busqueda">
+          <input id="buscador-superior" type="search" placeholder="⌕ Buscar equipos..." autocomplete="off" aria-label="Buscar equipos desde la cabecera" aria-controls="sugerencias-superiores" aria-expanded="false" />
+          <div id="sugerencias-superiores" class="sugerencias-superiores" hidden></div>
+        </div>
       </div>
     </header>
 
+    <script id="indice-navegacion" type="application/json" set:html={JSON.stringify(indiceNavegacion)} />
+
     <main id="contenido-principal" class="contenedor" tabindex="-1">
-      <nav class="migas" aria-label="Navegación">
-        <div class="menu-inicio">
-          <button
-            class="enlace-inicio"
-            type="button"
-            aria-haspopup="true"
-            aria-expanded="false"
-            aria-controls="menu-global"
-          >
-            <span>Inicio</span>
-            <span class="flecha-inicio">▾</span>
-          </button>
 
-          <div
-            id="menu-global"
-            class="desplegable-inicio"
-            aria-hidden="true"
-          >
-            <div class="titulo-desplegable">
-              Ligas y selecciones
-            </div>
-
-            <label class="busqueda-menu">
-              <span class="busqueda-menu-icono" aria-hidden="true">⌕</span>
-              <input
-                id="buscar-menu-global"
-                type="search"
-                placeholder="Buscar liga o equipo..."
-                autocomplete="off"
-                aria-label="Buscar liga o equipo"
-              />
-              <button
-                class="limpiar-busqueda-menu"
-                type="button"
-                aria-label="Limpiar búsqueda"
-                hidden
-              >
-                ×
-              </button>
-            </label>
-
-            <div class="lista-categorias">
-              {
-                categoriasOrdenadas.map((item) => (
-                  <details class="categoria-menu">
-                    <summary class="categoria-resumen">
-                      <span class="categoria-info">
-                        <span class="logo-categoria">
-                          <img
-                            src={item.logo}
-                            alt={`Logo de ${item.nombre}`}
-                            loading="lazy"
-                          />
-                        </span>
-
-                        <span>{item.nombre}</span>
-                      </span>
-
-                      <span class="flecha-categoria">▾</span>
-                    </summary>
-
-                    <div class="equipos-categoria">
-                      {
-                        item.equipos.map((nombreEquipo) => (
-                          <a
-                            href={`/equipos/${crearSlug(nombreEquipo)}`}
-                            class:list={[
-                              "enlace-equipo-inicio",
-                              { activo: nombreEquipo === equipo }
-                            ]}
-                            aria-current={nombreEquipo === equipo ? "page" : undefined}
-                          >
-                            <img
-                              src={obtenerEscudo(nombreEquipo)}
-                              alt=""
-                              loading="lazy"
-                              onerror="this.style.visibility='hidden'"
-                            />
-
-                            <span class="nombre-equipo-menu">
-                              {nombreEquipo}
-                            </span>
-
-                            {
-                              nombreEquipo === equipo && (
-                                <span class="marca-activo">✓</span>
-                              )
-                            }
-                          </a>
-                        ))
-                      }
-                    </div>
-                  </details>
-                ))
-              }
-            </div>
-          </div>
-        </div>
-
-        <span class="separador">›</span>
-
-        <div class="menu-liga">
-          <button
-            class="enlace-liga"
-            type="button"
-            aria-haspopup="true"
-            aria-expanded="false"
-            aria-controls="menu-liga"
-          >
-            <span>{categoria}</span>
-            <span class="flecha-menu">▾</span>
-          </button>
-
-          <div
-            id="menu-liga"
-            class="desplegable-liga"
-            aria-hidden="true"
-          >
-            <div class="titulo-desplegable">
-              Equipos de {categoria}
-            </div>
-
-            <label class="busqueda-menu">
-              <span class="busqueda-menu-icono" aria-hidden="true">⌕</span>
-              <input
-                id="buscar-menu-liga"
-                type="search"
-                placeholder="Buscar equipo..."
-                autocomplete="off"
-                aria-label={`Buscar equipo de ${categoria}`}
-              />
-              <button
-                class="limpiar-busqueda-menu"
-                type="button"
-                aria-label="Limpiar búsqueda"
-                hidden
-              >
-                ×
-              </button>
-            </label>
-
-            <div class="lista-equipos">
-              {
-                equiposCategoria.map((nombreEquipo) => (
-                  <a
-                    href={`/equipos/${crearSlug(nombreEquipo)}`}
-                    class:list={[
-                      "enlace-equipo-menu",
-                      { activo: nombreEquipo === equipo }
-                    ]}
-                    aria-current={nombreEquipo === equipo ? "page" : undefined}
-                  >
-                    <img
-                      src={obtenerEscudo(nombreEquipo)}
-                      alt=""
-                      loading="lazy"
-                      onerror="this.style.visibility='hidden'"
-                    />
-
-                    <span class="nombre-equipo-menu">
-                      {nombreEquipo}
-                    </span>
-
-                    {
-                      nombreEquipo === equipo && (
-                        <span class="marca-activo">✓</span>
-                      )
-                    }
-                  </a>
-                ))
-              }
-            </div>
-          </div>
-        </div>
-
-        <span class="separador">›</span>
-        <strong>{equipo}</strong>
-      </nav>
 
       <button
         id="fondo-menus"
@@ -955,6 +824,34 @@ const datosEstructurados = {
         </button>
       </div>
     </div>
+
+    <script>
+      const botonMovil = document.querySelector<HTMLButtonElement>("#boton-menu-movil");
+      const navegacion = document.querySelector<HTMLElement>("#navegacion-principal");
+      const cerrarMovil = () => { navegacion?.classList.remove("menu-movil-abierto"); botonMovil?.setAttribute("aria-expanded", "false"); };
+      botonMovil?.addEventListener("click", () => { const abrir = !navegacion?.classList.contains("menu-movil-abierto"); navegacion?.classList.toggle("menu-movil-abierto", abrir); botonMovil.setAttribute("aria-expanded", String(abrir)); });
+      navegacion?.querySelectorAll("a").forEach(a => a.addEventListener("click", cerrarMovil));
+      const menus = [...document.querySelectorAll<HTMLDetailsElement>("#navegacion-principal .nav-desplegable")];
+      menus.forEach(menu => menu.addEventListener("toggle", () => { if(menu.open) menus.forEach(otro => { if(otro!==menu) otro.open=false; }); }));
+      document.querySelectorAll<HTMLDetailsElement>("#navegacion-principal .nav-subcategoria").forEach(menu => menu.addEventListener("toggle", () => { if(menu.open) document.querySelectorAll<HTMLDetailsElement>("#navegacion-principal .nav-subcategoria").forEach(otro => { if(otro!==menu) otro.open=false; }); }));
+      const input = document.querySelector<HTMLInputElement>("#buscador-superior");
+      const panel = document.querySelector<HTMLElement>("#sugerencias-superiores");
+      const indice = JSON.parse(document.querySelector<HTMLScriptElement>("#indice-navegacion")?.textContent || "[]") as Array<{nombre:string;nombreNormalizado:string;href:string;escudo:string}>;
+      const cerrarBusqueda = () => { if(panel) panel.hidden=true; input?.setAttribute("aria-expanded","false"); };
+      const actualizarBusqueda = () => {
+        if(!input || !panel) return;
+        const q=input.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        panel.replaceChildren(); if(!q){cerrarBusqueda();return;}
+        const resultados=indice.filter(x=>x.nombreNormalizado.includes(q)).slice(0,8);
+        resultados.forEach(x=>{const a=document.createElement("a");a.href=x.href;a.className="sugerencia-superior";const img=document.createElement("img");img.src=x.escudo;img.alt="";img.width=28;img.height=28;const span=document.createElement("span");span.textContent=x.nombre;a.append(img,span);panel.append(a);});
+        if(!resultados.length){const p=document.createElement("p");p.textContent="No se encontraron equipos";panel.append(p);}
+        panel.hidden=false;input.setAttribute("aria-expanded","true");
+      };
+      input?.addEventListener("input",actualizarBusqueda);input?.addEventListener("focus",actualizarBusqueda);
+      input?.addEventListener("keydown",e=>{if(e.key==="Escape")cerrarBusqueda();if(e.key==="Enter"){const a=panel?.querySelector<HTMLAnchorElement>("a");if(a){e.preventDefault();location.href=a.href;}}});
+      document.addEventListener("click",e=>{if(!(e.target instanceof Element))return;if(!e.target.closest(".nav-busqueda"))cerrarBusqueda();if(!e.target.closest(".nav-desplegable"))menus.forEach(m=>m.open=false);});
+      document.addEventListener("keydown",e=>{if(e.key==="Escape"){cerrarMovil();cerrarBusqueda();}});
+    </script>
 
     <script>
       const $ = <T extends Element>(selector: string) =>
@@ -10143,4 +10040,47 @@ import { jsPDF } from "jspdf";
     font-size:13px!important; margin:0!important; align-self:center!important;
   }
 }
+</style>
+
+<style>
+
+/* Navegación compartida con la portada. */
+.cabecera .cabecera-interior { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.cabecera .marca { flex-shrink:0; }
+.cabecera .nav-principal { display:flex; align-items:center; gap:6px; margin-left:auto; }
+.cabecera .nav-principal > a, .cabecera .nav-desplegable > summary { display:flex; align-items:center; gap:4px; padding:10px 11px; border-radius:11px; font-size:12px; font-weight:750; color:#26352c; text-decoration:none; white-space:nowrap; cursor:pointer; list-style:none; }
+.cabecera .nav-principal > a.nav-activo { background:#08703f; color:#fff; }
+.cabecera .nav-desplegable > summary::-webkit-details-marker, .cabecera .nav-subcategoria > summary::-webkit-details-marker {display:none;}
+.cabecera .nav-desplegable {position:relative;}
+.cabecera .nav-desplegable[open] > summary, .cabecera .nav-desplegable > summary:hover {background:#edf4ef;}
+.cabecera .nav-menu {position:absolute;top:calc(100% + 8px);left:0;display:grid;gap:3px;width:235px;max-height:min(70vh,560px);overflow-y:auto;padding:9px;border:1px solid #dde8e0;border-radius:13px;background:white;box-shadow:0 14px 40px #102c1b24;z-index:1100;}
+.cabecera .nav-desplegable:not([open]) > .nav-menu {display:none;}
+.cabecera .nav-menu-selecciones {width:255px;}.cabecera .nav-menu-otros {width:180px;}
+.cabecera .nav-menu a {display:flex;align-items:center;gap:9px;padding:9px;border-radius:8px;text-decoration:none;color:#24382a;font-size:12px;font-weight:650;}
+.cabecera .nav-menu a:hover,.cabecera .nav-subcategoria > summary:hover {background:#eef7f1;}
+.cabecera .nav-menu img {width:25px;height:25px;object-fit:contain;}
+.cabecera .nav-subcategoria {position:relative;}
+.cabecera .nav-subcategoria > summary {display:flex;align-items:center;gap:9px;padding:9px;border-radius:8px;cursor:pointer;list-style:none;font-size:12px;font-weight:700;}
+.cabecera .nav-subcategoria > summary span:nth-child(2) {flex:1;}
+.cabecera .nav-subflecha {margin-left:auto;}
+.cabecera .nav-submenu {position:absolute;top:0;left:calc(100% + 12px);z-index:1200;width:270px;max-height:min(70vh,560px);overflow-y:auto;display:grid;gap:2px;padding:9px;border:1px solid #dde8e0;border-radius:13px;background:white;box-shadow:0 14px 40px #102c1b24;}
+.cabecera .nav-subcategoria:not([open]) > .nav-submenu {display:none;}
+.cabecera .nav-busqueda {position:relative;width:205px;flex-shrink:0;}
+.cabecera .nav-busqueda input {width:100%;height:41px;padding:0 12px;border:1px solid #dfe6e2;border-radius:11px;background:#f8faf8;color:#26352c;font-size:12px;}
+.cabecera .sugerencias-superiores {position:absolute;top:calc(100% + 8px);right:0;width:310px;max-height:410px;overflow:auto;z-index:1300;padding:7px;border:1px solid #dde8e0;border-radius:13px;background:white;box-shadow:0 14px 40px #102c1b24;}
+.cabecera .sugerencias-superiores[hidden] {display:none;}
+.cabecera .sugerencias-superiores :global(.sugerencia-superior) {display:flex;align-items:center;gap:10px;padding:9px;text-decoration:none;color:#203526;font-size:12px;font-weight:700;}
+.cabecera .sugerencias-superiores :global(.sugerencia-superior img) {width:28px;height:28px;object-fit:contain;}
+.cabecera .boton-menu-movil {display:none;}
+@media(max-width:800px) {
+ .cabecera .cabecera-interior {gap:8px;}
+ .cabecera .boton-menu-movil {display:block;margin-left:auto;padding:9px 12px;border:1px solid #dce6df;border-radius:10px;background:#f5faf6;color:#185638;font-weight:700;}
+ .cabecera .nav-principal {display:none;width:100%;margin:0;flex-direction:column;align-items:stretch;overflow:visible;}
+ .cabecera .nav-principal.menu-movil-abierto {display:flex;}
+ .cabecera .nav-desplegable > summary,.cabecera .nav-principal > a {width:100%;}
+ .cabecera .nav-menu,.cabecera .nav-submenu {position:static;width:100%;max-height:45vh;overflow-y:auto;box-shadow:none;margin:5px 0;}
+ .cabecera .nav-busqueda {width:100%;}
+ .cabecera .sugerencias-superiores {left:0;right:auto;width:100%;}
+}
+
 </style>
