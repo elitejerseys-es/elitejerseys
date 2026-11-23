@@ -520,9 +520,15 @@ const datosEstructurados = {
           </span>
         </a>
         <button type="button" class="boton-menu-movil" id="boton-menu-movil" aria-controls="navegacion-principal" aria-expanded="false" aria-label="Abrir menú">☰ Menú</button>
+        <div class="guia-cabecera">
+          <button type="button" class="boton-guia-tallas" id="abrir-guia-tallas" aria-haspopup="dialog" aria-controls="modal-guia-tallas">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 8.7 15.3 2.7a2 2 0 0 0-2.8 0L2.7 12.5a2 2 0 0 0 0 2.8l6 6a2 2 0 0 0 2.8 0l9.8-9.8a2 2 0 0 0 0-2.8Z"/><path d="m7.5 10.5 2 2m1-5 2 2m1-5 2 2m-9 7 2 2"/></svg>
+            GUÍA DE TALLAS
+          </button>
+        </div>
         <nav id="navegacion-principal" class="nav-principal" aria-label="Navegación principal">
           <a class="nav-activo" href="/">⌂ Inicio</a>
-          <details class="nav-desplegable">
+          <details class="nav-desplegable nav-ligas">
             <summary>⚽ Ligas <span aria-hidden="true">⌄</span></summary>
             <div class="nav-menu">
               {categoriasOrdenadas.filter(c => c.slug !== "selecciones" && c.slug !== "otros").map(c => (
@@ -562,6 +568,13 @@ const datosEstructurados = {
     </header>
 
     <script id="indice-navegacion" type="application/json" set:html={JSON.stringify(indiceNavegacion)} />
+
+    <dialog id="modal-guia-tallas" class="modal-guia-tallas" aria-label="Guía de tallas de Elite Jerseys">
+      <div class="modal-guia-interior">
+        <button type="button" id="cerrar-guia-tallas" class="cerrar-guia-tallas" aria-label="Cerrar guía de tallas">×</button>
+        <img src="/images/guia-tallas-elite-jerseys.png" alt="Guía de tallas de Elite Jerseys: versión aficionado y conjuntos de niño" width="1536" height="1024" loading="lazy" decoding="async" />
+      </div>
+    </dialog>
 
     <main id="contenido-principal" class="contenedor" tabindex="-1">
 
@@ -826,6 +839,12 @@ const datosEstructurados = {
     </div>
 
     <script>
+      const botonAbrirGuia = document.querySelector<HTMLButtonElement>("#abrir-guia-tallas");
+      const botonCerrarGuia = document.querySelector<HTMLButtonElement>("#cerrar-guia-tallas");
+      const modalGuia = document.querySelector<HTMLDialogElement>("#modal-guia-tallas");
+      botonAbrirGuia?.addEventListener("click", () => modalGuia?.showModal());
+      botonCerrarGuia?.addEventListener("click", () => modalGuia?.close());
+      modalGuia?.addEventListener("click", evento => { if(evento.target === modalGuia) modalGuia.close(); });
       const botonMovil = document.querySelector<HTMLButtonElement>("#boton-menu-movil");
       const navegacion = document.querySelector<HTMLElement>("#navegacion-principal");
       const cerrarMovil = () => { navegacion?.classList.remove("menu-movil-abierto"); botonMovil?.setAttribute("aria-expanded", "false"); };
@@ -1727,6 +1746,40 @@ const datosEstructurados = {
     background-color: #f2f6f3 !important;
     background-image: none !important;
   }
+}
+</style>
+
+
+<!-- Ajustes de cabecera: misma apariencia que index.astro, sin alterar el catálogo. -->
+<style>
+@media (min-width:801px) {
+  .cabecera .cabecera-interior { min-height:70px; gap:20px; flex-wrap:nowrap; }
+  .cabecera .guia-cabecera { flex:0 0 auto; display:flex; align-items:center; justify-content:center; margin-left:8px; }
+  .cabecera .guia-cabecera .boton-guia-tallas {
+    display:inline-flex; align-items:center; justify-content:center; gap:9px;
+    width:auto; min-height:43px; padding:0 16px;
+    border:1px solid #c69b22; border-radius:11px;
+    color:#2d250b; background:#f5c842;
+    box-shadow:0 3px 12px rgba(161,119,14,.18);
+    font-size:12px; font-weight:900; letter-spacing:.25px; white-space:nowrap;
+  }
+  .cabecera .guia-cabecera .boton-guia-tallas:hover { background:#ffda65; transform:translateY(-1px); }
+  .cabecera .guia-cabecera .boton-guia-tallas svg { width:19px; height:19px; flex-shrink:0; }
+  .cabecera .nav-ligas > .nav-menu { top:calc(100% + 10px); gap:2px; }
+  .cabecera .nav-ligas .nav-subcategoria > summary {
+    min-height:44px; color:#24382a; background:#eaf3ed; border-radius:9px;
+    padding:9px; font-size:12px; font-weight:700;
+  }
+  .cabecera .nav-ligas .nav-subcategoria > summary:hover,
+  .cabecera .nav-ligas .nav-subcategoria[open] > summary { background:#dceee2; }
+  .cabecera .nav-ligas .nav-subcategoria > summary img { flex-shrink:0; width:25px; height:25px; object-fit:contain; }
+  .cabecera .nav-ligas .nav-subflecha,
+  .cabecera .nav-ligas .nav-subcategoria[open] .nav-subflecha { transform:rotate(-90deg); color:#718277; }
+  .cabecera .nav-ligas .nav-subcategoria > .nav-submenu { border:1px solid #dde8e0; border-radius:13px; background:#fff; box-shadow:0 14px 40px #102c1b24; }
+}
+@media (min-width:801px) and (max-width:1100px) {
+  .cabecera .guia-cabecera { margin-left:0; }
+  .cabecera .guia-cabecera .boton-guia-tallas { padding:0 10px; font-size:11px; }
 }
 </style>
 
@@ -10045,6 +10098,51 @@ import { jsPDF } from "jspdf";
 <style>
 
 /* Navegación compartida con la portada. */
+   .boton-guia-tallas {
+     flex: 0 0 auto;
+     display: inline-flex;
+     align-items: center;
+     justify-content: center;
+     gap: 11px;
+     min-height: 62px;
+     padding: 0 24px;
+     border: 1px solid #c9a34c;
+     border-radius: 13px;
+     color: #18251d;
+     background: #dfbd68;
+     box-shadow: 0 8px 22px rgba(42, 64, 45, .11);
+     font-size: 14px;
+     font-weight: 900;
+     letter-spacing: .45px;
+     cursor: pointer;
+     transition: transform .18s ease, background .18s ease;
+   }
+   .boton-guia-tallas:hover { background: #edca74; transform: translateY(-2px); }
+   .modal-guia-tallas {
+     position: fixed;
+     width: min(1200px, calc(100vw - 28px));
+     max-width: none;
+     max-height: calc(100dvh - 30px);
+     margin: auto;
+     padding: 0;
+     border: 0;
+     border-radius: 16px;
+     background: transparent;
+     overflow: visible;
+   }
+   .modal-guia-tallas::backdrop { background: rgba(0, 0, 0, .88); }
+   .modal-guia-interior { position: relative; }
+   .modal-guia-interior img {
+     display: block;
+     width: 100%;
+     max-height: calc(100dvh - 30px);
+     object-fit: contain;
+     border-radius: 12px;
+   }
+   .cerrar-guia-tallas { position:absolute;z-index:2;top:9px;right:9px;width:42px;height:42px;border:1px solid rgba(255,255,255,.3);border-radius:50%;color:white;background:rgba(0,0,0,.78);font-size:30px;cursor:pointer; }
+   .cabecera .guia-cabecera {flex-shrink:0;}
+   @media(max-width:800px){.cabecera .guia-cabecera{order:3;width:100%;}.cabecera .boton-guia-tallas{min-height:44px;width:100%;}}
+
 .cabecera .cabecera-interior { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
 .cabecera .marca { flex-shrink:0; }
 .cabecera .nav-principal { display:flex; align-items:center; gap:6px; margin-left:auto; }
@@ -10072,6 +10170,25 @@ import { jsPDF } from "jspdf";
 .cabecera .sugerencias-superiores :global(.sugerencia-superior) {display:flex;align-items:center;gap:10px;padding:9px;text-decoration:none;color:#203526;font-size:12px;font-weight:700;}
 .cabecera .sugerencias-superiores :global(.sugerencia-superior img) {width:28px;height:28px;object-fit:contain;}
 .cabecera .boton-menu-movil {display:none;}
+/* Escritorio: primer panel sin recorte; segundo panel flotante a la derecha. */
+@media (min-width:801px) {
+ .cabecera .nav-ligas > .nav-menu {
+   position:absolute; top:calc(100% + 8px); left:0;
+   width:245px; height:auto; max-height:none;
+   overflow:visible; overflow-x:visible; overflow-y:visible;
+   display:grid; gap:3px; padding:9px;
+ }
+ .cabecera .nav-ligas .nav-subcategoria {position:relative;}
+ .cabecera .nav-ligas .nav-subcategoria > summary {min-height:44px;}
+ .cabecera .nav-ligas .nav-subflecha {transform:rotate(-90deg);}
+ .cabecera .nav-ligas .nav-subcategoria > .nav-submenu {
+   display:none; position:absolute; top:0; left:calc(100% + 12px);
+   width:270px; max-height:min(70vh,560px);
+   overflow-x:hidden; overflow-y:auto; z-index:2000;
+   margin:0; padding:9px; border-left:1px solid #dde8e0;
+ }
+ .cabecera .nav-ligas .nav-subcategoria[open] > .nav-submenu {display:grid;}
+}
 @media(max-width:800px) {
  .cabecera .cabecera-interior {gap:8px;}
  .cabecera .boton-menu-movil {display:block;margin-left:auto;padding:9px 12px;border:1px solid #dce6df;border-radius:10px;background:#f5faf6;color:#185638;font-weight:700;}
