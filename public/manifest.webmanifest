@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "Elite Jerseys",
+  "short_name": "Elite Jerseys",
+  "description": "Catálogo independiente de camisetas de fútbol",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111713",
+  "theme_color": "#111713",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

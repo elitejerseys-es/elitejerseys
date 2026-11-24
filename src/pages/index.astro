@@ -73,10 +73,6 @@ const categoriasOrdenadas = categoriasConMetricas.map((categoria) => ({
   equipos: categoria.equipos
     .slice()
     .sort((a, b) => {
-      if (categoria.slug === "liga-espanola") {
-        if (a === "Otros clubes") return 1;
-        if (b === "Otros clubes") return -1;
-      }
       return a.localeCompare(b, "es");
     })
 }));
@@ -165,11 +161,11 @@ const carruselPortada = [...productosPortada];
 
 const tituloPagina = "Elite Jerseys | Catálogo de camisetas de fútbol";
 const descripcionPagina =
-  `Explora ${totalCamisetas} camisetas de ${totalEquipos} equipos, organizadas por liga, temporada y tipo de equipación.`;
+  "Descubre nuestro catálogo de camisetas de clubes y selecciones. Personaliza tu equipación y solicita tu presupuesto.";
 
 const canonicalUrl = new URL("/", Astro.site).href;
 const imagenSocial = new URL(
-  "/images/logo-elite-jerseys.webp",
+  "/icon-512.png",
   Astro.site
 ).href;
 
@@ -211,7 +207,7 @@ const datosEstructurados = {
     <link rel="canonical" href={canonicalUrl} />
     <link
       rel="preload"
-      href="/images/logo-elite-jerseys.webp"
+      href="/logo-elite-jerseys.webp"
       as="image"
       fetchpriority="high"
     />
@@ -235,6 +231,10 @@ const datosEstructurados = {
     />
 
     <title>{tituloPagina}</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
   </head>
 
   <body>
@@ -245,7 +245,7 @@ const datosEstructurados = {
     <header class="cabecera">
       <div class="contenedor cabecera-interior">
         <a href="/" class="marca" aria-label="Página de inicio">
-          <span class="marca-icono"><img src="/images/logo-elite-jerseys.webp" alt="" width="46" height="46" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" /><span class="marca-icono-fallback">EJ</span></span>
+          <span class="marca-icono"><img src="/logo-elite-jerseys.webp" alt="" width="46" height="46" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" /><span class="marca-icono-fallback">EJ</span></span>
           <span class="marca-texto"><strong>Elite Jerseys</strong><small>Catálogo independiente de camisetas de fútbol</small></span>
         </a>
         <button type="button" class="boton-menu-movil" id="boton-menu-movil" aria-controls="navegacion-principal" aria-expanded="false" aria-label="Abrir menú de navegación">☰ <span>Menú</span></button>

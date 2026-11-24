@@ -10,8 +10,7 @@ export const categorias = [
       "RC Deportivo", "CD Leganés", "Levante UD", "Málaga CF",
       "RCD Mallorca", "Racing de Santander", "Rayo Vallecano", "Real Betis",
       "Real Madrid", "Real Oviedo", "Real Sociedad", "Real Valladolid CF",
-      "Real Zaragoza", "Sevilla FC", "Valencia CF", "Villarreal CF",
-      "Otros clubes"
+      "Real Zaragoza", "Sevilla FC", "Valencia CF", "Villarreal CF"
     ]
   },
   {
@@ -77,8 +76,6 @@ export const categorias = [
 ];
 
 export function crearSlug(texto: string) {
-  // Identificador único de Otros clubes de Liga Española.
-  if (texto === "Otros clubes") return "otros-clubes-liga-espanola";
   return texto
     .toLowerCase()
     .normalize("NFD")
