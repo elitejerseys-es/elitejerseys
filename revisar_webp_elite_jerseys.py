@@ -3,7 +3,7 @@ from collections import Counter
 from PIL import Image
 
 RAIZ = Path(__file__).resolve().parent / 'public'
-CARPETAS = ('camisetas', 'miniaturas')
+CARPETAS = ('camisetas', 'miniaturas', 'images', 'parches')
 EXTENSIONES = {'.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff', '.gif', '.avif', '.webp'}
 
 def main():

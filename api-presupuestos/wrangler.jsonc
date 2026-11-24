@@ -1,0 +1,23 @@
+{
+  "name": "elitejerseys-presupuestos-api",
+  "main": "index.js",
+  "compatibility_date": "2026-11-24",
+  "workers_dev": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "elitejerseys-presupuestos",
+      "database_id": "9497e8c8-9457-4361-8004-2fab87f8d07b"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "LIMITADOR",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 10,
+        "period": 60
+      }
+    }
+  ]
+}

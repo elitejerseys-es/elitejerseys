@@ -3,7 +3,7 @@ export const categorias = [
     nombre: "Liga Española",
     temporada: "2026/27",
     slug: "liga-espanola",
-    logo: "/images/ligas/laliga.png",
+    logo: "/images/ligas/laliga.webp",
     equipos: [
       "UD Almería", "Athletic Club", "Atlético de Madrid", "CA Osasuna",
       "Celta", "Deportivo Alavés", "RCD Espanyol", "FC Barcelona", "Getafe CF", "Girona FC",
@@ -18,7 +18,7 @@ export const categorias = [
     nombre: "Liga Inglesa",
     temporada: "2026/27",
     slug: "liga-inglesa",
-    logo: "/images/ligas/premier-league.png",
+    logo: "/images/ligas/premier-league.webp",
     equipos: [
       "Arsenal", "Aston Villa", "Chelsea", "Crystal Palace", "Everton",
       "Leicester City", "Liverpool", "Manchester City", "Manchester United",
@@ -29,7 +29,7 @@ export const categorias = [
     nombre: "Liga Italiana",
     temporada: "2026/27",
     slug: "liga-italiana",
-    logo: "/images/ligas/serie-a.png",
+    logo: "/images/ligas/serie-a.webp",
     equipos: [
       "AC Milan", "Roma", "Atalanta", "Como", "Fiorentina", "Inter",
       "Juventus", "Lazio", "Napoli", "Parma", "Sassuolo"
@@ -39,7 +39,7 @@ export const categorias = [
     nombre: "Liga Francesa",
     temporada: "2026/27",
     slug: "liga-francesa",
-    logo: "/images/ligas/ligue-1.png",
+    logo: "/images/ligas/ligue-1.webp",
     equipos: [
       "OGC Nice", "Olympique Lyonnais", "Olympique de Marseille",
       "Paris Saint-Germain"
@@ -49,7 +49,7 @@ export const categorias = [
     nombre: "Liga Alemana",
     temporada: "2026/27",
     slug: "liga-alemana",
-    logo: "/images/ligas/bundesliga.png",
+    logo: "/images/ligas/bundesliga.webp",
     equipos: [
       "Bayer Leverkusen", "Bayern Munich", "Borussia Dortmund",
       "Borussia Mönchengladbach", "Eintracht Frankfurt", "Union Berlin",
@@ -60,7 +60,7 @@ export const categorias = [
     nombre: "Selecciones",
     temporada: "2026",
     slug: "selecciones",
-    logo: "/images/ligas/selecciones.png",
+    logo: "/images/ligas/selecciones.webp",
     equipos: [
       "Alemania", "Argentina", "Bélgica", "Brasil", "Colombia", "Croacia", "Curazao", "España", "Estados Unidos",
       "Francia", "Inglaterra", "Italia", "Japón", "Marruecos",
@@ -71,7 +71,7 @@ export const categorias = [
     nombre: "Otros",
     temporada: "",
     slug: "otros",
-    logo: "/images/ligas/otros.png",
+    logo: "/images/ligas/otros.webp",
     equipos: ["F1"]
   }
 ];
@@ -89,5 +89,5 @@ export function crearSlug(texto: string) {
 }
 
 export function obtenerEscudo(equipo: string) {
-  return `/images/equipos/${crearSlug(equipo)}.png`;
+  return `/images/equipos/${crearSlug(equipo)}.webp`;
 }

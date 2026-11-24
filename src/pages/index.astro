@@ -169,7 +169,7 @@ const descripcionPagina =
 
 const canonicalUrl = new URL("/", Astro.site).href;
 const imagenSocial = new URL(
-  "/images/logo-elite-jerseys.png",
+  "/images/logo-elite-jerseys.webp",
   Astro.site
 ).href;
 
@@ -211,7 +211,7 @@ const datosEstructurados = {
     <link rel="canonical" href={canonicalUrl} />
     <link
       rel="preload"
-      href="/images/logo-elite-jerseys.png"
+      href="/images/logo-elite-jerseys.webp"
       as="image"
       fetchpriority="high"
     />
@@ -245,7 +245,7 @@ const datosEstructurados = {
     <header class="cabecera">
       <div class="contenedor cabecera-interior">
         <a href="/" class="marca" aria-label="Página de inicio">
-          <span class="marca-icono"><img src="/images/logo-elite-jerseys.png" alt="" width="46" height="46" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" /><span class="marca-icono-fallback">EJ</span></span>
+          <span class="marca-icono"><img src="/images/logo-elite-jerseys.webp" alt="" width="46" height="46" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" /><span class="marca-icono-fallback">EJ</span></span>
           <span class="marca-texto"><strong>Elite Jerseys</strong><small>Catálogo independiente de camisetas de fútbol</small></span>
         </a>
         <button type="button" class="boton-menu-movil" id="boton-menu-movil" aria-controls="navegacion-principal" aria-expanded="false" aria-label="Abrir menú de navegación">☰ <span>Menú</span></button>
@@ -273,7 +273,7 @@ const datosEstructurados = {
             </div>
           </details>
           <details class="nav-desplegable">
-            <summary><img src="/images/ligas/selecciones.png" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Selecciones <span aria-hidden="true">⌄</span></summary>
+            <summary><img src="/images/ligas/selecciones.webp" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Selecciones <span aria-hidden="true">⌄</span></summary>
             <div class="nav-menu nav-menu-selecciones">
               {categoriasOrdenadas.find(c => c.slug === "selecciones")?.equipos.map(equipo => (
                 <a href={`/equipos/${crearSlug(equipo)}`}><img src={obtenerEscudo(equipo)} alt="" width="25" height="25" loading="lazy" />{equipo}</a>
@@ -281,10 +281,10 @@ const datosEstructurados = {
             </div>
           </details>
           <details class="nav-desplegable">
-            <summary><img src="/images/ligas/otros.png?v=2" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Otros <span aria-hidden="true">⌄</span></summary>
+            <summary><img src="/images/ligas/otros.webp?v=2" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Otros <span aria-hidden="true">⌄</span></summary>
             <div class="nav-menu nav-menu-otros">
               {categoriasOrdenadas.find(c => c.slug === "otros")?.equipos.map(seccion => (
-                <a href={`/equipos/${crearSlug(seccion)}`}><img src="/images/equipos/f1.png?v=2" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" /><span>{seccion}</span></a>
+                <a href={`/equipos/${crearSlug(seccion)}`}><img src="/images/equipos/f1.webp?v=2" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" /><span>{seccion}</span></a>
               ))}
             </div>
           </details>
@@ -321,7 +321,7 @@ const datosEstructurados = {
         {categoriasOrdenadas.map((categoria) => (
           <div class="acceso-categoria">
             <img
-              src={categoria.slug === "otros" ? "/images/ligas/otros.png?v=2" : categoria.logo}
+              src={categoria.slug === "otros" ? "/images/ligas/otros.webp?v=2" : categoria.logo}
               alt=""
               width="55"
               height="55"
@@ -461,7 +461,7 @@ const datosEstructurados = {
     <dialog id="modal-guia-tallas" class="modal-guia-tallas" aria-label="Guía de tallas de Elite Jerseys">
       <div class="modal-guia-interior">
         <button type="button" id="cerrar-guia-tallas" class="cerrar-guia-tallas" aria-label="Cerrar guía de tallas">×</button>
-        <img src="/images/guia-tallas-elite-jerseys.png" alt="Guía de tallas de Elite Jerseys: versión aficionado y conjuntos de niño" width="1536" height="1024" loading="lazy" decoding="async" />
+        <img src="/images/guia-tallas-elite-jerseys.webp" alt="Guía de tallas de Elite Jerseys: versión aficionado y conjuntos de niño" width="1536" height="1024" loading="lazy" decoding="async" />
       </div>
     </dialog>
 

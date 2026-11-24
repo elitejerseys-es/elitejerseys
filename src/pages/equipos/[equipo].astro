@@ -506,7 +506,7 @@ const datosEstructurados = {
         <a href="/" class="marca" aria-label="Ir al inicio">
           <span class="marca-icono">
             <img
-              src="/images/logo-elite-jerseys.png"
+              src="/images/logo-elite-jerseys.webp"
               alt=""
               aria-hidden="true"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
@@ -544,7 +544,7 @@ const datosEstructurados = {
             </div>
           </details>
           <details class="nav-desplegable">
-            <summary><img src="/images/ligas/selecciones.png" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Selecciones <span aria-hidden="true">⌄</span></summary>
+            <summary><img src="/images/ligas/selecciones.webp" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Selecciones <span aria-hidden="true">⌄</span></summary>
             <div class="nav-menu nav-menu-selecciones">
               {categoriasOrdenadas.find(c => c.slug === "selecciones")?.equipos.map(equipo => (
                 <a href={`/equipos/${crearSlug(equipo)}`}><img src={obtenerEscudo(equipo)} alt="" width="25" height="25" loading="lazy" />{equipo}</a>
@@ -552,10 +552,10 @@ const datosEstructurados = {
             </div>
           </details>
           <details class="nav-desplegable">
-            <summary><img src="/images/ligas/otros.png?v=2" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Otros <span aria-hidden="true">⌄</span></summary>
+            <summary><img src="/images/ligas/otros.webp?v=2" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Otros <span aria-hidden="true">⌄</span></summary>
             <div class="nav-menu nav-menu-otros">
               {categoriasOrdenadas.find(c => c.slug === "otros")?.equipos.map(seccion => (
-                <a href={`/equipos/${crearSlug(seccion)}`}><img src="/images/equipos/f1.png?v=2" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" /><span>{seccion}</span></a>
+                <a href={`/equipos/${crearSlug(seccion)}`}><img src="/images/equipos/f1.webp?v=2" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" /><span>{seccion}</span></a>
               ))}
             </div>
           </details>
@@ -572,7 +572,7 @@ const datosEstructurados = {
     <dialog id="modal-guia-tallas" class="modal-guia-tallas" aria-label="Guía de tallas de Elite Jerseys">
       <div class="modal-guia-interior">
         <button type="button" id="cerrar-guia-tallas" class="cerrar-guia-tallas" aria-label="Cerrar guía de tallas">×</button>
-        <img src="/images/guia-tallas-elite-jerseys.png" alt="Guía de tallas de Elite Jerseys: versión aficionado y conjuntos de niño" width="1536" height="1024" loading="lazy" decoding="async" />
+        <img src="/images/guia-tallas-elite-jerseys.webp" alt="Guía de tallas de Elite Jerseys: versión aficionado y conjuntos de niño" width="1536" height="1024" loading="lazy" decoding="async" />
       </div>
     </dialog>
 
@@ -7518,13 +7518,13 @@ const datosEstructurados = {
           <div style="font-weight:700;font-size:13px;margin-bottom:12px;">Selecciona los parches <span style="font-weight:400;color:#65716c;">(puedes elegir ambos)</span></div>
           <label style="display:flex;align-items:center;gap:12px;padding:12px 10px;border:1px solid #e1e7e3;border-radius:10px;cursor:pointer;margin-bottom:10px;min-height:70px;">
             <input type="checkbox" id="ej-spain-champion" style="appearance:auto;-webkit-appearance:checkbox;width:18px;height:18px;min-width:18px;min-height:18px;flex:0 0 18px;margin:0;accent-color:#27865f;cursor:pointer;">
-            <img src="/parches/campeon-mundo-2026.png" style="width:52px;height:50px;flex:0 0 52px;object-fit:contain;" alt="Campeón del Mundo 2026" loading="lazy">
+            <img src="/parches/campeon-mundo-2026.webp" style="width:52px;height:50px;flex:0 0 52px;object-fit:contain;" alt="Campeón del Mundo 2026" loading="lazy">
             <span style="flex:1;min-width:0;font-size:13px;line-height:1.35;font-weight:600;">Campeón del Mundo 2026</span>
             <strong style="flex:0 0 auto;white-space:nowrap;font-size:13px;">+1 €</strong>
           </label>
           <label style="display:flex;align-items:center;gap:12px;padding:12px 10px;border:1px solid #e1e7e3;border-radius:10px;cursor:pointer;min-height:70px;">
             <input type="checkbox" id="ej-spain-gold" style="appearance:auto;-webkit-appearance:checkbox;width:18px;height:18px;min-width:18px;min-height:18px;flex:0 0 18px;margin:0;accent-color:#27865f;cursor:pointer;">
-            <img src="/parches/mundial-dorado-2026.png" style="width:52px;height:50px;flex:0 0 52px;object-fit:contain;" alt="Mundial Dorado 2026" loading="lazy">
+            <img src="/parches/mundial-dorado-2026.webp" style="width:52px;height:50px;flex:0 0 52px;object-fit:contain;" alt="Mundial Dorado 2026" loading="lazy">
             <span style="flex:1;min-width:0;font-size:13px;line-height:1.35;font-weight:600;">Mundial Dorado 2026 <small style="display:block;font-size:11px;font-weight:400;color:#65716c;">Dos mangas</small></span>
             <strong style="flex:0 0 auto;white-space:nowrap;font-size:13px;">+2 €</strong>
           </label>
@@ -7535,7 +7535,7 @@ const datosEstructurados = {
             <option value="LIGA">LaLiga (+1 €)</option>
           </select>
           <div id="ej-patch-preview" style="display:flex;align-items:center;gap:10px;margin-top:10px;">
-            <img id="ej-patch-image" src="/parches/laliga.png" alt="Parche de LaLiga" style="width:54px;height:54px;object-fit:contain;" loading="lazy" />
+            <img id="ej-patch-image" src="/parches/laliga.webp" alt="Parche de LaLiga" style="width:54px;height:54px;object-fit:contain;" loading="lazy" />
             <span id="ej-patch-label" style="font-size:13px;">LaLiga</span>
           </div>
         </div>
@@ -8472,17 +8472,17 @@ import { jsPDF } from "jspdf";
     "stade-rennais", "toulouse-fc"
   ]);
   const PATCH_OPTIONS = {
-    PREMIER: {label:"Premier League", image:"/parches/premier-league.png"},
-    SERIE_A: {label:"Serie A", image:"/parches/serie-a.png"},
-    BUNDESLIGA: {label:"Bundesliga", image:"/parches/bundesliga.png"},
-    LIGUE_1: {label:"Ligue 1", image:"/parches/ligue-1.png"},
-    LIGA: {label:"LaLiga", image:"/parches/laliga.png"},
-    CHAMPIONS: {label:"Champions League", image:"/parches/champions-league.png"},
-    EUROPA: {label:"Europa League", image:"/parches/europa-league.png"},
-    CONFERENCE: {label:"Conference League", image:"/parches/conference-league.png"},
-    ANIVERSARIO_125: {label:"125 Aniversario", image:"/parches/125-aniversario.png"},
-    CAMPEON_MUNDO_2026: {label:"Campeón del Mundo 2026", image:"/parches/campeon-mundo-2026.png"},
-    MUNDIAL_DORADO_2026: {label:"Mundial Dorado 2026 (dos mangas)", image:"/parches/mundial-dorado-2026.png"}
+    PREMIER: {label:"Premier League", image:"/parches/premier-league.webp"},
+    SERIE_A: {label:"Serie A", image:"/parches/serie-a.webp"},
+    BUNDESLIGA: {label:"Bundesliga", image:"/parches/bundesliga.webp"},
+    LIGUE_1: {label:"Ligue 1", image:"/parches/ligue-1.webp"},
+    LIGA: {label:"LaLiga", image:"/parches/laliga.webp"},
+    CHAMPIONS: {label:"Champions League", image:"/parches/champions-league.webp"},
+    EUROPA: {label:"Europa League", image:"/parches/europa-league.webp"},
+    CONFERENCE: {label:"Conference League", image:"/parches/conference-league.webp"},
+    ANIVERSARIO_125: {label:"125 Aniversario", image:"/parches/125-aniversario.webp"},
+    CAMPEON_MUNDO_2026: {label:"Campeón del Mundo 2026", image:"/parches/campeon-mundo-2026.webp"},
+    MUNDIAL_DORADO_2026: {label:"Mundial Dorado 2026 (dos mangas)", image:"/parches/mundial-dorado-2026.webp"}
   };
   let CURRENT_TEAM_SLUG = $("#ej-order-panel")?.dataset.teamSlug || "";
   let CAN_CUSTOMIZE = FIRST_DIVISION_ES.has(CURRENT_TEAM_SLUG) ||
@@ -8961,7 +8961,28 @@ import { jsPDF } from "jspdf";
     const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
     const W=210,H=297,left=17,right=193;
     const date=new Date(),pad=n=>String(n).padStart(2,"0");
-    const ref=`PRES-${date.getFullYear()}${pad(date.getMonth()+1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    let ref;
+    try {
+      const response = await fetch("https://elitejerseys-presupuestos-api.manu-101192.workers.dev/siguiente", {
+        method: "POST",
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(`API: ${response.status}`);
+      const data = await response.json();
+      if (!Number.isSafeInteger(data.numero) || data.numero < 1 ||
+          data.referencia !== `PRES-${String(data.numero).padStart(4, "0")}`) {
+        throw new Error("Referencia inválida");
+      }
+      ref = data.referencia;
+    } catch (error) {
+      console.error("Error de numeración global", error);
+      throw new Error("EJ_NUMERACION_GLOBAL");
+    } finally {
+      clearTimeout(timeout);
+    }
     const total=items.reduce((sum,x)=>sum+x.total,0);
     // Diseño definitivo: siempre dos columnas, hasta seis artículos por página.
     const layout="grid";
@@ -9176,7 +9197,9 @@ import { jsPDF } from "jspdf";
       if(previewTab)previewTab.close();
       console.error("No se pudo generar el PDF",err);
       status.className="ej-order-status error";
-      status.textContent="No se pudo generar el PDF. Inténtalo de nuevo.";
+      status.textContent=err?.message === "EJ_NUMERACION_GLOBAL"
+        ? "No se pudo obtener el número de presupuesto. Comprueba tu conexión o inténtalo en un minuto."
+        : "No se pudo generar el PDF. Inténtalo de nuevo.";
     }finally{
       generating=false;button.disabled=false;
       button.textContent=openPreview?"↗ Ver presupuesto (PDF)":"Descargar presupuesto PDF";
