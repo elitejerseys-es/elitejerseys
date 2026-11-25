@@ -256,13 +256,13 @@ const datosEstructurados = {
           </button>
         </div>
         <nav id="navegacion-principal" class="nav-principal" aria-label="Navegación principal">
-          <a class="nav-activo" href="/">⌂ Inicio</a>
+          <a class="nav-activo" href="/"><span aria-hidden="true">⌂</span><span>Inicio</span></a>
           <details class="nav-desplegable nav-ligas">
-            <summary><span class="nav-ligas-icono" aria-hidden="true">⚽</span><span class="nav-ligas-titulo">Ligas</span><span aria-hidden="true">⌄</span></summary>
+            <summary><span class="nav-ligas-icono" aria-hidden="true">⚽</span><span class="nav-ligas-titulo">Ligas</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></summary>
             <div class="nav-menu">
               {categoriasOrdenadas.filter(c => c.slug !== "selecciones" && c.slug !== "otros").map(c => (
                 <details class="nav-subcategoria">
-                  <summary><img src={c.logo} alt="" width="25" height="25" /><span>{c.nombre}</span><span class="nav-subflecha" aria-hidden="true">⌄</span></summary>
+                  <summary><img src={c.logo} alt="" width="25" height="25" /><span>{c.nombre}</span><svg class="nav-subflecha" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></summary>
                   <div class="nav-submenu">
                     {c.equipos.map(equipo => (
                       <a href={`/equipos/${crearSlug(equipo)}`}><img src={obtenerEscudo(equipo)} alt="" width="25" height="25" loading="lazy" decoding="async" /><span>{equipo}</span></a>
@@ -273,7 +273,7 @@ const datosEstructurados = {
             </div>
           </details>
           <details class="nav-desplegable">
-            <summary><img src="/images/ligas/selecciones.webp" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Selecciones <span aria-hidden="true">⌄</span></summary>
+            <summary><img src="/images/ligas/selecciones.webp" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Selecciones <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></summary>
             <div class="nav-menu nav-menu-selecciones">
               {categoriasOrdenadas.find(c => c.slug === "selecciones")?.equipos.map(equipo => (
                 <a href={`/equipos/${crearSlug(equipo)}`}><img src={obtenerEscudo(equipo)} alt="" width="25" height="25" loading="lazy" />{equipo}</a>
@@ -281,7 +281,7 @@ const datosEstructurados = {
             </div>
           </details>
           <details class="nav-desplegable">
-            <summary><img src="/images/ligas/otros.webp?v=2" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Otros <span aria-hidden="true">⌄</span></summary>
+            <summary><img src="/images/ligas/otros.webp?v=2" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" />Otros <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></summary>
             <div class="nav-menu nav-menu-otros">
               {categoriasOrdenadas.find(c => c.slug === "otros")?.equipos.map(seccion => (
                 <a href={`/equipos/${crearSlug(seccion)}`}><img src="/images/equipos/f1.webp?v=2" alt="" width="20" height="20" style="object-fit:contain;vertical-align:middle;margin-right:5px;" /><span>{seccion}</span></a>
@@ -405,7 +405,7 @@ const datosEstructurados = {
                   </div>
 
                   <span class="categoria-derecha">
-                                        <span class="flecha">⌄</span>
+                                        <span class="flecha" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></span>
                   </span>
                 </button>
 
@@ -3209,5 +3209,39 @@ const datosEstructurados = {
     transform: none;
     justify-self: end;
   }
+}
+  .nav-desplegable[open] > summary > svg:last-child { transform:rotate(180deg); }
+@media (max-width: 800px) {
+  .cabecera .nav-principal > .nav-activo,
+  .cabecera .nav-principal > .nav-desplegable > summary {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-inline: 40px;
+    text-align: center;
+  }
+  .cabecera .nav-principal > .nav-activo > span:first-child,
+  .cabecera .nav-principal > .nav-desplegable > summary > img,
+  .cabecera .nav-principal > .nav-ligas > summary > .nav-ligas-icono {
+    position: absolute;
+    left: 12px;
+    margin: 0;
+  }
+  .cabecera .nav-principal > .nav-activo > span:last-child {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .cabecera .nav-principal > .nav-desplegable > summary > svg:last-child {
+    position: absolute;
+    right: 12px;
+  }
+  .cabecera .nav-ligas > .nav-menu {
+    padding-right: 0;
+    scrollbar-width: none;
+  }
+  .cabecera .nav-ligas > .nav-menu::-webkit-scrollbar { display: none; }
+  .cabecera .nav-subcategoria > summary { padding-right: 12px; }
 }
 </style>
